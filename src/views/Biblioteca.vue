@@ -2,7 +2,7 @@
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
 
-  const msg = ref('Gerador de playlist aleatória do Spotify')
+  const msg = ref('Playlists de ')
 
   // Map for localStorage keys
   const LOCALSTORAGE_KEYS = {
@@ -72,7 +72,7 @@
       .then(response => {
         // console.log(response.data.items)
         state.playlists = response.data.items.filter(item => item.public)        
-        console.log(state.playlists)
+        // console.log(state.playlists)
       })
       .catch(error => {
         console.log(error)
@@ -125,7 +125,7 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
+        console.log(response.data)
         state.user = response.data
       })
       .catch(error => {
@@ -192,10 +192,10 @@
       })
   }
 
-  const executePlaylist = async() => {
+  const executePlaylist = async(playlist_id) => {
     const { accessToken } = getLocalStorage()
     const formData = {
-       "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
+       "context_uri": "spotify:playlist:" + playlist.id,
         "offset": {
           "position": 0
         },
@@ -270,30 +270,29 @@
 </script>
 
 <template>
-  <div class="page">
-    <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>      
-    <button class="btn-generate" @click="generatePlaylist()">
-      <font-awesome-icon icon="random" /> Gerar playlist
-    </button>
-    <div v-if="state.tracks.length > 0">
-      <h4>Aqui está sua nova playlist gerada com {{state.tracks.length}} músicas:</h4>
-      <!--criar um botão para executar salvar a playlist-->
-      <button class="btn-save" @click="savePlaylist()">Salvar playlist</button>
-      <p v-if="state.message">{{state.message}}</p>
-      <button v-if="state.playlist" @click="executePlaylist()" >Executar playlist</button>
-      <a @click="openPlaylistApp(state.randomic_playlist.id)">
-        <button v-if="state.playlist">Abrir no Spotify</button>
-      </a>
-      <div v-for="track in state.tracks" style="display: flex">
-        <img :src="track.album.images[0].url" style="width: 50px; height: 50px; border-radius: 50%;" />
-        <h5>{{ track.name }}</h5>
-        <h6>{{ track.artists[0].name }}</h6>
-      </div>
-    </div>      
+  <div class="page" style="height: 88%;">
+    <h2 class="center" style="padding-top: 15px;color:#fff">{{ msg + state.user?.display_name }}</h2>
+    <p class="span">Clique na playlist para executar</p>
+    <div class="playlists">
+      <ul>
+        <li v-for="playlist in state.playlists" :key="playlist.id" @click="executePlaylist(playlist.id)">
+            <img :src="playlist.images[0]?.url"/>
+            <h4>{{ playlist.name }}</h4>
+            <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.span{
+  color: rgb(124, 123, 123);
+  font-size: 12px;
+  text-align: center;
+  padding: 5px;
+  margin: 0;
+}
 .center{
     display: flex;
     flex-direction: column;
@@ -301,14 +300,40 @@
     justify-content: center;
     margin: auto;
 }
-.btn-generate{
-  margin-left: 10px;
-  background-color: #42b983;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
+.playlists{
+    
+}
+.playlists ul{
+    list-style-type: none;
+    padding: 0;   
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
+    gap: 20px;    
+}
+.playlists li{
+    background-color: #333;
+    display: flex;
+    flex-direction: column;
+    border-radius: 5px;
+}
+.playlists img{
+    max-width: 230px;
+    border-top-left-radius: 5px;    
+    border-top-right-radius: 5px;    
+}
+.playlists h4{
+    color: #fff;
+    margin: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 14px;
+}
+.playlists p{
+    color: rgb(177, 177, 177);
+    margin: 0 5px 5px 5px;    
+    font-size: 12px;
+    line-height: 1.5em;
+    height: 3em;
+    overflow: hidden;
 }
 </style>

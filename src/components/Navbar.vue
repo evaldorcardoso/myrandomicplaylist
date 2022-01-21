@@ -106,9 +106,9 @@
               <p>Player</p>
             </div>
           </router-link>
-          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen" v-if="state.menuOpen">
+          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/biblioteca')" v-if="state.menuOpen">
             <font-awesome-icon icon="user" style="margin-right: 10px;color:#fff;"/>
-            <p>Perfil</p>
+            <p>Biblioteca</p>
           </div>
           <div class="navbar-right-inner-item" @click="logout()">
             <font-awesome-icon icon="sign-out-alt" style="margin-right: 10px;color:#fff;"/>
@@ -122,12 +122,12 @@
 .navbar{
   position: relative;
   height: 44px;
-  padding: 0 0 0 10px;
+  padding: 7px;
+  background-color: #0c8d39;
 }
 .navbar-inner{
   position: relative;
-  height: 44px;
-  padding: 0 10px;
+  height: 44px;  
 }
 .div-opacity{
   position: fixed;

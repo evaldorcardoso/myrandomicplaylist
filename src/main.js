@@ -10,6 +10,10 @@ import { faSignOutAlt,
         faBars,
         faHome,
         faUser, 
+        faStepBackward,
+        faStepForward,
+        faPlay,
+        faPause,
     } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 
@@ -21,6 +25,10 @@ library.add(
     faBars,
     faHome,
     faUser,
+    faStepBackward,
+    faStepForward,
+    faPlay,
+    faPause,
 )
 
 const app  = createApp(App)

@@ -23,6 +23,7 @@
   const state = reactive({
     // title: 'Gerador de playlist aleatória do Spotify',    
     devices: [],
+    is_playing: true,
     user: null,
     message: '',
     track: {
@@ -31,7 +32,8 @@
         name: 'Artista X',
       }],
       time: "1:01",
-      timeTotal: "2:44",
+      time_total: "2:44",
+      progress: 0,
       album: {
         images : [{
           url: 'src/assets/Spotify_Icon_RGB_Green.png'
@@ -104,7 +106,11 @@
       })
       .then(response => {
         console.log(response.data)
-        //state.devices = response.data.devices
+        state.devices = response.data.devices
+        if(state.devices.length > 0)
+          state.is_playing = true
+        else
+          state.is_playing = false
       })
   }
 
@@ -117,8 +123,14 @@
         }
       })
       .then(response => {
+        console.log(response.data)
         if(response.data.is_playing){
+          let date = new Date(response.data.progress_ms);
           state.track = response.data.item
+          state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
+          date = new Date(state.track.duration_ms);
+          state.track.time_total = date.getUTCMinutes() + ':' + date.getUTCSeconds()
+          state.track.progress = (response.data.progress_ms / state.track.duration_ms) * 100
         }
       })
   }
@@ -133,6 +145,7 @@
       return
     }      
     getProfile()
+    getDevices()
     getPlaybackState()
     setTimeout(() => {
       getPlaybackState()
@@ -142,39 +155,37 @@
 
 </script>
 
-<template>
-  <p>    
-    <div>      
-      <div class="player" v-if="state.devices.length > 0">
-        <div class="artwork">
-          <img v-bind:src="state.track?.album.images[0].url" style="width: 100%; height: 100%;" />
-        </div>
-        <div class="track-name">
-          <h2>{{ state.track?.name }}</h2>
-        </div>
-        <div class="track-artists">
-          <!-- exibir os artistas separados por vírgula-->
-          <h4>{{ state.track?.artists.map(artist => artist.name).join(', ') }}</h4>
-        </div>
-        <div class="bar-progress">
-          <div class="bar-progress-fill" :style="{ width: state.progress + '%' }"></div>
-        </div>
-        <div class="track-time">
-          <span>{{ state.track?.time }}</span>
-          <span>{{ state.track?.timeTotal }}</span>
-        </div>
-        <!--<div class="player-controls">
-          <button class="btn-previous" @click="">Previous</button>
-          <button class="btn-play" @click="executePlaylist()">Play</button>
-          <button class="btn-next" @click="">Next</button>
-        </div>-->          
-      </div>         
-      <div v-else class="no-devices">
-        <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
-      </div>
+<template> 
+<div class="page">      
+  <div class="player" v-if="state.devices.length > 0">
+    <div class="artwork">
+      <img v-bind:src="state.track?.album.images[0].url" style="width: 100%; height: 100%;" />
     </div>
-  </p>
-  <br/>
+    <div class="track-name">
+      <h3>{{ state.track?.name }}</h3>
+    </div>
+    <div class="track-artists">
+      <!-- exibir os artistas separados por vírgula-->
+      <h4>{{ state.track?.artists.map(artist => artist.name).join(', ') }}</h4>
+    </div>
+    <div class="bar-progress">
+      <div class="bar-progress-fill" :style="{ width: state.track.progress + '%' }"></div>
+    </div>
+    <div class="track-time">
+      <span>{{ state.track?.time }}</span>
+      <span>{{ state.track?.time_total }}</span>
+    </div>
+    <div class="player-controls">
+      <button class="btn-previous" @click=""><font-awesome-icon icon="step-backward"/></button>
+      <button v-if="!state.is_playing" class="btn-play" @click="executePlaylist()"><font-awesome-icon icon="play"/></button>
+      <button v-if="state.is_playing" class="btn-play" @click="executePlaylist()"><font-awesome-icon icon="pause"/></button>
+      <button class="btn-next" @click=""><font-awesome-icon icon="step-forward"/></button>
+    </div>
+  </div>         
+  <div v-if="!state.is_playing">
+    <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
+  </div>
+</div>
 </template>
 
 <style scoped>
@@ -198,7 +209,6 @@
   justify-content: center;
   width: 300px;
   height: 400px;
-  background-color: #fff;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0px 0px 10px #000;
@@ -218,8 +228,9 @@
   width: 100%;
   height: 30px;  
   margin-top: 10px;
+  color: #fff;
 }
-.track-name h2{
+.track-name h3{
   margin: 0;
   white-space: nowrap;
   max-width: 300px;
@@ -245,8 +256,7 @@
   background-color: #ccc;
   border-radius: 4px;
 }
-.bar-progress-fill{
-  width: 10%;
+.bar-progress-fill{  
   height: 4px;
   background-color: #42b983;
   border-radius: 4px;
@@ -261,9 +271,52 @@
 .track-time span{
   font-size: 12px;
   float:left;
+  color: #999;
 }
 .track-time span:nth-child(2){
   font-size: 12px;
   float:right;
+  color: #999;
+}
+.player-controls{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-gap: 10px;
+}
+.btn-previous{
+  font-size: 20px;
+  border-radius: 50%;
+  background-color: #1c1c1c;
+  border: none;
+  outline: none;
+  margin-right: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+  color: #999;
+  text-align: center;
+}
+.btn-next{
+  font-size: 20px;
+  border-radius: 50%;
+  background-color: #1c1c1c;
+  border: none;
+  outline: none;
+  margin-top: 10px;
+  cursor: pointer;
+  color: #999;
+  text-align: center;
+}
+.btn-play{
+  font-size: 20px;
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: none;
+  outline: none;
+  margin: 10px auto auto auto;
+  cursor: pointer;
+  color: #1c1c1c;
+  text-align: center;
 }
 </style>
