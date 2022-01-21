@@ -123,15 +123,80 @@
         }
       })
       .then(response => {
-        console.log(response.data)
-        if(response.data.is_playing){
-          let date = new Date(response.data.progress_ms);
+        console.log(response.data)        
+          state.is_playing = response.data.is_playing
+          let date = new Date(response.data.progress_ms);          
           state.track = response.data.item
           state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
           date = new Date(state.track.duration_ms);
           state.track.time_total = date.getUTCMinutes() + ':' + date.getUTCSeconds()
           state.track.progress = (response.data.progress_ms / state.track.duration_ms) * 100
+      })
+  }
+
+  const startResumePlayback = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .put(`https://api.spotify.com/v1/me/player/play`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
         }
+      })
+      .then(response => {
+        state.is_playing = true
+        getPlaybackState()
+      })
+  }
+
+  const pausePlayback = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .put(`https://api.spotify.com/v1/me/player/pause`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        state.is_playing = false
+        getPlaybackState()
+      })
+  }
+
+  const skipToPrevious = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .post(`https://api.spotify.com/v1/me/player/previous`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+  }
+
+  const skipToNext = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .post(`https://api.spotify.com/v1/me/player/next`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+  }
+
+  const transferPlayback = async(device_id) => {
+    const { accessToken } = getLocalStorage()
+    const formData = {
+      "device_ids": [device_id]
+    }
+    await axios
+      .put(`https://api.spotify.com/v1/me/player`, JSON.stringify(formData), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-type": "application/json"
+        }
+      })
+      .then(response => {
+        // console.log(response.data)
+        getDevices()
       })
   }
 
@@ -144,10 +209,11 @@
       logout()
       return
     }      
-    getProfile()
+    getProfile()    
     getDevices()
     getPlaybackState()
     setTimeout(() => {
+      getDevices()
       getPlaybackState()
     }, 30000)
     
@@ -176,13 +242,22 @@
       <span>{{ state.track?.time_total }}</span>
     </div>
     <div class="player-controls">
-      <button class="btn-previous" @click=""><font-awesome-icon icon="step-backward"/></button>
-      <button v-if="!state.is_playing" class="btn-play" @click="executePlaylist()"><font-awesome-icon icon="play"/></button>
-      <button v-if="state.is_playing" class="btn-play" @click="executePlaylist()"><font-awesome-icon icon="pause"/></button>
-      <button class="btn-next" @click=""><font-awesome-icon icon="step-forward"/></button>
+      <button class="btn-previous" @click="skipToPrevious()"><font-awesome-icon icon="step-backward"/></button>
+      <button v-if="!state.is_playing" class="btn-play" @click="startResumePlayback()"><font-awesome-icon icon="play"/></button>
+      <button v-if="state.is_playing" class="btn-play" @click="pausePlayback()"><font-awesome-icon icon="pause"/></button>
+      <button class="btn-next" @click="skipToNext()"><font-awesome-icon icon="step-forward"/></button>
     </div>
   </div>         
-  <div v-if="!state.is_playing">
+  <div class="devices" v-if="state.devices.length > 0">
+    <h3>Dispositivos disponíveis:</h3>
+    <div class="device" v-for="device in state.devices" @click="transferPlayback(device.id)">
+      <div class="device-name">
+        <h4 v-if="device.is_active" :style="{ color: '#fff'}">{{ device.name }}</h4>
+        <h4 v-else>{{ device.name }}</h4>
+      </div>      
+    </div>
+  </div>
+  <div v-if="(state.devices.length == 0)">
     <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
   </div>
 </div>
@@ -319,4 +394,42 @@
   color: #1c1c1c;
   text-align: center;
 }
+.devices{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  border-radius: 4px;
+  box-shadow: 0px 0px 10px #000;
+  width: 340px;
+}
+.devices h3{
+  text-align: center;
+  color: #fff;
+}
+.device{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 300px;
+  height: 50px;
+}
+.device-name{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 30px;
+  color: #999;
+  align-items: center;
+  justify-content: center;
+}
+.device-name h4{
+  margin: 0;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+}
+
 </style>
