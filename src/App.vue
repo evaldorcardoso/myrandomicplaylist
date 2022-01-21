@@ -1,20 +1,24 @@
 <script setup>
-// This starter template is using Vue 3 <script setup> SFCs
-// Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
-import Home from './components/Home.vue'
+  import Navbar from '@/components/Navbar.vue'
 </script>
-
-<template>  
-  <Home msg="Gerador de playlist aleatória do Spotify" />
+<template>
+  <div id="nav">
+    <Navbar />
+    <router-view/>
+  </div>
 </template>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+#nav{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 20px;
+  /*background gradiente*/
+  font-family: sans-serif;
+  background: linear-gradient(to bottom, #1db954 0%, #0c8d39 100%);
+  height: 100vh;
 }
 </style>
