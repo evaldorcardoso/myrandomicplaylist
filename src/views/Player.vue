@@ -202,7 +202,7 @@
       })
       .catch(error => {
         console.log(error)
-        state.message = error.message?
+        state.message = error.response.data.error.message
       })
   }
 
