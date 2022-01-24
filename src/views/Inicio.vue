@@ -5,6 +5,7 @@
 
   // Map for localStorage keys
   const LOCALSTORAGE_KEYS = {
+    code: 'spotify_code',
     accessToken: 'spotify_access_token',
     refreshToken: 'spotify_refresh_token',
     expireTime: 'spotify_token_expire_time',
@@ -14,7 +15,9 @@
   const getLocalStorage = () =>{
     // Map to retrieve localStorage values
     const LOCALSTORAGE_VALUES = {    
+      code: window.localStorage.getItem(LOCALSTORAGE_KEYS.code),
       accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
+      refreshToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.refreshToken),
       expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
       timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
     };
@@ -234,11 +237,11 @@
   }
 
   onMounted(async () => {
-    // var params = window.location.search.substr(1)
-    var params = window.location.hash
+    var params = window.location.search.substr(1)
+    // var params = window.location.hash
     console.log(params)
     if(params){
-      params = params.split('#')[1]
+      // params = params.split('#')[1]
       params = params.split('&')
       params = params.map(param => {
         param = param.split('=')
@@ -253,15 +256,43 @@
         acc[param.key] = param.value
         return acc
       }, {}) 
-      if(params.access_token){
-        localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, params.access_token)        
-        localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, params.expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())        
-        router.push('/')
-        // setTimeout(() => {
-        //   window.location.reload()
-        // }, 1000)
-      }
+      if(params.code){
+        localStorage.setItem(LOCALSTORAGE_KEYS.code, params.code)        
+        const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+        const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
+        //the parameters encoded in application/x-www-form-urlencoded:
+        const formData = new URLSearchParams()
+        formData.append('grant_type', 'authorization_code')
+        formData.append('code', params.code)
+        formData.append('redirect_uri', window.location.origin)
+
+        // const formData = {
+        //   'code' : params.code,
+        //   'redirect_uri': window.location.origin,
+        //   'grant_type': 'authorization_code'
+        // }
+
+        await axios
+          .post(`https://accounts.spotify.com/api/token`, formData, {
+            headers: {
+              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
+              "Content-type": "application/x-www-form-urlencoded"
+            }
+          })
+          .then(response => {
+            console.log(response.data)
+            localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, response.data.access_token)        
+            localStorage.setItem(LOCALSTORAGE_KEYS.refreshToken, response.data.refresh_token)        
+            localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, response.data.expires_in)
+            localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+            router.push('/')
+          })
+          .catch(error => {
+            console.log(error)
+            alert('Erro ao entrar com sua conta!')
+            logout()
+          })
+      }      
     }
 
     if(hasTokenExpired()){        

@@ -30,12 +30,6 @@
     tracks: [],
     user: null,
     message: '',
-    track: {
-      name: 'Musica X',
-      artist: 'Artista Y',
-      time: "1:01",
-      timeTotal: "2:44"
-    }
   })
 
   const internalInstance = getCurrentInstance()
@@ -207,6 +201,14 @@
           Authorization: `Bearer ${accessToken}`,
           "Content-type": "application/json"
         }
+      })
+      .then(response => {
+        
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+        openPlaylistApp(playlist_id)
       })
   }
 

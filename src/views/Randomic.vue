@@ -102,6 +102,7 @@
 
   const generatePlaylist = async() => {    
     state.message = 'Gerando playlist, aguarde...'
+    state.randomic_playlist = null
     const playlists_selecteds = state.playlists.filter(item => item.checked)
     
     state.tracks = []
@@ -202,9 +203,11 @@
       })
       .then(response => {
         console.log(response.data)
+        return true
       })
       .catch(error => {
         console.log(error)
+        return false
       })
   }
 
@@ -228,9 +231,18 @@
     }
     //nao salvou a playlist apenas adiciona a lista de reprodução
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
+    let added = false
     tracks.forEach(async(track) => {
-      await addTrackToQueue(track)
+      added = await addTrackToQueue(track)
     })  
+    if(!added){
+      if(state.randomic_playlist){
+        openPlaylistApp(state.randomic_playlist.id)
+        return
+      }
+      alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
+      return
+    }
     state.message = 'As músicas foram adicionadas a lista de reprodução!'
     alert('As músicas foram adicionadas a lista de reprodução!')
   }

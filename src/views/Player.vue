@@ -23,20 +23,20 @@
   const state = reactive({
     // title: 'Gerador de playlist aleatória do Spotify',    
     devices: [],
-    is_playing: true,
+    is_playing: false,
     user: null,
     message: '',
     track: {
-      name: 'Musica X',
+      name: '',
       artists: [{
-        name: 'Artista X',
+        name: '',
       }],
-      time: "1:01",
-      time_total: "2:44",
+      time: "",
+      time_total: "",
       progress: 0,
       album: {
         images : [{
-          url: 'src/assets/Spotify_Icon_RGB_Green.png'
+          url: ''
         }],
       },
     },
@@ -106,11 +106,7 @@
       })
       .then(response => {
         console.log(response.data)
-        state.devices = response.data.devices
-        if(state.devices.length > 0)
-          state.is_playing = true
-        else
-          state.is_playing = false
+        state.devices = response.data.devices        
       })
   }
 
@@ -122,8 +118,8 @@
           Authorization: `Bearer ${accessToken}`
         }
       })
-      .then(response => {
-        console.log(response.data)        
+      .then(response => {        
+        if(response.data){          
           state.is_playing = response.data.is_playing
           let date = new Date(response.data.progress_ms);          
           state.track = response.data.item
@@ -131,6 +127,7 @@
           date = new Date(state.track.duration_ms);
           state.track.time_total = date.getUTCMinutes() + ':' + date.getUTCSeconds()
           state.track.progress = (response.data.progress_ms / state.track.duration_ms) * 100
+        }
       })
   }
 
@@ -146,6 +143,10 @@
         state.is_playing = true
         getPlaybackState()
       })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const pausePlayback = async() => {
@@ -160,6 +161,10 @@
         state.is_playing = false
         getPlaybackState()
       })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const skipToPrevious = async() => {
@@ -170,6 +175,13 @@
           Authorization: `Bearer ${accessToken}`
         }
       })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const skipToNext = async() => {
@@ -179,6 +191,13 @@
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
+      })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
       })
   }
 
@@ -197,6 +216,10 @@
       .then(response => {
         // console.log(response.data)
         getDevices()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
       })
   }
 
@@ -222,8 +245,9 @@
 </script>
 
 <template> 
-<div class="page">      
-  <div class="player" v-if="state.devices.length > 0">
+<div class="page"> 
+  <p class="message">{{state.message}}</p>     
+  <div class="player" v-if="state.is_playing">
     <div class="artwork">
       <img v-bind:src="state.track?.album.images[0].url" style="width: 100%; height: 100%;" />
     </div>
@@ -264,6 +288,11 @@
 </template>
 
 <style scoped>
+.message{
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+}
 .no-devices{
   display: flex;
   flex-direction: column;

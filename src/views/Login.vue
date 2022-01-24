@@ -41,14 +41,24 @@
   }
 
   const authorize = () => {
+    // const url = 'https://accounts.spotify.com/authorize?'
+    // const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+    // const response_type = 'token'
+    // const redirect_uri = window.location.origin
+    // const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state'
+    // const state = '34fFs29kd09'
+    // const show_dialog = 'false'
+    // const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}&show_dialog=${show_dialog}`
+    // window.location.href = url + query    
+
     const url = 'https://accounts.spotify.com/authorize?'
     const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const response_type = 'token'
+    const response_type = 'code'
     const redirect_uri = window.location.origin
     const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state'
     const state = '34fFs29kd09'
-    const show_dialog = 'false'
-    const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}&show_dialog=${show_dialog}`
+    // const show_dialog = 'false'
+    const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}`
     window.location.href = url + query    
   }
 
