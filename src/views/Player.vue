@@ -200,6 +200,10 @@
         // console.log(response.data)
         getDevices()
       })
+      .catch(error => {
+        console.log(error)
+        state.message = error.message?
+      })
   }
 
   const openPlaylistApp = (playlist_id) => {
@@ -224,8 +228,9 @@
 </script>
 
 <template> 
-<div class="page">      
-  <div class="player" v-if="state.devices.length > 0">
+<div class="page"> 
+  <p class="message">{{state.message}}</p>     
+  <div class="player" v-if="state.is_playing">
     <div class="artwork">
       <img v-bind:src="state.track?.album.images[0].url" style="width: 100%; height: 100%;" />
     </div>
@@ -266,6 +271,11 @@
 </template>
 
 <style scoped>
+.message{
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+}
 .no-devices{
   display: flex;
   flex-direction: column;
