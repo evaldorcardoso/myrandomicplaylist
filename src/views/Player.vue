@@ -123,7 +123,8 @@
         }
       })
       .then(response => {
-        console.log(response.data)        
+        console.log(response.data)
+        if(response.data){        
           state.is_playing = response.data.is_playing
           let date = new Date(response.data.progress_ms);          
           state.track = response.data.item
@@ -131,6 +132,7 @@
           date = new Date(state.track.duration_ms);
           state.track.time_total = date.getUTCMinutes() + ':' + date.getUTCSeconds()
           state.track.progress = (response.data.progress_ms / state.track.duration_ms) * 100
+        }
       })
   }
 
