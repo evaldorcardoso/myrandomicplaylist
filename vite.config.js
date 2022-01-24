@@ -9,5 +9,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  }
+  },
+  publicPath: process.env.NODE_ENV === 'production' ? '/myrandomicplaylist/' : '/',
 })
