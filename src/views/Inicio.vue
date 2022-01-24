@@ -272,9 +272,11 @@
 <template>
   <div class="page">
     <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>      
-    <button class="btn-generate" @click="generatePlaylist()">
-      <font-awesome-icon icon="random" /> Gerar playlist
-    </button>
+    <router-link to="/randomic" style="text-decoration:none">
+      <button class="btn-generate">
+        <font-awesome-icon icon="play" /> Começar
+      </button>
+    </router-link>
     <div v-if="state.tracks.length > 0">
       <h4>Aqui está sua nova playlist gerada com {{state.tracks.length}} músicas:</h4>
       <!--criar um botão para executar salvar a playlist-->
@@ -302,13 +304,14 @@
     margin: auto;
 }
 .btn-generate{
-  margin-left: 10px;
-  background-color: #42b983;
+  margin: 25px auto auto auto;
+  background-color: #0c8d39;
   color: #fff;
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
   font-size: 16px;
   cursor: pointer;
+  display: flex;
 }
 </style>

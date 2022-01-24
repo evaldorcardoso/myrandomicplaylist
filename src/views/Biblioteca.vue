@@ -195,7 +195,7 @@
   const executePlaylist = async(playlist_id) => {
     const { accessToken } = getLocalStorage()
     const formData = {
-       "context_uri": "spotify:playlist:" + playlist.id,
+       "context_uri": "spotify:playlist:" + playlist_id,
         "offset": {
           "position": 0
         },

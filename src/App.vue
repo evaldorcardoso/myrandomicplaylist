@@ -17,7 +17,8 @@
   z-index: 10;
   /*background gradiente*/
   font-family: sans-serif;
-  background: linear-gradient(to bottom, #1db954 0%, #0c8d39 100%);
+  /*background: linear-gradient(to bottom, #1db954 0%, #0c8d39 100%);*/
+  background-color: #1c1c1c;
   height: 100vh;
 }
 .page{
