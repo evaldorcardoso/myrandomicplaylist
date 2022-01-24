@@ -239,7 +239,8 @@
     getProfile()    
     getDevices()
     getPlaybackState()
-    setTimeout(() => {
+
+    atualizador = setInterval(() => {
       getDevices()
       getPlaybackState()
     }, 10000)
