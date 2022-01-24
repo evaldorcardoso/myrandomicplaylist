@@ -214,7 +214,11 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
+        console.log(response.data)
+        const device = state.devices.find(device => device.id === device_id)
+        if((device.is_active)&&(!state.is_playing)){
+          startResumePlayback()
+        }
         getDevices()
       })
       .catch(error => {
