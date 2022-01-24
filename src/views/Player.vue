@@ -23,20 +23,20 @@
   const state = reactive({
     // title: 'Gerador de playlist aleatória do Spotify',    
     devices: [],
-    is_playing: true,
+    is_playing: false,
     user: null,
     message: '',
     track: {
-      name: 'Musica X',
+      name: '',
       artists: [{
-        name: 'Artista X',
+        name: '',
       }],
-      time: "1:01",
-      time_total: "2:44",
+      time: "",
+      time_total: "",
       progress: 0,
       album: {
         images : [{
-          url: 'src/assets/Spotify_Icon_RGB_Green.png'
+          url: 'src/assets/Spotify_Icon_RGB_White.png'
         }],
       },
     },
