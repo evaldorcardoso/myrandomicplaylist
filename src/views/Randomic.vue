@@ -73,6 +73,12 @@
       })
   }
 
+  const getRandomInt = (min, max) => {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min;
+  }
+
   const getTracks = async(playlist_id) => {
     const { accessToken } = getLocalStorage()
     
@@ -88,10 +94,13 @@
         // console.log(response.data.items)
         //adicionar 2 musicas aleatórias dessa playlist com as demais
         while(state.tracks.length < tracks + state.number_tracks) {
-          let random = Math.floor(Math.random() * response.data.items.length)
+          // let random = Math.floor(Math.random() * response.data.items.length)
+          let random = getRandomInt(0, response.data.items.length)
           let track = response.data.items[random].track
-          track.checked = true
-          state.tracks.push(track)
+          if(track){
+            track.checked = true
+            state.tracks.push(track)
+          }
         }
         
         // state.tracks = state.tracks.concat(response.data.items.map(item => item.track))
