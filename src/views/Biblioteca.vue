@@ -65,7 +65,8 @@
       })
       .then(response => {
         // console.log(response.data.items)
-        state.playlists = response.data.items.filter(item => item.public)        
+        // state.playlists = response.data.items.filter(item => item.public)        
+        state.playlists = response.data.items
         // console.log(state.playlists)
       })
       .catch(error => {
@@ -99,16 +100,6 @@
       })
   }
 
-  const generatePlaylist = async() => {
-    state.tracks = []
-    console.log('Gerando playlist...')
-    const unresolved = state.playlists.map(async(playlist) => {
-      await getTracks(playlist.id)
-    })
-    const resolved = await Promise.all(unresolved)
-    console.log(`Playlist gerada com sucesso com ${state.tracks.length} músicas!`)
-  }
-
   const getProfile = async() => {
     const { accessToken } = getLocalStorage()
     // alert('getprofile inicio, token: '+ accessToken)
@@ -119,69 +110,10 @@
         }
       })
       .then(response => {
-        console.log(response.data)
+        // console.log(response.data)
         state.user = response.data
       })
       .catch(error => {
-        console.log(error)
-      })
-  }
-
-  const savePlaylist = async() => {
-    const { accessToken } = getLocalStorage()
-    const user_id = state.user.id
-    const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
-    const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
-    const _public = true
-    // const tracks = state.tracks.map(track => track.uri)
-    
-    //let query = `name=${name}&description=${description}&public=${_public}`
-    const formData = {
-      'name' : name,
-      'description': description,
-      'public': _public
-    }
-    await axios
-      .post(`https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.randomic_playlist = response.data
-        state.message = 'Playlist criada com sucesso!'
-        router.push('/')
-        addTracksToPlaylist(response.data.id)
-      })
-      .catch(error => {
-        console.log('Nao foi possivel salvar a playlist:')
-        console.log(error)
-      })
-  }
-
-  const addTracksToPlaylist = async(playlist_id) => {
-    const { accessToken } = getLocalStorage()
-    const tracks = state.tracks.map(track => track.uri)
-    const formData = {
-      'uris': tracks
-    }
-    axios
-      .post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.playlist = response.data
-        state.message = 'As músicas foram adicionadas com sucesso!'
-        router.push('/')
-      })
-      .catch(error => {
-        console.log('Nao foi possivel adicionar as musicas a playlist:')
         console.log(error)
       })
   }
@@ -221,7 +153,7 @@
         }
       })
       .then(response => {
-        console.log(response.data)
+        // console.log(response.data)
         //state.devices = response.data.devices
       })
   }
@@ -231,36 +163,6 @@
   }
 
   onMounted(async () => {
-    // var params = window.location.search.substr(1)
-    var params = window.location.hash
-    console.log(params)
-    if(params){
-      params = params.split('#')[1]
-      params = params.split('&')
-      params = params.map(param => {
-        param = param.split('=')
-        console.log(param);        
-        return {
-          key: param[0],
-          value: param[1]
-        }
-      })
-
-      params = params.reduce((acc, param) => {
-        acc[param.key] = param.value
-        return acc
-      }, {}) 
-      if(params.access_token){
-        localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, params.access_token)        
-        localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, params.expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())        
-        router.push('/')
-        // setTimeout(() => {
-        //   window.location.reload()
-        // }, 1000)
-      }
-    }
-
     if(hasTokenExpired()){        
       logout()
       return
