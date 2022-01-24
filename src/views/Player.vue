@@ -240,7 +240,7 @@
     getDevices()
     getPlaybackState()
 
-    atualizador = setInterval(() => {
+    var atualizador = setInterval(() => {
       getDevices()
       getPlaybackState()
     }, 10000)
