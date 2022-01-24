@@ -36,7 +36,7 @@
       progress: 0,
       album: {
         images : [{
-          url: 'src/assets/Spotify_Icon_RGB_White.png'
+          url: ''
         }],
       },
     },
