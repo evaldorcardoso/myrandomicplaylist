@@ -129,6 +129,8 @@
       })
       .catch(error => {
         console.log(error)
+        alert('Houve um erro ao buscar seu perfil!')
+        logout()
       })
   }
 
