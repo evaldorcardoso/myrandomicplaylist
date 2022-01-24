@@ -86,7 +86,7 @@
       <div class="navbar-inner" v-if="state.user">
         <div class="left">
           <div>
-            <img :src="state.user.images[0].url" style="width: 44px; height: 44px;border-radius: 50%;" />
+            <img :src="state.user.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" />
           </div>
         </div>
         <div class="left-user">
