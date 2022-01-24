@@ -55,7 +55,6 @@
 
   const getPlaylists = async() => {
     const { accessToken } = getLocalStorage()
-    // console.log('buscando playlists...')
     await axios
       .get('https://api.spotify.com/v1/me/playlists?limit=50', {
         headers: {
@@ -63,10 +62,7 @@
         }
       })
       .then(response => {
-        // console.log(response.data.items)
         state.playlists = response.data.items
-        // state.playlists = response.data.items.filter(item => item.public)        
-        // console.log(state.playlists)
       })
       .catch(error => {
         console.log(error)
@@ -90,22 +86,18 @@
       })
       .then(response => {
         let tracks = state.tracks.length
-        // console.log(tracks + 'musicas')
-        // console.log(response.data.items)
-        //adicionar 2 musicas aleatórias dessa playlist com as demais
         while(state.tracks.length < tracks + state.number_tracks) {
           // let random = Math.floor(Math.random() * response.data.items.length)
           let random = getRandomInt(0, response.data.items.length)
           let track = response.data.items[random].track
           if(track){
-            track.checked = true
-            state.tracks.push(track)
+            //somente adiciona se já não existir
+            if(!state.tracks.find(item => item.track.id === track.id)){
+              track.checked = true
+              state.tracks.push(track)              
+            }
           }
         }
-        
-        // state.tracks = state.tracks.concat(response.data.items.map(item => item.track))
-        // state.tracks = response.data.items
-        // state.playlists = response.data.items.filter(item => item.public)        
       })
   }
 
@@ -133,7 +125,6 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
         state.user = response.data
       })
       .catch(error => {
@@ -163,10 +154,8 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
         state.randomic_playlist = response.data
         state.message = 'Playlist criada com sucesso!'
-        // router.push('/')
         addTracksToPlaylist(response.data.id)
       })
       .catch(error => {
@@ -189,10 +178,9 @@
         }
       })
       .then(response => {
-        console.log(response.data)
+        // console.log(response.data)
         state.playlist = response.data
         state.message = 'As músicas foram adicionadas com sucesso!'
-        // alert('As músicas foram adicionadas com sucesso!')
       })
       .catch(error => {
         console.log('Nao foi possivel adicionar as musicas a playlist:')
