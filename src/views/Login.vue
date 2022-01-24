@@ -52,7 +52,9 @@
     window.location.href = url + query    
   }
 
-
+  const openLink = (url) => {
+    window.open(url, '_blank')
+  }
 
   onMounted(async () => {
     // var params = window.location.search.substr(1)
@@ -100,12 +102,17 @@
         <button class="but-login">Entrar com Spotify</button>        
       </a>      
     </div>
-
+    <div class="footer">
+      <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
+    </div>
   </p>
   <br/>
 </template>
 
 <style scoped>
+.page{
+  height: 50%;
+}
 .login{
   display: flex;
   flex-direction: column;
@@ -138,5 +145,14 @@
   font-size: 16px;
   cursor: pointer;
 }
-
+.footer{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  bottom: 65px;
+  position: absolute;
+  width: 100%;
+}
 </style>

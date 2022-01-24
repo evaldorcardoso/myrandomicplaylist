@@ -55,6 +55,10 @@
       })
   }
 
+  const openLink = (link) => {
+    window.open(link, '_blank')
+  }
+
   const logout = () => {
     // Clear all localStorage items
     for (const property in LOCALSTORAGE_KEYS) {
@@ -109,6 +113,10 @@
           <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/biblioteca')" v-if="state.menuOpen">
             <font-awesome-icon icon="user" style="margin-right: 10px;color:#fff;"/>
             <p>Biblioteca</p>
+          </div>
+          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;openLink('https://developer.spotify.com/dashboard')" v-if="state.menuOpen">
+            <font-awesome-icon icon="book" style="margin-right: 10px;color:#fff;"/>
+            <p>Api Spotify</p>
           </div>
           <div class="navbar-right-inner-item" @click="logout()">
             <font-awesome-icon icon="sign-out-alt" style="margin-right: 10px;color:#fff;"/>

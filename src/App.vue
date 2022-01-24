@@ -1,5 +1,6 @@
 <script setup>
   import Navbar from '@/components/Navbar.vue'
+  document.title = 'My Randomic Playlist'
 </script>
 <template>
   <div id="main">

@@ -16,6 +16,7 @@ import { faSignOutAlt,
         faPause,
         faArrowRight,
         faSave,
+        faBook,
     } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 
@@ -33,6 +34,7 @@ library.add(
     faPause,
     faArrowRight,
     faSave,
+    faBook,
 )
 
 const app  = createApp(App)

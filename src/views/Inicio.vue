@@ -1,7 +1,6 @@
 <script setup>
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
-
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
   // Map for localStorage keys
@@ -228,6 +227,10 @@
     window.open(`https://open.spotify.com/playlist/${playlist_id}`)
   }
 
+  const openLink = (url) => {
+    window.open(url, '_blank')
+  }
+
   onMounted(async () => {
     // var params = window.location.search.substr(1)
     var params = window.location.hash
@@ -277,21 +280,9 @@
         <font-awesome-icon icon="play" /> Começar
       </button>
     </router-link>
-    <div v-if="state.tracks.length > 0">
-      <h4>Aqui está sua nova playlist gerada com {{state.tracks.length}} músicas:</h4>
-      <!--criar um botão para executar salvar a playlist-->
-      <button class="btn-save" @click="savePlaylist()">Salvar playlist</button>
-      <p v-if="state.message">{{state.message}}</p>
-      <button v-if="state.playlist" @click="executePlaylist()" >Executar playlist</button>
-      <a @click="openPlaylistApp(state.randomic_playlist.id)">
-        <button v-if="state.playlist">Abrir no Spotify</button>
-      </a>
-      <div v-for="track in state.tracks" style="display: flex">
-        <img :src="track.album.images[0].url" style="width: 50px; height: 50px; border-radius: 50%;" />
-        <h5>{{ track.name }}</h5>
-        <h6>{{ track.artists[0].name }}</h6>
-      </div>
-    </div>      
+    <div class="footer">
+      <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
+    </div>    
   </div>
 </template>
 
@@ -313,5 +304,15 @@
   font-size: 16px;
   cursor: pointer;
   display: flex;
+}
+.footer{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  bottom: 65px;
+  position: absolute;
+  width: 100%;
 }
 </style>

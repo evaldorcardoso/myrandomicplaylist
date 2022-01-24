@@ -215,7 +215,7 @@
     setTimeout(() => {
       getDevices()
       getPlaybackState()
-    }, 30000)
+    }, 10000)
     
   })
 
