@@ -66,7 +66,7 @@
         // console.log(response.data.items)
         state.playlists = response.data.items
         // state.playlists = response.data.items.filter(item => item.public)        
-        console.log(state.playlists)
+        // console.log(state.playlists)
       })
       .catch(error => {
         console.log(error)
@@ -106,7 +106,6 @@
     const playlists_selecteds = state.playlists.filter(item => item.checked)
     
     state.tracks = []
-    console.log('Gerando playlist...')
     const unresolved = playlists_selecteds.map(async(playlist) => {
       await getTracks(playlist.id)
     })
@@ -184,7 +183,7 @@
         console.log(response.data)
         state.playlist = response.data
         state.message = 'As músicas foram adicionadas com sucesso!'
-        alert('As músicas foram adicionadas com sucesso!')
+        // alert('As músicas foram adicionadas com sucesso!')
       })
       .catch(error => {
         console.log('Nao foi possivel adicionar as musicas a playlist:')
@@ -193,16 +192,14 @@
   }
 
   const addTrackToQueue = async(track) => {
-    console.log(track)
     const { accessToken } = getLocalStorage()
-    await axios
+    return await axios
       .post(`https://api.spotify.com/v1/me/player/queue?uri=${track}`, null, {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
       })
       .then(response => {
-        console.log(response.data)
         return true
       })
       .catch(error => {
@@ -228,18 +225,22 @@
             "Content-type": "application/json"
           }
         })
+      return
     }
     //nao salvou a playlist apenas adiciona a lista de reprodução
+    state.message = 'Adicionando músicas a lista de reprodução, aguarde...'
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     let added = false
-    tracks.forEach(async(track) => {
+    await Promise.all(tracks.map(async(track) => {
       added = await addTrackToQueue(track)
-    })  
+    }))
+
     if(!added){
       if(state.randomic_playlist){
         openPlaylistApp(state.randomic_playlist.id)
         return
       }
+      state.message = 'Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.'
       alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
       return
     }
