@@ -106,11 +106,7 @@
       })
       .then(response => {
         console.log(response.data)
-        state.devices = response.data.devices
-        if(state.devices.length > 0)
-          state.is_playing = true
-        else
-          state.is_playing = false
+        state.devices = response.data.devices        
       })
   }
 
@@ -122,9 +118,8 @@
           Authorization: `Bearer ${accessToken}`
         }
       })
-      .then(response => {
-        console.log(response.data)
-        if(response.data){        
+      .then(response => {        
+        if(response.data){          
           state.is_playing = response.data.is_playing
           let date = new Date(response.data.progress_ms);          
           state.track = response.data.item
@@ -148,6 +143,10 @@
         state.is_playing = true
         getPlaybackState()
       })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const pausePlayback = async() => {
@@ -162,6 +161,10 @@
         state.is_playing = false
         getPlaybackState()
       })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const skipToPrevious = async() => {
@@ -172,6 +175,13 @@
           Authorization: `Bearer ${accessToken}`
         }
       })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
   }
 
   const skipToNext = async() => {
@@ -181,6 +191,13 @@
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
+      })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
       })
   }
 
