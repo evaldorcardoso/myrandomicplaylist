@@ -94,6 +94,10 @@
         <div class="left-user">
           <p>{{ state.user ? state.user.display_name : '' }}</p>
         </div>
+        <div class="center">
+          <p>Usuário {{ state.user.product }}</p>
+          <p>{{ state.user.followers.total }} seguidores</p>
+        </div>
         <div class="right" style="margin: auto">
           <font-awesome-icon icon="bars" style="width:30px;height:30px;color:#fff;margin:auto" @click="state.menuOpen = !state.menuOpen"/>
         </div>
@@ -174,6 +178,18 @@
   font-weight: bold;
   display: contents;
   margin-left: 5px;
+}
+.center{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+}
+.center p{
+  line-height: 1px;
 }
 .left{
   position: absolute;
