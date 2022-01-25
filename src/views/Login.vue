@@ -56,7 +56,7 @@
     const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
     const response_type = 'code'
     const redirect_uri = window.location.origin
-    const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state'
+    const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read'
     const state = '34fFs29kd09'
     // const show_dialog = 'false'
     const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}`

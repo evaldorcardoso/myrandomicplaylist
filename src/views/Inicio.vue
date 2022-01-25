@@ -30,14 +30,9 @@
     playlists: [],
     devices: [],
     tracks: [],
+    top_tracks: [],
     user: null,
     message: '',
-    track: {
-      name: 'Musica X',
-      artist: 'Artista Y',
-      time: "1:01",
-      timeTotal: "2:44"
-    }
   })
 
   const internalInstance = getCurrentInstance()
@@ -60,62 +55,7 @@
     }
     state.user = null
     router.push('/login')
-  }
-
-  const getPlaylists = async() => {
-    const { accessToken } = getLocalStorage()
-    // console.log('buscando playlists...')
-    await axios
-      .get('https://api.spotify.com/v1/me/playlists?limit=50', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        // console.log(response.data.items)
-        state.playlists = response.data.items.filter(item => item.public)        
-        console.log(state.playlists)
-      })
-      .catch(error => {
-        console.log(error)
-      })
-  }
-
-  const getTracks = async(playlist_id) => {
-    const { accessToken } = getLocalStorage()
-    
-    await axios
-      .get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        let tracks = state.tracks.length
-        // console.log(tracks + 'musicas')
-        // console.log(response.data.items)
-        //adicionar 2 musicas aleatórias dessa playlist com as demais
-        while(state.tracks.length < tracks + 2) {
-          let random = Math.floor(Math.random() * response.data.items.length)
-          let track = response.data.items[random].track
-          state.tracks.push(track)
-        }
-        
-        // state.tracks = state.tracks.concat(response.data.items.map(item => item.track))
-        // state.tracks = response.data.items
-        // state.playlists = response.data.items.filter(item => item.public)        
-      })
-  }
-
-  const generatePlaylist = async() => {
-    state.tracks = []
-    console.log('Gerando playlist...')
-    const unresolved = state.playlists.map(async(playlist) => {
-      await getTracks(playlist.id)
-    })
-    const resolved = await Promise.all(unresolved)
-    console.log(`Playlist gerada com sucesso com ${state.tracks.length} músicas!`)
-  }
+  } 
 
   const getProfile = async() => {
     const { accessToken } = getLocalStorage()
@@ -127,90 +67,13 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
+        console.log(response.data)
         state.user = response.data
       })
       .catch(error => {
         console.log(error)
         alert('Houve um erro ao buscar seu perfil!')
         logout()
-      })
-  }
-
-  const savePlaylist = async() => {
-    const { accessToken } = getLocalStorage()
-    const user_id = state.user.id
-    const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
-    const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
-    const _public = true
-    // const tracks = state.tracks.map(track => track.uri)
-    
-    //let query = `name=${name}&description=${description}&public=${_public}`
-    const formData = {
-      'name' : name,
-      'description': description,
-      'public': _public
-    }
-    await axios
-      .post(`https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.randomic_playlist = response.data
-        state.message = 'Playlist criada com sucesso!'
-        router.push('/')
-        addTracksToPlaylist(response.data.id)
-      })
-      .catch(error => {
-        console.log('Nao foi possivel salvar a playlist:')
-        console.log(error)
-      })
-  }
-
-  const addTracksToPlaylist = async(playlist_id) => {
-    const { accessToken } = getLocalStorage()
-    const tracks = state.tracks.map(track => track.uri)
-    const formData = {
-      'uris': tracks
-    }
-    axios
-      .post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.playlist = response.data
-        state.message = 'As músicas foram adicionadas com sucesso!'
-        router.push('/')
-      })
-      .catch(error => {
-        console.log('Nao foi possivel adicionar as musicas a playlist:')
-        console.log(error)
-      })
-  }
-
-  const executePlaylist = async() => {
-    const { accessToken } = getLocalStorage()
-    const formData = {
-       "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
-        "offset": {
-          "position": 0
-        },
-        "position_ms": 0,
-    }
-    axios
-      .put(`https://api.spotify.com/v1/me/player/play`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
       })
   }
 
@@ -225,6 +88,20 @@
       .then(response => {
         console.log(response.data)
         //state.devices = response.data.devices
+      })
+  }
+
+  const getUsersTopItems = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .get('https://api.spotify.com/v1/me/top/tracks?limit=10', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        console.log(response.data)
+        state.top_tracks = response.data.items
       })
   }
 
@@ -300,7 +177,8 @@
       return
     }      
     getProfile()
-    getPlaylists()    
+    // getPlaylists() 
+    getUsersTopItems()
   })
 
 </script>
@@ -313,6 +191,22 @@
         <font-awesome-icon icon="play" /> Começar
       </button>
     </router-link>
+    <br><br><hr>
+    <h3 class="center" style="margin-top: 50px;color:#fff">As top 10 de {{state.user?.display_name}}</h3>      
+    <p class="center" style="margin-top: 0px;color:#fff;font-size:12px">Nos últimos 6 meses</p>
+    <div class="list-list">
+      <ul class="list">
+        <li v-for="track in state.top_tracks" class="list-item">
+          <div class="list-item-content">                
+            <div class="list-item-title">
+              <img :src="track.album.images[0].url" style="width: 40px; height: 40px;margin-right: 20px;" />
+              {{track.name}}
+            </div>
+            <div class="list-item-subtitle">{{track.artists[0].name}}</div>
+          </div>
+        </li>
+      </ul>
+    </div>
     <div class="footer">
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>    
@@ -338,6 +232,57 @@
   cursor: pointer;
   display: flex;
 }
+
+.list-list{
+  margin-bottom: 200px;
+}
+.list{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+    padding: 0px;
+}
+.list-item{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+    width: 100%;
+    height: 50px;
+}
+.container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: right;
+    flex: 10%;
+}
+.list-item-content{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: auto;
+    flex: 90%;
+}
+.list-item-title{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+.list-item-subtitle{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 12px;
+}
+
 .footer{
   display: flex;
   flex-direction: column;
