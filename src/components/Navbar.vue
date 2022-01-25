@@ -28,7 +28,8 @@
   const state = reactive({
     user: null,
     message: '',    
-    menuOpen : false
+    menuOpen : false,
+    version: '',
   })
 
   const hasTokenExpired = () => {
@@ -70,6 +71,7 @@
   }
 
   onMounted(async () => {  
+    state.version = import.meta.env.PACKAGE_VERSION
     setTimeout(() => {
       if(hasTokenExpired()){        
         // logout()
@@ -122,6 +124,7 @@
             <font-awesome-icon icon="sign-out-alt" style="margin-right: 10px;color:#fff;"/>
             <p>Sair</p>
           </div>
+          <p class="version">{{ state.version }}</p>
         </div>
       </div>
     </div>
@@ -200,5 +203,11 @@
   font-size: 16px;
   font-weight: bold;
   color: #fff;  
+}
+.version{
+  bottom: 0px;
+  position: absolute;
+  font-size: 12px;
+  color: #fff;
 }
 </style>

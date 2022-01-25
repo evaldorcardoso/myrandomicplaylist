@@ -25,6 +25,7 @@
   const state = reactive({    
     user: null,
     message: '',
+    version: '',
   })
 
   const internalInstance = getCurrentInstance()
@@ -67,6 +68,7 @@
   }
 
   onMounted(async () => {
+    state.version = import.meta.env.PACKAGE_VERSION
     // var params = window.location.search.substr(1)
     var params = window.location.hash
     console.log(params)
@@ -113,6 +115,7 @@
       </a>      
     </div>
     <div class="footer">
+      <p class="center span-login">{{ state.version }}</p>
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>
   </p>
