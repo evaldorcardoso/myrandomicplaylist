@@ -69,33 +69,7 @@
 
   onMounted(async () => {
     state.version = import.meta.env.PACKAGE_VERSION
-    // var params = window.location.search.substr(1)
-    var params = window.location.hash
-    console.log(params)
-    if(params){
-      params = params.split('#')[1]
-      params = params.split('&')
-      params = params.map(param => {
-        param = param.split('=')
-        console.log(param);        
-        return {
-          key: param[0],
-          value: param[1]
-        }
-      })
-
-      params = params.reduce((acc, param) => {
-        acc[param.key] = param.value
-        return acc
-      }, {}) 
-      if(params.access_token){
-        localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, params.access_token)        
-        localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, params.expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())        
-        router.push('/');
-      }
-    }
-
+    
     if(!hasTokenExpired()){        
        router.push('/') 
     }      

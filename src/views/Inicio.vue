@@ -41,11 +41,16 @@
   
   const hasTokenExpired = () => {
     const { accessToken, timestamp, expireTime } = getLocalStorage()
+    let expired = true
     if(!accessToken || !timestamp || !expireTime){ 
       return true      
     }    
     const millisecondsElapsed = Date.now() - Number(timestamp)
-    return (millisecondsElapsed / 1000) > Number(expireTime)
+    expired = (millisecondsElapsed / 1000) > Number(expireTime)
+    if(expired){
+      getRefreshedToken()
+      return false
+    }
   }
 
   const logout = () => {
@@ -102,6 +107,36 @@
       .then(response => {
         console.log(response.data)
         state.top_tracks = response.data.items
+      })
+  }
+
+  const getRefreshedToken = async() => {
+    const { refreshToken } = getLocalStorage()
+    const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+    const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
+    //the parameters encoded in application/x-www-form-urlencoded:
+    const formData = new URLSearchParams()
+    formData.append('grant_type', 'refresh_token')
+    formData.append('refresh_token', refreshToken)
+    await axios
+      .post('https://accounts.spotify.com/api/token', formData, {
+            headers: {
+              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
+              "Content-type": "application/x-www-form-urlencoded"
+            }
+      })
+      .then(response => {
+        console.log(response.data)
+        const { access_token, expires_in, timestamp } = response.data
+        window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
+        window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
+        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+        router.push('/')
+      })
+      .catch(error => {
+        console.log(error)
+        alert('Houve um erro ao buscar o token!')
+        logout()
       })
   }
 
@@ -172,7 +207,7 @@
       }      
     }
 
-    if(hasTokenExpired()){        
+    if(hasTokenExpired()){              
       logout()
       return
     }      
