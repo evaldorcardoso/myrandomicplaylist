@@ -22,9 +22,12 @@
 
   const state = reactive({
     // title: 'Gerador de playlist aleatória do Spotify',
+    isProcessing: false,
+    is_playing: false,
     randomic_playlist: null,
     playlists: [],
     tracks: [],
+    devices: [],
     number_tracks: 2,
     user: null,
     message: '',
@@ -54,6 +57,7 @@
   }
 
   const getPlaylists = async() => {
+    state.isProcessing = true
     const { accessToken } = getLocalStorage()
     await axios
       .get('https://api.spotify.com/v1/me/playlists?limit=50', {
@@ -63,9 +67,11 @@
       })
       .then(response => {
         state.playlists = response.data.items
+        state.isProcessing = false        
       })
       .catch(error => {
         console.log(error)
+        state.isProcessing = false
       })
   }
 
@@ -102,6 +108,7 @@
   }
 
   const generatePlaylist = async() => {    
+    state.isProcessing = true
     state.message = 'Gerando playlist, aguarde...'
     state.randomic_playlist = null
     const playlists_selecteds = state.playlists.filter(item => item.checked)
@@ -113,6 +120,7 @@
     const resolved = await Promise.all(unresolved)
     console.log(`Playlist gerada com sucesso com ${state.tracks.length} músicas!`)
     state.message = ''
+    state.isProcessing = false
   }
 
   const getProfile = async() => {
@@ -132,7 +140,80 @@
       })
   }
 
+  const getDevices = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .get('https://api.spotify.com/v1/me/player/devices', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        console.log(response.data)
+        state.devices = response.data.devices        
+      })
+  }
+
+  const getPlaybackState = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .get('https://api.spotify.com/v1/me/player', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {                
+        if(response.data){          
+          state.is_playing = response.data.is_playing
+        }
+      })
+  }
+
+  const startResumePlayback = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .put(`https://api.spotify.com/v1/me/player/play`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        console.log('startResumePlayback')
+        state.is_playing = true
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
+  }
+
+  const transferPlayback = async(device_id) => {
+    const { accessToken } = getLocalStorage()
+    const formData = {
+      "device_ids": [device_id]
+    }
+    await axios
+      .put(`https://api.spotify.com/v1/me/player`, JSON.stringify(formData), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-type": "application/json"
+        }
+      })
+      .then(response => {
+        console.log('transferPlayback')
+        const device = state.devices.find(device => device.id === device_id)
+        if((device.is_active)&&(!state.is_playing)){
+          startResumePlayback()
+        }
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
+  }
+
   const savePlaylist = async() => {
+    state.isProcessing = true
     const { accessToken } = getLocalStorage()
     const user_id = state.user.id
     const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
@@ -157,14 +238,17 @@
         state.randomic_playlist = response.data
         state.message = 'Playlist criada com sucesso!'
         addTracksToPlaylist(response.data.id)
+        state.isProcessing = false
       })
       .catch(error => {
         console.log('Nao foi possivel salvar a playlist:')
         console.log(error)
+        state.isProcessing = false
       })
   }
 
   const addTracksToPlaylist = async(playlist_id) => {
+    state.isProcessing = true
     const { accessToken } = getLocalStorage()    
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     const formData = {
@@ -181,10 +265,12 @@
         // console.log(response.data)
         state.playlist = response.data
         state.message = 'As músicas foram adicionadas com sucesso!'
+        state.isProcessing = false
       })
       .catch(error => {
         console.log('Nao foi possivel adicionar as musicas a playlist:')
         console.log(error)
+        state.isProcessing = false
       })    
   }
 
@@ -206,6 +292,7 @@
   }
 
   const executePlaylist = async() => {    
+    state.isProcessing = true
     const { accessToken } = getLocalStorage()
     if(state.randomic_playlist){
       const formData = {
@@ -222,10 +309,28 @@
             "Content-type": "application/json"
           }
         })
+        .then(response => {
+          state.isProcessing = false
+        })
+        .catch(error => {
+          console.log(error)
+          state.isProcessing = false
+        })
       return
     }
     //nao salvou a playlist apenas adiciona a lista de reprodução
-    state.message = 'Adicionando músicas a lista de reprodução, aguarde...'
+    state.message = 'Adicionando músicas a fila de reprodução, aguarde...'
+    await getPlaybackState()
+    if(!state.is_playing){
+      await getDevices()      
+      if(state.devices.length == 0){
+        state.message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
+        state.isProcessing = false
+        return
+      }
+      const device_id = state.devices[0].id
+      await transferPlayback(device_id)
+    }
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     let added = false
     await Promise.all(tracks.map(async(track) => {
@@ -235,14 +340,17 @@
     if(!added){
       if(state.randomic_playlist){
         openPlaylistApp(state.randomic_playlist.id)
+        state.isProcessing = false
         return
       }
       state.message = 'Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.'
       alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
+      state.isProcessing = false
       return
     }
     state.message = 'As músicas foram adicionadas a lista de reprodução!'
     alert('As músicas foram adicionadas a lista de reprodução!')
+    state.isProcessing = false
   }
 
   const openPlaylistApp = (playlist_id) => {
@@ -270,7 +378,7 @@
     state.step--
   }
 
-  onMounted(async () => {
+  onMounted(async () => {    
     if(hasTokenExpired()){        
       logout()
       return
@@ -337,17 +445,23 @@
     </div>
     <div class="footer-fixed">
       <a class="btn-voltar" @click="decreaseStep()">Voltar</a>
-      <button v-if="state.step < 3" class="btn-next" @click="increaseStep()">
-        <font-awesome-icon icon="arrow-right" />Avançar
+      <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <div v-if="!(state.isProcessing)">Avançar</div>
       </button>
-      <button v-if="state.step == 3" class="btn-generate" @click="generatePlaylist()">
-        <font-awesome-icon icon="random" />
+      <button v-if="state.step == 3" class="btn-generate" @click="generatePlaylist()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="random" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
       </button>
-      <button v-if="state.step == 3" class="btn-save" @click="savePlaylist()">
-        <font-awesome-icon icon="save" />
+      <button v-if="state.step == 3" class="btn-save" @click="savePlaylist()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
       </button>
-      <button v-if="state.step == 3" class="btn-execute" @click="executePlaylist()">
-        <font-awesome-icon icon="play" />Executar
+      <button v-if="state.step == 3" class="btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <div v-if="!(state.isProcessing)">Executar</div>
       </button>
     </div>          
   </div>

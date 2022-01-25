@@ -118,7 +118,7 @@
           Authorization: `Bearer ${accessToken}`
         }
       })
-      .then(response => {        
+      .then(response => {                
         if(response.data){          
           state.is_playing = response.data.is_playing
           let date = new Date(response.data.progress_ms);          
