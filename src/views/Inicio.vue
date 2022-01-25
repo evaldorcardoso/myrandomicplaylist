@@ -235,6 +235,7 @@
 
 .list-list{
   margin-bottom: 200px;
+  padding: 10px;
 }
 .list{
     display: flex;
