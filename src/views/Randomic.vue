@@ -248,6 +248,23 @@
       })
   }
 
+  const skipToNext = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .post(`https://api.spotify.com/v1/me/player/next`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
+  }
+
   const transferPlayback = async(device_id) => {
     const { accessToken } = getLocalStorage()
     const formData = {
@@ -264,6 +281,7 @@
         console.log('transferPlayback')
         const device = state.devices.find(device => device.id === device_id)
         if((device.is_active)&&(!state.is_playing)){
+          skipToNext()
           startResumePlayback()
         }
       })
