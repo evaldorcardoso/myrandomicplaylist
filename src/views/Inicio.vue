@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import VueBasicAlert from 'vue-basic-alert'
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
   // Map for localStorage keys
@@ -38,6 +39,7 @@
   const internalInstance = getCurrentInstance()
   const axios = internalInstance.appContext.config.globalProperties.axios
   const router = useRouter()
+  const alert = ref(null)
   
   const hasTokenExpired = () => {
     const { accessToken, timestamp, expireTime } = getLocalStorage()
@@ -76,8 +78,8 @@
         state.user = response.data
       })
       .catch(error => {
+        console.log('Houve um erro ao buscar seu perfil!')
         console.log(error)
-        alert('Houve um erro ao buscar seu perfil!')
         logout()
       })
   }
@@ -151,7 +153,7 @@
   onMounted(async () => {
     var params = window.location.search.substr(1)
     // var params = window.location.hash
-    console.log(params)
+    // console.log(params)
     if(params){
       // params = params.split('#')[1]
       params = params.split('&')
@@ -221,6 +223,7 @@
 <template>
   <div class="page">
     <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>      
+    <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <router-link to="/randomic" style="text-decoration:none">
       <button class="btn-generate">
         <font-awesome-icon icon="play" /> Começar

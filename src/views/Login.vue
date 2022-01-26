@@ -72,14 +72,13 @@
     
     if(!hasTokenExpired()){        
        router.push('/') 
-    }      
+    }   
   })
 
 </script>
 
 <template>
   <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>
-    
   <p>
     <div class="login">      
       <img alt="Vue logo" src="../assets/Spotify_Logo_RGB_White.png" />

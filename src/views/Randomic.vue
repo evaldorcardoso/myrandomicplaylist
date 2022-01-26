@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import VueBasicAlert from 'vue-basic-alert'
 
   // Map for localStorage keys
   const LOCALSTORAGE_KEYS = {
@@ -37,6 +38,7 @@
   const internalInstance = getCurrentInstance()
   const axios = internalInstance.appContext.config.globalProperties.axios
   const router = useRouter()
+  const alert = ref(null)
   
   const hasTokenExpired = () => {
     const { accessToken, timestamp, expireTime } = getLocalStorage()
@@ -86,7 +88,7 @@
       })
       .catch(error => {
         console.log(error)
-        alert('Houve um erro ao buscar o token!')
+        console.log('Houve um erro ao buscar o token!')
         logout()
       })
   }
@@ -116,6 +118,34 @@
     return Math.floor(Math.random() * (max - min)) + min;
   }
 
+  const sleep = async(ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  const pickTracks = async(tracksitems) => {
+    let tracksToPick = state.number_tracks
+    let tracks = state.tracks.length
+    if(state.number_tracks > tracksitems.length){
+      tracksToPick = tracksitems.length
+    }
+    while(state.tracks.length < (tracks + tracksToPick)) {
+      // let random = Math.floor(Math.random() * response.data.items.length)
+      let random = getRandomInt(0, tracksitems.length)
+      let track = tracksitems[random].track
+      // console.log(track)
+      if(track){
+        //somente adiciona se já não existir
+        if(undefined == state.tracks.find(item => item.track.id === track.id)){
+          track.checked = true
+          state.tracks.push(track)
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+      //limpa os itens repetidos em um array
+      state.tracks = [...new Set(state.tracks)]            
+    }
+  }
+
   const getTracks = async(playlist_id) => {
     const { accessToken } = getLocalStorage()
     
@@ -126,19 +156,7 @@
         }
       })
       .then(response => {
-        let tracks = state.tracks.length
-        while(state.tracks.length < tracks + state.number_tracks) {
-          // let random = Math.floor(Math.random() * response.data.items.length)
-          let random = getRandomInt(0, response.data.items.length)
-          let track = response.data.items[random].track
-          if(track){
-            //somente adiciona se já não existir
-            if(!state.tracks.find(item => item.track.id === track.id)){
-              track.checked = true
-              state.tracks.push(track)              
-            }
-          }
-        }
+        return pickTracks(response.data.items)        
       })
   }
 
@@ -153,7 +171,15 @@
       await getTracks(playlist.id)
     })
     const resolved = await Promise.all(unresolved)
-    console.log(`Playlist gerada com sucesso com ${state.tracks.length} músicas!`)
+    console.log(`Playlist gerada com ${state.tracks.length} músicas!`)
+    alert.value.showAlert(
+      'success', // There are 4 types of alert: success, info, warning, error
+      `Playlist gerada com sucesso com ${state.tracks.length} músicas!`, // Message of the alert
+      'Tudo certo', // Header of the alert
+      { iconSize: 35, // Size of the icon (px)
+      iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+      position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+    )
     state.message = ''
     state.isProcessing = false
   }
@@ -218,7 +244,7 @@
       })
       .catch(error => {
         console.log(error)
-        state.message = error.response.data.error.message
+        // state.message = error.response.data.error.message
       })
   }
 
@@ -243,7 +269,7 @@
       })
       .catch(error => {
         console.log(error)
-        state.message = error.response.data.error.message
+        // state.message = error.response.data.error.message
       })
   }
 
@@ -272,6 +298,14 @@
       .then(response => {
         state.randomic_playlist = response.data
         state.message = 'Playlist criada com sucesso!'
+        alert.value.showAlert(
+          'success', // There are 4 types of alert: success, info, warning, error
+          `Playlist salva com sucesso!`, // Message of the alert
+          'Tudo certo', // Header of the alert
+          { iconSize: 35, // Size of the icon (px)
+          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+        )
         addTracksToPlaylist(response.data.id)
         state.isProcessing = false
       })
@@ -300,6 +334,14 @@
         // console.log(response.data)
         state.playlist = response.data
         state.message = 'As músicas foram adicionadas com sucesso!'
+        alert.value.showAlert(
+          'success', // There are 4 types of alert: success, info, warning, error
+          `As músicas foram adicionadas com sucesso!`, // Message of the alert
+          'Tudo certo', // Header of the alert
+          { iconSize: 35, // Size of the icon (px)
+          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+        )
         state.isProcessing = false
       })
       .catch(error => {
@@ -360,6 +402,14 @@
       await getDevices()      
       if(state.devices.length == 0){
         state.message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
+        alert.value.showAlert(
+          'error', // There are 4 types of alert: success, info, warning, error
+          `Nenhum dispositivo conectado, não foi possível executar a playlist!`, // Message of the alert
+          'Ops', // Header of the alert
+          { iconSize: 35, // Size of the icon (px)
+          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+        )
         state.isProcessing = false
         return
       }
@@ -379,12 +429,27 @@
         return
       }
       state.message = 'Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.'
-      alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
+      // alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
+      alert.value.showAlert(
+          'error', // There are 4 types of alert: success, info, warning, error
+          `Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.`, // Message of the alert
+          'Ops', // Header of the alert
+          { iconSize: 35, // Size of the icon (px)
+          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+        )
       state.isProcessing = false
       return
     }
     state.message = 'As músicas foram adicionadas a lista de reprodução!'
-    alert('As músicas foram adicionadas a lista de reprodução!')
+    alert.value.showAlert(
+      'success', // There are 4 types of alert: success, info, warning, error
+      `As músicas foram adicionadas a lista de reprodução!`, // Message of the alert
+      'Tudo certo', // Header of the alert
+      { iconSize: 35, // Size of the icon (px)
+      iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+      position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+    )
     state.isProcessing = false
   }
 
@@ -395,7 +460,15 @@
   const increaseStep = () => {
     if((state.step == 1)&&(state.playlists.filter(item => item.checked).length == 0)) {
       state.message = 'Selecione pelo menos uma playlist!'
-      alert('Selecione pelo menos uma playlist!')
+      // alert('Selecione pelo menos uma playlist!')
+      alert.value.showAlert(
+        'warning', // There are 4 types of alert: success, info, warning, error
+        `Selecione ao menos 1 playlist`, // Message of the alert
+        'Atenção', // Header of the alert
+        { iconSize: 35, // Size of the icon (px)
+        iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+        position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+      )
       return
     }
     state.message = ''
@@ -425,7 +498,8 @@
 </script>
 
 <template>
-  <div class="page">    
+  <div class="page">
+    <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div v-if="(state.step == 1)">
       <h3 class="center" style="margin-top: 20px;color:#fff">Selecione as playlists que você mais gosta:</h3>          
       <p class="message">{{state.message}}</p>

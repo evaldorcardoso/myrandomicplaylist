@@ -1,7 +1,6 @@
 <script setup>
   import { getCurrentInstance, onMounted, reactive } from 'vue'
   import { useRouter } from 'vue-router'
-  import Navbar from '@/components/Navbar.vue'
 
   // Map for localStorage keys
   const LOCALSTORAGE_KEYS = {

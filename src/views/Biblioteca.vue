@@ -84,7 +84,7 @@
       })
       .catch(error => {
         console.log(error)
-        alert('Houve um erro ao buscar o token!')
+        console.log('Houve um erro ao buscar o token!')
         logout()
       })
   }
