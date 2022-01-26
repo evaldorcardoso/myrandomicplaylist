@@ -1,7 +1,6 @@
 <script setup>
   import { getCurrentInstance, onMounted, reactive } from 'vue'
   import { useRouter } from 'vue-router'
-  import Navbar from '@/components/Navbar.vue'
 
   // Map for localStorage keys
   const LOCALSTORAGE_KEYS = {
@@ -28,7 +27,8 @@
   const state = reactive({
     user: null,
     message: '',    
-    menuOpen : false
+    menuOpen : false,
+    version: '',
   })
 
   const hasTokenExpired = () => {
@@ -70,6 +70,7 @@
   }
 
   onMounted(async () => {  
+    state.version = import.meta.env.PACKAGE_VERSION
     setTimeout(() => {
       if(hasTokenExpired()){        
         // logout()
@@ -91,6 +92,10 @@
         </div>
         <div class="left-user">
           <p>{{ state.user ? state.user.display_name : '' }}</p>
+        </div>
+        <div class="center">
+          <p>Usuário {{ state.user.product }}</p>
+          <p>{{ state.user.followers.total }} seguidores</p>
         </div>
         <div class="right" style="margin: auto">
           <font-awesome-icon icon="bars" style="width:30px;height:30px;color:#fff;margin:auto" @click="state.menuOpen = !state.menuOpen"/>
@@ -122,6 +127,7 @@
             <font-awesome-icon icon="sign-out-alt" style="margin-right: 10px;color:#fff;"/>
             <p>Sair</p>
           </div>
+          <p class="version">{{ state.version }}</p>
         </div>
       </div>
     </div>
@@ -172,6 +178,18 @@
   display: contents;
   margin-left: 5px;
 }
+.center{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+}
+.center p{
+  line-height: 1px;
+}
 .left{
   position: absolute;
   top: 0;
@@ -200,5 +218,11 @@
   font-size: 16px;
   font-weight: bold;
   color: #fff;  
+}
+.version{
+  bottom: 0px;
+  position: absolute;
+  font-size: 12px;
+  color: #fff;
 }
 </style>

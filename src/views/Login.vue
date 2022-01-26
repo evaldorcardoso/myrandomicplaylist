@@ -25,6 +25,7 @@
   const state = reactive({    
     user: null,
     message: '',
+    version: '',
   })
 
   const internalInstance = getCurrentInstance()
@@ -55,7 +56,7 @@
     const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
     const response_type = 'code'
     const redirect_uri = window.location.origin
-    const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state'
+    const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read'
     const state = '34fFs29kd09'
     // const show_dialog = 'false'
     const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}`
@@ -67,43 +68,17 @@
   }
 
   onMounted(async () => {
-    // var params = window.location.search.substr(1)
-    var params = window.location.hash
-    console.log(params)
-    if(params){
-      params = params.split('#')[1]
-      params = params.split('&')
-      params = params.map(param => {
-        param = param.split('=')
-        console.log(param);        
-        return {
-          key: param[0],
-          value: param[1]
-        }
-      })
-
-      params = params.reduce((acc, param) => {
-        acc[param.key] = param.value
-        return acc
-      }, {}) 
-      if(params.access_token){
-        localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, params.access_token)        
-        localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, params.expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())        
-        router.push('/');
-      }
-    }
-
+    state.version = import.meta.env.PACKAGE_VERSION
+    
     if(!hasTokenExpired()){        
        router.push('/') 
-    }      
+    }   
   })
 
 </script>
 
 <template>
   <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>
-    
   <p>
     <div class="login">      
       <img alt="Vue logo" src="../assets/Spotify_Logo_RGB_White.png" />
@@ -113,6 +88,7 @@
       </a>      
     </div>
     <div class="footer">
+      <p class="center span-login">{{ state.version }}</p>
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>
   </p>
