@@ -19,8 +19,10 @@ import { faSignOutAlt,
         faBook,
     } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
+import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
+    faSpinner,
     faSignOutAlt, 
     faRandom, 
     faMobileAlt, 
