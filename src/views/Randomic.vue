@@ -487,11 +487,14 @@
   }
 
   onMounted(async () => {    
+    console.log('mounted')
     if(hasTokenExpired()){        
       logout()
       return
-    }      
+    } 
+    console.log('getprofile')     
     getProfile()
+    console.log('getplaylists')
     getPlaylists()    
   })
 
