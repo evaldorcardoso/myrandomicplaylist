@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import spotifyApi from '../api/spotifyApi'
   import VueBasicAlert from 'vue-basic-alert'
 
   // Map for localStorage keys
@@ -95,35 +96,38 @@
 
   const getPlaylists = async() => {
     state.isProcessing = true
-    const { accessToken } = getLocalStorage()
-    console.log('before axios')
-    await axios
-      .get('https://api.spotify.com/v1/me/playlists?limit=50', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log('response')
-        state.playlists = response.data.items
-        state.isProcessing = false        
-      })
-      .catch(error => {
-        console.log('error')
-        console.log(error)
-        state.isProcessing = false
-      })
+    // const { accessToken } = getLocalStorage()
+    // await axios
+    //   .get('https://api.spotify.com/v1/me/playlists?limit=50', {
+    //     headers: {
+    //       Authorization: `Bearer ${accessToken}`
+    //     }
+    //   })
+    //   .then(response => {
+    //     state.playlists = response.data.items
+    //     state.isProcessing = false        
+    //   })
+    //   .catch(error => {
+    //     console.log(error)
+    //     state.isProcessing = false
+    //   })
+    try { 
+      console.log('getPlaylists')
+      const { accessToken } = getLocalStorage()
+      const {items, isProcessing} = await spotifyApi.getPlaylists(accessToken)
+      state.playlists = items 
+      state.isProcessing = false
+
+    } catch (error) {
+       state.isProcessing = false
+    }
   }
 
   const getRandomInt = (min, max) => {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min)) + min;
-  }
-
-  const sleep = async(ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
+  }  
 
   const pickTracks = async(tracksitems) => {
     let tracksToPick = state.number_tracks
@@ -251,6 +255,23 @@
       })
   }
 
+  const skipToNext = async() => {
+    const { accessToken } = getLocalStorage()
+    await axios
+      .post(`https://api.spotify.com/v1/me/player/next`, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        getPlaybackState()
+      })
+      .catch(error => {
+        console.log(error)
+        state.message = error.response.data.error.message
+      })
+  }
+
   const transferPlayback = async(device_id) => {
     const { accessToken } = getLocalStorage()
     const formData = {
@@ -267,6 +288,7 @@
         console.log('transferPlayback')
         const device = state.devices.find(device => device.id === device_id)
         if((device.is_active)&&(!state.is_playing)){
+          skipToNext()
           startResumePlayback()
         }
       })
@@ -476,6 +498,7 @@
     }
     state.message = ''
     state.step++
+    console.log(state)
     if(state.step == 3) {
       generatePlaylist()
     }
@@ -562,20 +585,20 @@
       <a class="btn-voltar" @click="decreaseStep()">Voltar</a>
       <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
         <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
         <div v-if="!(state.isProcessing)">Avançar</div>
       </button>
       <button v-if="state.step == 3" class="btn-generate" @click="generatePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="random" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
       </button>
       <button v-if="state.step == 3" class="btn-save" @click="savePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
       </button>
       <button v-if="state.step == 3" class="btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" />
+        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
         <div v-if="!(state.isProcessing)">Executar</div>
       </button>
     </div>          
