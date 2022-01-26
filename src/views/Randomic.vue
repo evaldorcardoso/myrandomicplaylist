@@ -96,6 +96,7 @@
   const getPlaylists = async() => {
     state.isProcessing = true
     const { accessToken } = getLocalStorage()
+    console.log('before axios')
     await axios
       .get('https://api.spotify.com/v1/me/playlists?limit=50', {
         headers: {
@@ -103,10 +104,12 @@
         }
       })
       .then(response => {
+        console.log('response')
         state.playlists = response.data.items
         state.isProcessing = false        
       })
       .catch(error => {
+        console.log('error')
         console.log(error)
         state.isProcessing = false
       })
