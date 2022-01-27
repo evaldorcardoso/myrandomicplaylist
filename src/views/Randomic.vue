@@ -12,6 +12,12 @@
     timestamp: 'spotify_token_timestamp',
   }
 
+  const ALERT_OPTIONS = { 
+    iconSize: 35, // Size of the icon (px)
+    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
+    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+  } 
+
   const getLocalStorage = () =>{
     // Map to retrieve localStorage values
     const LOCALSTORAGE_VALUES = {    
@@ -23,7 +29,6 @@
   }
 
   const state = reactive({
-    // title: 'Gerador de playlist aleatória do Spotify',
     isProcessing: false,
     is_playing: false,
     randomic_playlist: null,
@@ -37,7 +42,7 @@
   })
 
   const internalInstance = getCurrentInstance()
-  const axios = internalInstance.appContext.config.globalProperties.axios
+  // const axios = internalInstance.appContext.config.globalProperties.axios
   const router = useRouter()
   const alert = ref(null)
   
@@ -65,59 +70,37 @@
   }
 
   const getRefreshedToken = async() => {
-    const { refreshToken } = getLocalStorage()
-    const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-    //the parameters encoded in application/x-www-form-urlencoded:
-    const formData = new URLSearchParams()
-    formData.append('grant_type', 'refresh_token')
-    formData.append('refresh_token', refreshToken)
-    await axios
-      .post('https://accounts.spotify.com/api/token', formData, {
-            headers: {
-              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
-              "Content-type": "application/x-www-form-urlencoded"
-            }
+    try{
+      const { refreshToken } = getLocalStorage()
+      const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+      const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET      
+      const formData = new URLSearchParams()
+      formData.append('grant_type', 'refresh_token')
+      formData.append('refresh_token', refreshToken)
+      const { access_token, expires_in, timestamp } = await spotifyApi.getRefreshedToken(formData, client_id, client_secret)              
+      window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
+      window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
+      localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+      router.push('/')
+    }catch(error){
+      console.log(error)
+      alert.value.show({
+        type: 'error',
+        title: 'Error',
+        message: 'Something went wrong, please try again later',
+        options: ALERT_OPTIONS
       })
-      .then(response => {
-        console.log(response.data)
-        const { access_token, expires_in, timestamp } = response.data
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-        router.push('/')
-      })
-      .catch(error => {
-        console.log(error)
-        console.log('Houve um erro ao buscar o token!')
-        logout()
-      })
+      logout()
+    }
   }
 
   const getPlaylists = async() => {
     state.isProcessing = true
-    // const { accessToken } = getLocalStorage()
-    // await axios
-    //   .get('https://api.spotify.com/v1/me/playlists?limit=50', {
-    //     headers: {
-    //       Authorization: `Bearer ${accessToken}`
-    //     }
-    //   })
-    //   .then(response => {
-    //     state.playlists = response.data.items
-    //     state.isProcessing = false        
-    //   })
-    //   .catch(error => {
-    //     console.log(error)
-    //     state.isProcessing = false
-    //   })
     try { 
-      console.log('getPlaylists')
       const { accessToken } = getLocalStorage()
-      const {items, isProcessing} = await spotifyApi.getPlaylists(accessToken)
+      const { items } = await spotifyApi.getPlaylists(accessToken)
       state.playlists = items 
       state.isProcessing = false
-
     } catch (error) {
        state.isProcessing = false
     }
@@ -139,7 +122,6 @@
       // let random = Math.floor(Math.random() * response.data.items.length)
       let random = getRandomInt(0, tracksitems.length)
       let track = tracksitems[random].track
-      // console.log(track)
       if(track){
         //somente adiciona se já não existir
         if(undefined == state.tracks.find(item => item.track.id === track.id)){
@@ -153,271 +135,254 @@
     }
   }
 
-  const getTracks = async(playlist_id) => {
-    const { accessToken } = getLocalStorage()
-    
-    await axios
-      .get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        return pickTracks(response.data.items)        
-      })
+  const getTracks = async(playlist_id) => {    
+    try{ 
+      const { accessToken } = getLocalStorage()
+      const{ items } = await spotifyApi.getTracks(accessToken, playlist_id)
+      return pickTracks(items)
+    }
+    catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const generatePlaylist = async() => {    
     state.isProcessing = true
     state.message = 'Gerando playlist, aguarde...'
     state.randomic_playlist = null
-    const playlists_selecteds = state.playlists.filter(item => item.checked)
-    
+    const playlists_selecteds = state.playlists.filter(item => item.checked)    
     state.tracks = []
     const unresolved = playlists_selecteds.map(async(playlist) => {
       await getTracks(playlist.id)
     })
     const resolved = await Promise.all(unresolved)
-    console.log(`Playlist gerada com ${state.tracks.length} músicas!`)
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
       `Playlist gerada com sucesso com ${state.tracks.length} músicas!`, // Message of the alert
       'Tudo certo', // Header of the alert
-      { iconSize: 35, // Size of the icon (px)
-      iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-      position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+      ALERT_OPTIONS
     )
     state.message = ''
     state.isProcessing = false
   }
 
   const getProfile = async() => {
-    const { accessToken } = getLocalStorage()
-    // alert('getprofile inicio, token: '+ accessToken)
-    await axios
-      .get('https://api.spotify.com/v1/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        state.user = response.data
-      })
-      .catch(error => {
-        console.log(error)
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      state.user = await spotifyApi.getProfile(accessToken)       
+    }
+    catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const getDevices = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.devices = response.data.devices        
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      const { devices } = await spotifyApi.getDevices(accessToken)
+      state.devices = devices        
+    }  
+    catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const getPlaybackState = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/player', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {                
-        if(response.data){          
-          state.is_playing = response.data.is_playing
-        }
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
+      state.is_playing = is_playing
+      console.log(state.is_playing)
+    }
+    catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const startResumePlayback = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .put(`https://api.spotify.com/v1/me/player/play`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log('startResumePlayback')
-        state.is_playing = true
-      })
-      .catch(error => {
-        console.log(error)
-        // state.message = error.response.data.error.message
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      await spotifyApi.startResumePlayback(accessToken)      
+      state.is_playing = true
+    }catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const skipToNext = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .post(`https://api.spotify.com/v1/me/player/next`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        getPlaybackState()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      await spotifyApi.skipToNext(accessToken)      
+      getPlaybackState()    
+    }catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const transferPlayback = async(device_id) => {
-    const { accessToken } = getLocalStorage()
-    const formData = {
-      "device_ids": [device_id]
+    try{
+      const { accessToken } = getLocalStorage()
+      const formData = {
+        "device_ids": [device_id]
+      }
+      await spotifyApi.transferPlayback(accessToken, formData)      
+      const device = state.devices.find(device => device.id === device_id)
+      if((device.is_active)&&(!state.is_playing)){
+        skipToNext()
+        startResumePlayback()
+      }    
+    }catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
     }
-    await axios
-      .put(`https://api.spotify.com/v1/me/player`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log('transferPlayback')
-        const device = state.devices.find(device => device.id === device_id)
-        if((device.is_active)&&(!state.is_playing)){
-          skipToNext()
-          startResumePlayback()
-        }
-      })
-      .catch(error => {
-        console.log(error)
-        // state.message = error.response.data.error.message
-      })
   }
 
   const savePlaylist = async() => {
-    state.isProcessing = true
-    const { accessToken } = getLocalStorage()
-    const user_id = state.user.id
-    const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
-    const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
-    const _public = true
-    // const tracks = state.tracks.map(track => track.uri)
-    
-    //let query = `name=${name}&description=${description}&public=${_public}`
-    const formData = {
-      'name' : name,
-      'description': description,
-      'public': _public
+    try{  
+      state.isProcessing = true
+      const { accessToken } = getLocalStorage()
+      const user_id = state.user.id
+      const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
+      const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
+      const _public = true    
+      const formData = {
+        'name' : name,
+        'description': description,
+        'public': _public
+      }
+      state.randomic_playlist = await spotifyApi.savePlaylist(accessToken, user_id, formData)      
+      state.message = 'Playlist criada com sucesso!'
+      alert.value.showAlert(
+        'success', // There are 4 types of alert: success, info, warning, error
+        `Playlist salva com sucesso!`, // Message of the alert
+        'Tudo certo', // Header of the alert
+        ALERT_OPTIONS
+      )
+      addTracksToPlaylist(response.data.id)
+      state.isProcessing = false
+    }catch(error){      
+      console.log(error)
+      state.isProcessing = false
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
     }
-    await axios
-      .post(`https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        state.randomic_playlist = response.data
-        state.message = 'Playlist criada com sucesso!'
-        alert.value.showAlert(
-          'success', // There are 4 types of alert: success, info, warning, error
-          `Playlist salva com sucesso!`, // Message of the alert
-          'Tudo certo', // Header of the alert
-          { iconSize: 35, // Size of the icon (px)
-          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-        )
-        addTracksToPlaylist(response.data.id)
-        state.isProcessing = false
-      })
-      .catch(error => {
-        console.log('Nao foi possivel salvar a playlist:')
-        console.log(error)
-        state.isProcessing = false
-      })
   }
 
   const addTracksToPlaylist = async(playlist_id) => {
-    state.isProcessing = true
-    const { accessToken } = getLocalStorage()    
-    const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
-    const formData = {
-      'uris': tracks
-    }
-    axios
-      .post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        // console.log(response.data)
-        state.playlist = response.data
-        state.message = 'As músicas foram adicionadas com sucesso!'
-        alert.value.showAlert(
-          'success', // There are 4 types of alert: success, info, warning, error
-          `As músicas foram adicionadas com sucesso!`, // Message of the alert
-          'Tudo certo', // Header of the alert
-          { iconSize: 35, // Size of the icon (px)
-          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-        )
-        state.isProcessing = false
-      })
-      .catch(error => {
-        console.log('Nao foi possivel adicionar as musicas a playlist:')
-        console.log(error)
-        state.isProcessing = false
-      })    
+    try{  
+      state.isProcessing = true
+      const { accessToken } = getLocalStorage()    
+      const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
+      const formData = {
+        'uris': tracks
+      }
+      state.randomic_playlist = await spotifyApi.addTracksToPlaylist(accessToken, playlist_id, formData)
+      state.message = 'As músicas foram adicionadas com sucesso!'
+      alert.value.showAlert(
+        'success', // There are 4 types of alert: success, info, warning, error
+        `As músicas foram adicionadas com sucesso!`, // Message of the alert
+        'Tudo certo', // Header of the alert
+        ALERT_OPTIONS
+      )
+      state.isProcessing = false
+    }catch(error){        
+      console.log(error)
+      state.isProcessing = false
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }   
   }
 
   const addTrackToQueue = async(track) => {
-    const { accessToken } = getLocalStorage()
-    return await axios
-      .post(`https://api.spotify.com/v1/me/player/queue?uri=${track}`, null, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        return true
-      })
-      .catch(error => {
-        console.log(error)
-        return false
-      })
+    try{
+      const { accessToken } = getLocalStorage()
+      await spotifyApi.addTrackToQueue(accessToken, track)
+      return true
+    }catch(error){
+      console.log(error)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+      return false
+    }
   }
 
   const executePlaylist = async() => {    
     state.isProcessing = true
     const { accessToken } = getLocalStorage()
     if(state.randomic_playlist){
-      const formData = {
-        "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
-          "offset": {
-            "position": 0
-          },
-          "position_ms": 0,
+      try{
+        const formData = {
+          "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
+            "offset": {
+              "position": 0
+            },
+            "position_ms": 0,
+        }
+        await spotifyApi.executePlaylist(accessToken, formData)        
+        state.isProcessing = false
+      }catch(error){
+        console.log(error)
+        state.isProcessing = false
+        alert.value.showAlert(
+          'error', // There are 4 types of alert: success, info, warning, error
+          error.response, // Message of the alert
+          'Ops', // Header of the alert
+          ALERT_OPTIONS
+        )
       }
-      axios
-        .put(`https://api.spotify.com/v1/me/player/play`, JSON.stringify(formData), {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-type": "application/json"
-          }
-        })
-        .then(response => {
-          state.isProcessing = false
-        })
-        .catch(error => {
-          console.log(error)
-          state.isProcessing = false
-        })
       return
     }
     //nao salvou a playlist apenas adiciona a lista de reprodução
@@ -428,12 +393,10 @@
       if(state.devices.length == 0){
         state.message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
         alert.value.showAlert(
-          'error', // There are 4 types of alert: success, info, warning, error
+          'info', // There are 4 types of alert: success, info, warning, error
           `Nenhum dispositivo conectado, não foi possível executar a playlist!`, // Message of the alert
-          'Ops', // Header of the alert
-          { iconSize: 35, // Size of the icon (px)
-          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+          'Informação', // Header of the alert
+          ALERT_OPTIONS
         )
         state.isProcessing = false
         return
@@ -446,7 +409,6 @@
     await Promise.all(tracks.map(async(track) => {
       added = await addTrackToQueue(track)
     }))
-
     if(!added){
       if(state.randomic_playlist){
         openPlaylistApp(state.randomic_playlist.id)
@@ -454,15 +416,12 @@
         return
       }
       state.message = 'Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.'
-      // alert('Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.') 
       alert.value.showAlert(
-          'error', // There are 4 types of alert: success, info, warning, error
-          `Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.`, // Message of the alert
-          'Ops', // Header of the alert
-          { iconSize: 35, // Size of the icon (px)
-          iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-          position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-        )
+        'error', // There are 4 types of alert: success, info, warning, error
+        `Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.`, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
       state.isProcessing = false
       return
     }
@@ -471,9 +430,7 @@
       'success', // There are 4 types of alert: success, info, warning, error
       `As músicas foram adicionadas a lista de reprodução!`, // Message of the alert
       'Tudo certo', // Header of the alert
-      { iconSize: 35, // Size of the icon (px)
-      iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-      position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+      ALERT_OPTIONS
     )
     state.isProcessing = false
   }
@@ -485,20 +442,16 @@
   const increaseStep = () => {
     if((state.step == 1)&&(state.playlists.filter(item => item.checked).length == 0)) {
       state.message = 'Selecione pelo menos uma playlist!'
-      // alert('Selecione pelo menos uma playlist!')
       alert.value.showAlert(
         'warning', // There are 4 types of alert: success, info, warning, error
         `Selecione ao menos 1 playlist`, // Message of the alert
         'Atenção', // Header of the alert
-        { iconSize: 35, // Size of the icon (px)
-        iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-        position: 'top right' } // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+        ALERT_OPTIONS
       )
       return
     }
     state.message = ''
     state.step++
-    console.log(state)
     if(state.step == 3) {
       generatePlaylist()
     }
@@ -513,14 +466,11 @@
   }
 
   onMounted(async () => {    
-    console.log('mounted')
     if(hasTokenExpired()){        
       logout()
       return
-    } 
-    console.log('getprofile')     
+    }      
     getProfile()
-    console.log('getplaylists')
     getPlaylists()    
   })
 
@@ -557,7 +507,7 @@
       <input type="number" v-model="state.number_tracks" class="input-number center" min="1" max="10" />
     </div>
     <div v-if="(state.step == 3)">
-      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
+      <h3 @click="getPlaybackState()" v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
       <div class="list-list">
