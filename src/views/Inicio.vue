@@ -190,8 +190,8 @@
             </div>
             <div class="list-item-popularity">
               <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-if="((track.popularity <= 40)&&(track.popularity < 70))" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
               {{track.popularity}}%
             </div>
           </div>
@@ -293,10 +293,11 @@
 .list-item-subtitle{
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     color: #999;
     font-size: 12px;
+    text-align: right;
 }
 
 .footer{
