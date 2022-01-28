@@ -66,7 +66,10 @@
     }
     state.user = null
     state.menuOpen = false    
-    router.push('/login')
+    router.push('/')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   }
 
   onMounted(async () => {  
@@ -105,7 +108,7 @@
       </div>
       <div class="navbar-right" v-if="state.menuOpen">
         <div class="navbar-right-inner">
-          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/')" v-if="state.menuOpen">
+          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/home')" v-if="state.menuOpen">
             <font-awesome-icon icon="home" style="margin-right: 10px;color:#fff;"/>
             <p>Início</p>
           </div>

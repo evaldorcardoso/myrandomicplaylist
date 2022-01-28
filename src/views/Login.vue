@@ -71,7 +71,7 @@
     state.version = import.meta.env.PACKAGE_VERSION
     
     if(!hasTokenExpired()){        
-       router.push('/') 
+       router.push('/home') 
     }   
   })
 

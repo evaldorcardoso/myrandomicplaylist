@@ -66,7 +66,10 @@
       window.localStorage.removeItem(LOCALSTORAGE_KEYS[property]);
     }
     state.user = null
-    router.push('/login')
+    router.push('/')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   }
 
   const getRefreshedToken = async() => {
