@@ -8,8 +8,8 @@ import Randomic from "@/views/Randomic.vue";
 const routes = [
   {
     path: "/",
-    name: "Inicio",
-    component: Inicio,
+    name: "Login",
+    component: Login,
   },
   {
     path: "/player",
@@ -17,9 +17,9 @@ const routes = [
     component: Player,
   },
   {
-    path: "/login",
-    name: "Login",
-    component: Login,
+    path: "/home",
+    name: "Home",
+    component: Inicio,
   },
   {
     path: "/biblioteca",

@@ -61,7 +61,10 @@
       window.localStorage.removeItem(LOCALSTORAGE_KEYS[property]);
     }
     state.user = null
-    router.push('/login')
+    router.push('/')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   } 
 
   const getProfile = async() => {
@@ -101,7 +104,7 @@
   const getUsersTopItems = async() => {
     const { accessToken } = getLocalStorage()
     await axios
-      .get('https://api.spotify.com/v1/me/top/tracks?limit=10', {
+      .get('https://api.spotify.com/v1/me/top/tracks?limit=10&time_range=short_term', {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
@@ -151,6 +154,7 @@
   }
 
   onMounted(async () => {
+    
     var params = window.location.search.substr(1)
     // var params = window.location.hash
     // console.log(params)
@@ -208,7 +212,7 @@
           })
       }      
     }
-
+    
     if(hasTokenExpired()){              
       logout()
       return
@@ -231,17 +235,23 @@
     </router-link>
     <br><br><hr>
     <h3 class="center" style="margin-top: 50px;color:#fff">As top 10 de {{state.user?.display_name}}</h3>      
-    <p class="center" style="margin-top: 0px;color:#fff;font-size:12px">Nos últimos 6 meses</p>
+    <p class="center" style="margin-top: 0px;color:#fff;font-size:12px">No último mês</p>
     <div class="list-list">
       <ul class="list">
         <li v-for="track in state.top_tracks" class="list-item">
+          <img :src="track.album.images[0].url" style="width: 40px; height: 40px;margin-right: 20px;" />
           <div class="list-item-content">                
             <div class="list-item-title">
-              <img :src="track.album.images[0].url" style="width: 40px; height: 40px;margin-right: 20px;" />
               {{track.name}}
             </div>
-            <div class="list-item-subtitle">{{track.artists[0].name}}</div>
+            <div class="list-item-popularity">
+              <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
+              <font-awesome-icon v-if="((track.popularity <= 40)&&(track.popularity < 70))" class="icon-popularity-medium" icon="chart-line"/>
+              <font-awesome-icon v-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+              {{track.popularity}}%
+            </div>
           </div>
+          <div class="list-item-subtitle">{{track.artists[0].name}}</div>
         </li>
       </ul>
     </div>
@@ -301,6 +311,7 @@
 }
 .list-item-content{
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: space-between;
     margin: auto;
@@ -310,8 +321,30 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     color: #fff;
+    width: 100%;
+}
+.list-item-popularity{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    color: #fff;
+    width: 100%;
+    font-size: 10px;
+}
+.icon-popularity-bad{
+    color: rgb(255, 23, 23);
+    margin-right: 3px;
+}
+.icon-popularity-medium{
+    color: rgb(255, 240, 30);
+    margin-right: 3px;
+}
+.icon-popularity-good{
+    color: rgb(117, 255, 24);
+    margin-right: 3px;
 }
 .list-item-subtitle{
     display: flex;

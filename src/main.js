@@ -17,12 +17,12 @@ import { faSignOutAlt,
         faArrowRight,
         faSave,
         faBook,
+        faChartLine,
     } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'
+// import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
-    faSpinner,
     faSignOutAlt, 
     faRandom, 
     faMobileAlt, 
@@ -37,6 +37,7 @@ library.add(
     faArrowRight,
     faSave,
     faBook,
+    faChartLine,
 )
 
 const app  = createApp(App)

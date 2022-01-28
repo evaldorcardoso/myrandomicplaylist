@@ -67,6 +67,9 @@
     }
     state.user = null
     router.push('/')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   }
 
   const getRefreshedToken = async() => {
