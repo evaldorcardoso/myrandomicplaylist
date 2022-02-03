@@ -117,11 +117,11 @@
 
   const pickTracks = async(tracksitems) => {
     let tracksToPick = state.number_tracks
-    let tracks = state.tracks.length
-    if(state.number_tracks > tracksitems.length){
+    let tracks = 0
+    if(tracksToPick > tracksitems.length){
       tracksToPick = tracksitems.length
     }
-    while(state.tracks.length < (tracks + tracksToPick)) {
+    while(tracks < tracksToPick) {
       // let random = Math.floor(Math.random() * response.data.items.length)
       let random = getRandomInt(0, tracksitems.length)
       let track = tracksitems[random].track
@@ -131,18 +131,19 @@
           track.checked = true
           state.tracks.push(track)
           await new Promise(r => setTimeout(r, 200));
+          tracks++
         }
       }
       //limpa os itens repetidos em um array
-      state.tracks = [...new Set(state.tracks)]            
-    }
+      state.tracks = [...new Set(state.tracks)]         
+    }          
   }
 
   const getTracks = async(playlist_id) => {    
     try{ 
       const { accessToken } = getLocalStorage()
       const{ items } = await spotifyApi.getTracks(accessToken, playlist_id)
-      return pickTracks(items)
+      return await pickTracks(items)
     }
     catch(error){
       console.log(error)
