@@ -28,6 +28,15 @@ export default {
             })
         ).data
     ),
+    getRecommendations: async(accessToken) => (
+      (await axios
+          .get('https://api.spotify.com/v1/recommendations', {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          })
+      ).data
+    ),
     getDevices: async(accessToken) => (
         (await axios
             .get('https://api.spotify.com/v1/me/player/devices', {

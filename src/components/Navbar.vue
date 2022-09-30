@@ -94,9 +94,10 @@
           </div>
         </div>
         <div class="left-user">
-          <p>{{ state.user ? state.user.display_name : '' }}</p>
+          
         </div>
         <div class="center">
+          <p class="user-name">{{ state.user ? state.user.display_name : '' }}</p>
           <p>Usuário {{ state.user.product }}</p>
           <p>{{ state.user.followers.total }} seguidores</p>
         </div>
@@ -217,10 +218,11 @@
   width: 44px;
   text-align: right;
 }
-.left-user p{
+.user-name {
   font-size: 16px;
   font-weight: bold;
-  color: #fff;  
+  color: #fff;
+  margin-top: 5px;
 }
 .version{
   bottom: 0px;

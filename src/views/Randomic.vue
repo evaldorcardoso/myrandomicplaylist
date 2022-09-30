@@ -122,7 +122,7 @@
       tracksToPick = tracksitems.length
     }
     while(tracks < tracksToPick) {
-      // let random = Math.floor(Math.random() * response.data.items.length)
+      // let random =1 Math.floor(Math.random() * response.data.items.length)
       let random = getRandomInt(0, tracksitems.length)
       let track = tracksitems[random].track
       if(track){
@@ -263,7 +263,8 @@
     try{
       const { accessToken } = getLocalStorage()
       const formData = {
-        "device_ids": [device_id]
+        "device_ids": [device_id],
+        "play": true
       }
       await spotifyApi.transferPlayback(accessToken, formData)      
       const device = state.devices.find(device => device.id === device_id)
@@ -410,9 +411,10 @@
     }
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     let added = false
-    await Promise.all(tracks.map(async(track) => {
-      added = await addTrackToQueue(track)
-    }))
+    for (let i = 0; i < tracks.length; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      added = await addTrackToQueue(tracks[i]);
+    }
     if(!added){
       if(state.randomic_playlist){
         openPlaylistApp(state.randomic_playlist.id)
@@ -539,21 +541,22 @@
       <a class="btn-voltar" @click="decreaseStep()">Voltar</a>
       <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
         <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/>
-        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
+        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
         <div v-if="!(state.isProcessing)">Avançar</div>
       </button>
       <button v-if="state.step == 3" class="btn-generate" @click="generatePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="random" v-if="!(state.isProcessing)"/>
-        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
+        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
       </button>
       <button v-if="state.step == 3" class="btn-save" @click="savePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
-        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
+        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
       </button>
       <button v-if="state.step == 3" class="btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
-        <!-- <font-awesome-icon :icon="['fas', 'spinner']" pulse v-show="state.isProcessing" /> -->
-        <div v-if="!(state.isProcessing)">Executar</div>
+        <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
+        <div v-if="!(state.isProcessing)"> Executar</div>
+        <div v-if="(state.isProcessing)"> Processando, aguarde...</div>
       </button>
     </div>          
   </div>
@@ -667,6 +670,7 @@
   display: flex;
   color: #fff;
   margin-right: 25px;
+  cursor: pointer;
 }
 .btn-next{
     margin-right: 25px;
