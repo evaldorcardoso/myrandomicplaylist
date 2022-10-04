@@ -328,7 +328,7 @@
     </div>
     <h3 class="center statistics-title">Baseado no que você ouve: </h3>
     <button class="center btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
-        <p style="margin: 0" v-if="!(state.isProcessing)"><font-awesome-icon icon="play" /> Executar</p>
+        <p style="margin: 0" v-if="!(state.isProcessing)"><font-awesome-icon icon="play" /> Adicionar à fila</p>
         <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Adicionando, aguarde...</p>
     </button>
     <div class="list-list">
