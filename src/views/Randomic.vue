@@ -32,6 +32,7 @@
     isProcessing: false,
     is_playing: false,
     randomic_playlist: null,
+    playlists_original:[],
     playlists: [],
     tracks: [],
     devices: [],
@@ -39,6 +40,7 @@
     user: null,
     message: '',
     step: 1,
+    filters: [],
   })
 
   const internalInstance = getCurrentInstance()
@@ -102,7 +104,8 @@
     try { 
       const { accessToken } = getLocalStorage()
       const { items } = await spotifyApi.getPlaylists(accessToken)
-      state.playlists = items 
+      state.playlists_original = items 
+      filterPLaylists()
       state.isProcessing = false
     } catch (error) {
        state.isProcessing = false
@@ -471,6 +474,39 @@
     state.step--
   }
 
+  const changeFilterPrivatePlaylists = async (value) => {
+    if (state.filters.includes('private_playlists'))
+      state.filters = state.filters.filter(item => item != 'private_playlists')
+    else
+      state.filters.push('private_playlists')
+      
+    await filterPLaylists()
+  }
+
+  const filterPLaylists = async () => {
+    if(state.filters.length == 0) {
+      state.playlists = state.playlists_original
+      return
+    }
+
+    state.filters.map(item => {
+      switch (item) {
+        case 'private_playlists':
+          filterPrivatePlaylists()
+          break;
+      
+        default:
+          break;
+      }
+    })
+  }
+
+  const filterPrivatePlaylists = async () => {
+    state.playlists = state.playlists_original.filter(
+      playlist => playlist.owner.display_name == state.user.display_name          
+    )
+  }
+
   onMounted(async () => {    
     if(hasTokenExpired()){        
       logout()
@@ -486,7 +522,14 @@
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div v-if="(state.step == 1)">
-      <h3 class="center" style="margin-top: 20px;color:#fff">Selecione as playlists que você mais gosta:</h3>          
+      <h4 class="center" style="margin-top: 20px;color:#fff">Selecione as playlists que você mais gosta:</h4>          
+      <div style="margin-top: 10px;">
+        <label class="switch">
+          <input type="checkbox" @click="changeFilterPrivatePlaylists">
+          <span class="slider round"></span>
+        </label>
+        <span style="margin: 8px 0px 0px 10px;color: #999;position: absolute;">Filtrar somente minhas playlists</span>
+      </div>
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
       <div class="list-list">
@@ -728,4 +771,68 @@
     justify-content: flex-end;
     align-items: center;
 }
+/**SLIDER BEGIN */
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .5s;
+  transition: .5s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .5s;
+  transition: .5s;
+}
+
+input:checked + .slider {
+  background-color: #0c8d39;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #0c8d39;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+/**SLIDER END */
 </style>
