@@ -30,6 +30,8 @@
 
   const state = reactive({
     isProcessing: false,
+    processing_start: 0,
+    processing_end: 0,
     is_playing: false,
     randomic_playlist: null,
     playlists_original:[],
@@ -161,6 +163,8 @@
 
   const generatePlaylist = async() => {    
     state.isProcessing = true
+    state.processing_start = 1
+    state.processing_end = state.tracks.length
     state.message = 'Gerando playlist, aguarde...'
     state.randomic_playlist = null
     const playlists_selecteds = state.playlists.filter(item => item.checked)    
@@ -217,7 +221,6 @@
       const { accessToken } = getLocalStorage()
       const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
       state.is_playing = is_playing
-      console.log(state.is_playing)
     }
     catch(error){
       console.log(error)
@@ -367,7 +370,8 @@
     }
   }
 
-  const executePlaylist = async() => {    
+  const executePlaylist = async() => {
+    state.processing_start = 1    
     state.isProcessing = true
     const { accessToken } = getLocalStorage()
     if(state.randomic_playlist){
@@ -414,7 +418,9 @@
     }
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     let added = false
+    state.processing_end = tracks.length
     for (let i = 0; i < tracks.length; i++) {
+      state.processing_start = i+1
       await new Promise(r => setTimeout(r, 500));
       added = await addTrackToQueue(tracks[i]);
     }
@@ -479,7 +485,7 @@
       state.filters = state.filters.filter(item => item != 'private_playlists')
     else
       state.filters.push('private_playlists')
-      
+
     await filterPLaylists()
   }
 
@@ -599,7 +605,7 @@
         <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
         <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
         <div v-if="!(state.isProcessing)"> Executar</div>
-        <div v-if="(state.isProcessing)"> Processando, aguarde...</div>
+        <div v-if="(state.isProcessing)"> Aguarde... {{state.processing_start}}/{{state.processing_end}}</div>
       </button>
     </div>          
   </div>
@@ -716,7 +722,7 @@
   cursor: pointer;
 }
 .btn-next{
-    margin-right: 25px;
+    margin-right: 10px;
     background-color: #0c8d39;
     color: #fff;
     border: none;
@@ -727,7 +733,7 @@
     display: flex;
 }
 .btn-save{
-    margin-right: 25px;
+    margin-right: 10px;
     background-color: #0c8d39;
     color: #fff;
     border: none;
@@ -738,7 +744,7 @@
     display: flex;
 }
 .btn-generate{
-    margin-right: 25px;
+    margin-right: 10px;
     background-color: transparent;
     color: #fff;
     border: 1px solid #fff;
@@ -749,7 +755,7 @@
     display: flex;
 }
 .btn-execute{
-    margin-right: 25px;
+    margin-right: 10px;
     background-color: #ffffff;
     color: #1c1c1c;
     border: none;
