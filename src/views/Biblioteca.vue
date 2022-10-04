@@ -25,7 +25,9 @@
   const state = reactive({
     // title: 'Gerador de playlist aleatória do Spotify',
     randomic_playlist: null,
+    playlists_original:[],
     playlists: [],
+    filters: ['private_playlists'],
     devices: [],
     tracks: [],
     user: null,
@@ -78,7 +80,6 @@
             }
       })
       .then(response => {
-        console.log(response.data)
         const { access_token, expires_in, timestamp } = response.data
         window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
         window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
@@ -102,9 +103,9 @@
         }
       })
       .then(response => {
-        // console.log(response.data.items)
         // state.playlists = response.data.items.filter(item => item.public)        
-        state.playlists = response.data.items
+        state.playlists_original = response.data.items
+        filterPLaylists()
         // console.log(state.playlists)
       })
       .catch(error => {
@@ -148,7 +149,7 @@
         }
       })
       .then(response => {
-        // console.log(response.data)
+        console.log(response.data)
         state.user = response.data
       })
       .catch(error => {
@@ -200,6 +201,39 @@
     window.open(`https://open.spotify.com/playlist/${playlist_id}`)
   }
 
+  const changeFilterPrivatePlaylists = async (value) => {
+    if (state.filters.includes('private_playlists'))
+      state.filters = state.filters.filter(item => item != 'private_playlists')
+    else
+      state.filters.push('private_playlists')
+      
+    await filterPLaylists()
+  }
+
+  const filterPLaylists = async () => {
+    if(state.filters.length == 0) {
+      state.playlists = state.playlists_original
+      return
+    }
+
+    state.filters.map(item => {
+      switch (item) {
+        case 'private_playlists':
+          filterPrivatePlaylists()
+          break;
+      
+        default:
+          break;
+      }
+    })
+  }
+
+  const filterPrivatePlaylists = async () => {
+    state.playlists = state.playlists_original.filter(
+      playlist => playlist.owner.display_name == state.user.display_name          
+    )
+  }
+
   onMounted(async () => {
     if(hasTokenExpired()){        
       logout()
@@ -214,12 +248,20 @@
 <template>
   <div class="page" style="height: 88%;">
     <h2 class="center" style="padding-top: 15px;color:#fff">{{ msg + state.user?.display_name }}</h2>
+    <div style="margin-top: 10px;">
+        <label class="switch">
+          <input type="checkbox" @click="changeFilterPrivatePlaylists">
+          <span class="slider round"></span>
+        </label>
+        <span style="margin: 8px 0px 0px 10px;color: #999;position: absolute;">Filtrar somente minhas playlists</span>
+      </div>
     <p class="span">Clique na playlist para executar</p>
     <div class="playlists">
       <ul>
         <li v-for="playlist in state.playlists" :key="playlist.id" @click="executePlaylist(playlist.id)">
             <img :src="playlist.images[0]?.url"/>
             <h4>{{ playlist.name }}</h4>
+            <h5>By: {{ playlist.owner.display_name }}</h5>
             <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p>
         </li>
       </ul>
@@ -266,9 +308,14 @@
 .playlists h4{
     color: #fff;
     margin: 5px;
-    white-space: nowrap;
+    white-space: wrap;
     overflow: hidden;
     font-size: 14px;
+}
+.playlists h5 {
+  margin: 1px 1px 1px 5px;
+  color: rgb(124, 123, 123);
+  font-size: 10px;
 }
 .playlists p{
     color: rgb(177, 177, 177);
@@ -278,4 +325,68 @@
     height: 3em;
     overflow: hidden;
 }
+/**SLIDER BEGIN */
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #0c8d39;
+  -webkit-transition: .5s;
+  transition: .5s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 30px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .5s;
+  transition: .5s;
+}
+
+input:checked + .slider {
+  background-color: #ccc;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #0c8d39;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(-26px);
+  -ms-transform: translateX(-26px);
+  transform: translateX(-26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+/**SLIDER END */
 </style>
