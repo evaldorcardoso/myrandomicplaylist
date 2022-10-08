@@ -529,12 +529,12 @@
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div v-if="(state.step == 1)">
       <h4 class="center" style="margin-top: 20px;color:#fff">Selecione as playlists que você mais gosta:</h4>          
-      <div style="margin-top: 10px;">
+      <div style="margin-top: 10px;height:30px;line-height:30px;">
         <label class="switch">
           <input type="checkbox" @click="changeFilterPrivatePlaylists">
           <span class="slider round"></span>
         </label>
-        <span style="margin: 8px 0px 0px 10px;color: #999;position: absolute;">Filtrar somente minhas playlists</span>
+        <span style="margin: 8px 0px 0px 10px;color: #999;position: relative;">Filtrar somente minhas playlists</span>
       </div>
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
