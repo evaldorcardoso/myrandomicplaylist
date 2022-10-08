@@ -248,12 +248,12 @@
 <template>
   <div class="page" style="height: 88%;">
     <h2 class="center" style="padding-top: 15px;color:#fff">{{ msg + state.user?.display_name }}</h2>
-    <div style="margin-top: 10px;">
+    <div style="margin-top: 10px;height:30px;line-height:30px;">
         <label class="switch">
           <input type="checkbox" @click="changeFilterPrivatePlaylists">
           <span class="slider round"></span>
         </label>
-        <span style="margin: 8px 0px 0px 10px;color: #999;position: absolute;">Filtrar somente minhas playlists</span>
+        <span style="margin: 8px 0px 0px 10px;color: #999;position: relative;">Filtrar somente minhas playlists</span>
       </div>
     <p class="span">Clique na playlist para executar</p>
     <div class="playlists">
