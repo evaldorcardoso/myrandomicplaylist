@@ -32,7 +32,7 @@ export default defineConfig({
           purpose: 'any maskable'
         }
       ]
-    } 
+    }, 
   })],
   resolve: {
     alias: {
