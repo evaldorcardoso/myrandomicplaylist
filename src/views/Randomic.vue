@@ -723,8 +723,8 @@
 }
 .btn-next{
     margin-right: 10px;
-    background-color: #0c8d39;
-    color: #fff;
+    background-image: linear-gradient(60deg, #e0eb98, #62faf5);
+    color: black;
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -734,8 +734,9 @@
 }
 .btn-save{
     margin-right: 10px;
-    background-color: #0c8d39;
-    color: #fff;
+    /* background-image: linear-gradient(60deg, #e0eb98, #62faf5); */
+    background-color: #62faf5;
+    color: black;
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -745,8 +746,8 @@
 }
 .btn-generate{
     margin-right: 10px;
-    background-color: transparent;
-    color: #fff;
+    background-image: transparent;
+    color: black;
     border: 1px solid #fff;
     padding: 10px 20px;
     border-radius: 4px;
@@ -756,7 +757,7 @@
 }
 .btn-execute{
     margin-right: 10px;
-    background-color: #ffffff;
+    background-image: linear-gradient(60deg, #e0eb98, #62faf5);
     color: #1c1c1c;
     border: none;
     padding: 10px 20px;
@@ -819,11 +820,12 @@
 }
 
 input:checked + .slider {
-  background-color: #0c8d39;
+  /* background-color: #0c8d39; */
+  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #0c8d39;
+  box-shadow: 0 0 1px linear-gradient(60deg, #e0eb98, #62faf5);
 }
 
 input:checked + .slider:before {

@@ -181,8 +181,8 @@
 }
 .but-login{
   margin-top: 25px;
-  background-color: #1DB954;
-  color: #fff;  
+  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
+  color: black;  
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
