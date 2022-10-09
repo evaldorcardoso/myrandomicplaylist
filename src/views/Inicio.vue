@@ -380,8 +380,8 @@
 }
 .btn-generate {
   margin: 25px auto auto auto;
-  background-color: #0c8d39;
-  color: #fff;
+  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
+  color: black;
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
@@ -470,7 +470,7 @@
 }
 .btn-execute{
     margin-top: 15px;
-    background-color: #ffffff;
+    background-image: linear-gradient(60deg, #e0eb98, #62faf5);
     color: #1c1c1c;
     border: none;
     padding: 10px 20px;

@@ -349,7 +349,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #0c8d39;
+  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
   -webkit-transition: .5s;
   transition: .5s;
 }
@@ -371,7 +371,7 @@ input:checked + .slider {
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #0c8d39;
+  box-shadow: 0 0 1px linear-gradient(60deg, #e0eb98, #62faf5);;
 }
 
 input:checked + .slider:before {
