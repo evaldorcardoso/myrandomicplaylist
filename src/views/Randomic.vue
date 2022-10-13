@@ -421,7 +421,7 @@
     state.processing_end = tracks.length
     for (let i = 0; i < tracks.length; i++) {
       state.processing_start = i+1
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 200));
       added = await addTrackToQueue(tracks[i]);
     }
     if(!added){
