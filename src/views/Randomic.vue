@@ -1,32 +1,15 @@
 <script setup>
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import spotifyApi from '../api/spotifyApi'
+  import spotifyApi from '../support/spotifyApi'
+  import helpers from '../support/helpers'
   import VueBasicAlert from 'vue-basic-alert'
-
-  // Map for localStorage keys
-  const LOCALSTORAGE_KEYS = {
-    accessToken: 'spotify_access_token',
-    refreshToken: 'spotify_refresh_token',
-    expireTime: 'spotify_token_expire_time',
-    timestamp: 'spotify_token_timestamp',
-  }
 
   const ALERT_OPTIONS = { 
     iconSize: 35, // Size of the icon (px)
     iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
     position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
   } 
-
-  const getLocalStorage = () =>{
-    // Map to retrieve localStorage values
-    const LOCALSTORAGE_VALUES = {    
-      accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
-      expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
-      timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
-    };
-    return LOCALSTORAGE_VALUES
-  }
 
   const state = reactive({
     isProcessing: false,
@@ -46,12 +29,11 @@
   })
 
   const internalInstance = getCurrentInstance()
-  // const axios = internalInstance.appContext.config.globalProperties.axios
   const router = useRouter()
   const alert = ref(null)
   
   const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = getLocalStorage()
+    const { accessToken, timestamp, expireTime } = helpers.getLocalStorage()
     let expired = true
     if(!accessToken || !timestamp || !expireTime){ 
       return true      
@@ -78,16 +60,16 @@
 
   const getRefreshedToken = async() => {
     try{
-      const { refreshToken } = getLocalStorage()
+      const { refreshToken } = helpers.getLocalStorage()
       const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-      const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET      
+      const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
       const formData = new URLSearchParams()
       formData.append('grant_type', 'refresh_token')
       formData.append('refresh_token', refreshToken)
-      const { access_token, expires_in, timestamp } = await spotifyApi.getRefreshedToken(formData, client_id, client_secret)              
+      const { access_token, expires_in, timestamp } = await spotifyApi.getRefreshedToken(formData, client_id, client_secret)
       window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
       window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
-      localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+      localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())    
       router.push('/')
     }catch(error){
       console.log(error)
@@ -104,7 +86,7 @@
   const getPlaylists = async() => {
     state.isProcessing = true
     try { 
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const { items } = await spotifyApi.getPlaylists(accessToken)
       state.playlists_original = items 
       filterPLaylists()
@@ -146,7 +128,7 @@
 
   const getTracks = async(playlist_id) => {    
     try{ 
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const{ items } = await spotifyApi.getTracks(accessToken, playlist_id)
       return await pickTracks(items)
     }
@@ -185,15 +167,15 @@
 
   const getProfile = async() => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       state.user = await spotifyApi.getProfile(accessToken)       
     }
     catch(error){
       console.log(error)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response,
+        'Ops',
         ALERT_OPTIONS
       )
     }
@@ -201,16 +183,16 @@
 
   const getDevices = async() => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const { devices } = await spotifyApi.getDevices(accessToken)
       state.devices = devices        
     }  
     catch(error){
       console.log(error)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response,
+        'Ops',
         ALERT_OPTIONS
       )
     }
@@ -218,7 +200,7 @@
 
   const getPlaybackState = async() => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
       state.is_playing = is_playing
     }
@@ -235,7 +217,7 @@
 
   const startResumePlayback = async() => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       await spotifyApi.startResumePlayback(accessToken)      
       state.is_playing = true
     }catch(error){
@@ -251,7 +233,7 @@
 
   const skipToNext = async() => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       await spotifyApi.skipToNext(accessToken)      
       getPlaybackState()    
     }catch(error){
@@ -267,7 +249,7 @@
 
   const transferPlayback = async(device_id) => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const formData = {
         "device_ids": [device_id],
         "play": true
@@ -292,7 +274,7 @@
   const savePlaylist = async() => {
     try{  
       state.isProcessing = true
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       const user_id = state.user.id
       const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
       const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
@@ -327,7 +309,7 @@
   const addTracksToPlaylist = async(playlist_id) => {
     try{  
       state.isProcessing = true
-      const { accessToken } = getLocalStorage()    
+      const { accessToken } = helpers.getLocalStorage()    
       const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
       const formData = {
         'uris': tracks
@@ -355,7 +337,7 @@
 
   const addTrackToQueue = async(track) => {
     try{
-      const { accessToken } = getLocalStorage()
+      const { accessToken } = helpers.getLocalStorage()
       await spotifyApi.addTrackToQueue(accessToken, track)
       return true
     }catch(error){
@@ -373,7 +355,7 @@
   const executePlaylist = async() => {
     state.processing_start = 1    
     state.isProcessing = true
-    const { accessToken } = getLocalStorage()
+    const { accessToken } = helpers.getLocalStorage()
     if(state.randomic_playlist){
       try{
         const formData = {
