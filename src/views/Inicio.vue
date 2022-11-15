@@ -2,29 +2,9 @@
   import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
-  import spotifyApi from '../api/spotifyApi'
+  import spotifyApi from '../support/spotifyApi'
+  import helpers from '../support/helpers'
   const msg = ref('Gerador de playlist aleatória do Spotify')
-
-  // Map for localStorage keys
-  const LOCALSTORAGE_KEYS = {
-    code: 'spotify_code',
-    accessToken: 'spotify_access_token',
-    refreshToken: 'spotify_refresh_token',
-    expireTime: 'spotify_token_expire_time',
-    timestamp: 'spotify_token_timestamp',
-  }
-
-  const getLocalStorage = () =>{
-    // Map to retrieve localStorage values
-    const LOCALSTORAGE_VALUES = {    
-      code: window.localStorage.getItem(LOCALSTORAGE_KEYS.code),
-      accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
-      refreshToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.refreshToken),
-      expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
-      timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
-    };
-    return LOCALSTORAGE_VALUES
-  }
 
   const ALERT_OPTIONS = { 
     iconSize: 35, // Size of the icon (px)
@@ -52,9 +32,10 @@
   const alert = ref(null)
   
   const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = getLocalStorage()
+    const { accessToken, timestamp, expireTime } = helpers.getLocalStorage()
     let expired = true
     if(!accessToken || !timestamp || !expireTime){ 
+      console.log('Token expired')
       return true      
     }    
     const millisecondsElapsed = Date.now() - Number(timestamp)
@@ -66,10 +47,7 @@
   }
 
   const logout = () => {
-    // Clear all localStorage items
-    for (const property in LOCALSTORAGE_KEYS) {
-      window.localStorage.removeItem(LOCALSTORAGE_KEYS[property]);
-    }
+    helpers.logout()
     state.user = null
     router.push('/')
     setTimeout(() => {
@@ -78,73 +56,45 @@
   } 
 
   const getProfile = async() => {
-    const { accessToken } = getLocalStorage()
-    // alert('getprofile inicio, token: '+ accessToken)
-    await axios
-      .get('https://api.spotify.com/v1/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        //console.log(response.data)
-        state.user = response.data
-      })
-      .catch(error => {
+    try {
+      const { accessToken } = helpers.getLocalStorage()
+      state.user = await spotifyApi.getProfile(accessToken)
+    } catch (error) {
         console.log('Houve um erro ao buscar seu perfil!')
         console.log(error)
         logout()
-      })
+    }
   }
 
   const getDevices = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        //state.devices = response.data.devices
-      })
+    try {
+      const { accessToken } = getLocalStorage()
+      state.devices = await spotifyApi.getDevices(accessToken)
+    } catch (error) {
+      console.log(`Erro ao buscar os devices. ${error}`)
+    }
   }
 
   const getUsersTopItems = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/top/tracks?limit=10&time_range=short_term', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        //console.log(response.data.items)
-        state.top_tracks = response.data.items
-        testPopularityLevel();
-      })
+    try {
+      const { accessToken } = helpers.getLocalStorage()
+      state.top_tracks = await spotifyApi.getUserTopItens(accessToken)
+      testPopularityLevel();
+    } catch (error) {
+      console.log(`Erro ao buscar os top itens. ${error}`)
+    }
   }
 
   const getUsersRecommendations = async() => {
-    const { accessToken } = getLocalStorage()
-    //console.log('toptracks: ' + state.top_tracks);
-    const top_tracks = state.top_tracks.slice(0, 5).map((top_track) => {
-      return top_track.id
-    });
-    //console.log('toptracks: '  + top_tracks);
-    await axios
-      .get('https://api.spotify.com/v1/recommendations?seed_tracks='+top_tracks, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        //console.log('recommendations:')
-        //console.log(response.data.tracks)
-        state.recommendations = response.data.tracks
-        // testPopularityLevel();
-      })
+    try {
+      const { accessToken } = helpers.getLocalStorage()
+      const top_tracks = state.top_tracks.slice(0, 5).map((top_track) => {
+        return top_track.id
+      });
+      state.recommendations = await spotifyApi.getUserRecommendations(accessToken, top_tracks)
+    } catch (error) {
+      console.log(`Erro ao buscar as recomendações do usuário. ${error}`)
+    }
   }
 
   const testPopularityLevel = ()=>{
@@ -154,38 +104,32 @@
       let track = JSON.parse(JSON.stringify(item));
       popularity+=track.popularity;
     });
-    //console.log(popularity / state.top_tracks.length);
     state.user.popularity = popularity / state.top_tracks.length;
   }
 
   const getRefreshedToken = async() => {
-    const { refreshToken } = getLocalStorage()
-    const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-    //the parameters encoded in application/x-www-form-urlencoded:
-    const formData = new URLSearchParams()
-    formData.append('grant_type', 'refresh_token')
-    formData.append('refresh_token', refreshToken)
-    await axios
-      .post('https://accounts.spotify.com/api/token', formData, {
-            headers: {
-              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
-              "Content-type": "application/x-www-form-urlencoded"
-            }
+    try{
+      const { refreshToken } = helpers.getLocalStorage()
+      const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+      const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET      
+      const formData = new URLSearchParams()
+      formData.append('grant_type', 'refresh_token')
+      formData.append('refresh_token', refreshToken)
+      const { access_token, expires_in, timestamp } = await spotifyApi.getRefreshedToken(formData, client_id, client_secret)              
+      window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
+      window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
+      localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+      router.push('/')
+    }catch(error){
+      console.log(error)
+      alert.value.show({
+        type: 'error',
+        title: 'Error',
+        message: 'Something went wrong, please try again later',
+        options: ALERT_OPTIONS
       })
-      .then(response => {
-        console.log(response.data)
-        const { access_token, expires_in, timestamp } = response.data
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-        router.push('/')
-      })
-      .catch(error => {
-        console.log(error)
-        alert('Houve um erro ao buscar o token!')
-        logout()
-      })
+      logout()
+    }
   }
 
   const openPlaylistApp = (playlist_id) => {
@@ -201,7 +145,6 @@
       const { accessToken } = getLocalStorage()
       const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
       state.is_playing = is_playing
-      console.log(state.is_playing)
     }
     catch(error){
       console.log(error)
@@ -282,7 +225,6 @@
       return
     }      
     getProfile()
-    // getPlaylists() 
     await getUsersTopItems()
     getUsersRecommendations();
   })

@@ -1,26 +1,11 @@
 <script setup>
-  import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
+  import { onMounted, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import helpers from '../support/helpers'
+  import { LOCALSTORAGE_KEYS } from '../support/helpers'
+  import spotifyApi from '../support/spotifyApi'
 
   const msg = ref('Gerador de playlist aleatória do')
-
-  // Map for localStorage keys
-  const LOCALSTORAGE_KEYS = {
-    accessToken: 'spotify_access_token',
-    refreshToken: 'spotify_refresh_token',
-    expireTime: 'spotify_token_expire_time',
-    timestamp: 'spotify_token_timestamp',
-  }
-
-  const getLocalStorage = () =>{
-    // Map to retrieve localStorage values
-    const LOCALSTORAGE_VALUES = {    
-      accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
-      expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
-      timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
-    };
-    return LOCALSTORAGE_VALUES
-  }
 
   const state = reactive({    
     user: null,
@@ -28,39 +13,30 @@
     version: '',
   })
 
-  const internalInstance = getCurrentInstance()
-  const axios = internalInstance.appContext.config.globalProperties.axios
   const router = useRouter()
   
   const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = getLocalStorage()
-    if(!accessToken || !timestamp || !expireTime){ 
+    const { accessToken, timestamp, expireTime } = helpers.getLocalStorage()
+    if(!accessToken || !timestamp || !expireTime){
       return true      
     }    
     const millisecondsElapsed = Date.now() - Number(timestamp)
     return (millisecondsElapsed / 1000) > Number(expireTime)
   }
 
-  const authorize = () => {
-    // const url = 'https://accounts.spotify.com/authorize?'
-    // const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    // const response_type = 'token'
-    // const redirect_uri = window.location.origin
-    // const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state'
-    // const state = '34fFs29kd09'
-    // const show_dialog = 'false'
-    // const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}&show_dialog=${show_dialog}`
-    // window.location.href = url + query    
+  const buildAuthorizeRequest = () => {
+    let code = helpers.getLocalStorage().code
+    //the parameters encoded in application/x-www-form-urlencoded:
+    const formData = new URLSearchParams()
+    formData.append('grant_type', 'authorization_code')
+    formData.append('code', code)
+    formData.append('redirect_uri', window.location.origin)
+    
+    return formData
+  }
 
-    const url = 'https://accounts.spotify.com/authorize?'
-    const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const response_type = 'code'
-    const redirect_uri = window.location.origin
-    const scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read'
-    const state = '34fFs29kd09'
-    // const show_dialog = 'false'
-    const query = `client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}`
-    window.location.href = url + query    
+  const authorize = () => {
+    window.location.href = spotifyApi.getAuthorizeUrl() //url + query    
   }
 
   const openLink = (url) => {
@@ -71,14 +47,10 @@
     state.version = import.meta.env.PACKAGE_VERSION
     
     var params = window.location.search.substr(1)
-    // var params = window.location.hash
-    // console.log(params)
     if(params){
-      // params = params.split('#')[1]
       params = params.split('&')
       params = params.map(param => {
-        param = param.split('=')
-        console.log(param);        
+        param = param.split('=')      
         return {
           key: param[0],
           value: param[1]
@@ -90,46 +62,23 @@
         return acc
       }, {}) 
       if(params.code){
-        localStorage.setItem(LOCALSTORAGE_KEYS.code, params.code)        
-        const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-        const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-        //the parameters encoded in application/x-www-form-urlencoded:
-        const formData = new URLSearchParams()
-        formData.append('grant_type', 'authorization_code')
-        formData.append('code', params.code)
-        formData.append('redirect_uri', window.location.origin)
-
-        // const formData = {
-        //   'code' : params.code,
-        //   'redirect_uri': window.location.origin,
-        //   'grant_type': 'authorization_code'
-        // }
-
-        await axios
-          .post(`https://accounts.spotify.com/api/token`, formData, {
-            headers: {
-              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
-              "Content-type": "application/x-www-form-urlencoded"
-            }
-          })
-          .then(response => {
-            console.log(response.data)
-            localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, response.data.access_token)        
-            localStorage.setItem(LOCALSTORAGE_KEYS.refreshToken, response.data.refresh_token)        
-            localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, response.data.expires_in)
-            localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-            router.push('/')
-          })
-          .catch(error => {
-            console.log(error)
-            alert('Erro ao entrar com sua conta!')
-            logout()
-          })
+        helpers.setLocalStorage(LOCALSTORAGE_KEYS.code, params.code)
+        const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID
+        const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
+        try {
+          const data = await spotifyApi.authorize(clientId, clientSecret, buildAuthorizeRequest())          
+          helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, data.access_token)
+          helpers.setLocalStorage(LOCALSTORAGE_KEYS.refreshToken, data.refresh_token)        
+          helpers.setLocalStorage(LOCALSTORAGE_KEYS.expireTime, data.expires_in)
+          helpers.setLocalStorage(LOCALSTORAGE_KEYS.timestamp, Date.now())            
+        } catch(error) {
+          console.log(error)
+        }
       }      
     }
 
-    if(!hasTokenExpired()){        
-       router.push('/home') 
+    if(!hasTokenExpired()){
+        router.push('/home')
     }   
   })
 
