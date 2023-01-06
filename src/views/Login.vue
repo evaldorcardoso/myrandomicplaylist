@@ -21,7 +21,12 @@
       return true      
     }    
     const millisecondsElapsed = Date.now() - Number(timestamp)
-    return (millisecondsElapsed / 1000) > Number(expireTime)
+    if ((millisecondsElapsed / 1000) > Number(expireTime)) {
+      authorize();
+      return true;
+    }
+    
+    return false;
   }
 
   const buildAuthorizeRequest = () => {
@@ -79,7 +84,7 @@
 
     if(!hasTokenExpired()){
         router.push('/home')
-    }   
+    }
   })
 
 </script>
