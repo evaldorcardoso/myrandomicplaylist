@@ -25,7 +25,7 @@
     user: null,
     message: '',
     step: 1,
-    filters: [],
+    filters: ['all'],
   })
 
   const internalInstance = getCurrentInstance()
@@ -462,25 +462,21 @@
     state.step--
   }
 
-  const changeFilterPrivatePlaylists = async (value) => {
-    if (state.filters.includes('private_playlists'))
-      state.filters = state.filters.filter(item => item != 'private_playlists')
-    else
-      state.filters.push('private_playlists')
-
-    await filterPLaylists()
-  }
-
-  const filterPLaylists = async () => {
-    if(state.filters.length == 0) {
-      state.playlists = state.playlists_original
-      return
-    }
+  const filterPLaylists = async (value = 'all') => {
+    state.filters = [value];
 
     state.filters.map(item => {
       switch (item) {
-        case 'private_playlists':
-          filterPrivatePlaylists()
+        case 'all':
+          state.playlists = state.playlists_original
+          break;
+
+        case 'liked':
+          filterPrivatePlaylists(false)
+          break;
+
+        case 'private':
+          filterPrivatePlaylists(true)
           break;
       
         default:
@@ -489,9 +485,16 @@
     })
   }
 
-  const filterPrivatePlaylists = async () => {
+  const filterPrivatePlaylists = async (value = true) => {
+    if (value) {
+      state.playlists = state.playlists_original.filter(
+        playlist => playlist.owner.display_name == state.user.display_name          
+      )
+      return;
+    }
+    
     state.playlists = state.playlists_original.filter(
-      playlist => playlist.owner.display_name == state.user.display_name          
+      playlist => playlist.owner.display_name != state.user.display_name          
     )
   }
 
@@ -510,17 +513,36 @@
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div v-if="(state.step == 1)">
-      <h4 class="center" style="margin-top: 20px;color:#fff">Selecione as playlists que você mais gosta:</h4>          
-      <div style="margin-top: 10px;height:30px;line-height:30px;">
-        <label class="switch">
-          <input type="checkbox" @click="changeFilterPrivatePlaylists">
-          <span class="slider round"></span>
-        </label>
-        <span style="margin: 8px 0px 0px 10px;color: #999;position: relative;">Filtrar somente minhas playlists</span>
-      </div>
+      <h4 
+        class="center" 
+        style="margin: 20px 0 20px 0;color:#fff"
+      >
+      Selecione as playlists que você mais gosta:
+      </h4>          
+      <button 
+        class="button-spotify" 
+        :class="{ 'button-dark': state.filters.includes('all'), 'button-light': !state.filters.includes('all') }" 
+        @click="filterPLaylists('all')"
+      >
+      Todas
+      </button>
+      <button 
+        class="button-spotify" 
+        :class="{ 'button-dark': state.filters.includes('private'), 'button-light': !state.filters.includes('private') }"
+        @click="filterPLaylists('private')"
+      >
+      Minhas
+      </button>
+      <button 
+        class="button-spotify" 
+        :class="{ 'button-dark': state.filters.includes('liked'), 'button-light': !state.filters.includes('liked') }" 
+        @click="filterPLaylists('liked')"
+      >
+      Curtidas
+      </button>
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
-      <div class="list-list">
+      <div style="margin-top: 20px" class="list-list">
           <ul class="list">
             <li v-for="playlist in state.playlists" class="list-item">
               <div class="container">
@@ -594,8 +616,27 @@
 </template>
 
 <style scoped>
-.page{
-  height: 80%;
+
+.button-spotify {
+  border-radius: 20px;
+  border: none;
+  padding: 10px 25px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  outline: none;
+  margin: 3px;
+}
+.button-dark {
+  background: rgb(30, 215, 96);
+  color: rgb(255, 255, 255);
+  border: 1px solid rgb(30, 215, 96);
+}
+
+.button-light {
+  background: none;
+  color: rgb(200, 200, 200);
+  border: 1px solid rgb(200, 200, 200);
 }
 .center{
     display: flex;
@@ -614,8 +655,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: auto;
     padding: 0px;
+    margin-bottom: 130px;
 }
 .list-item{
     display: flex;
@@ -624,7 +665,8 @@
     justify-content: center;
     margin: auto;
     width: 100%;
-    height: 50px;
+    height: auto;
+    margin-top: 10px;
 }
 .container{
     display: flex;
@@ -664,23 +706,16 @@
 
 .list-item-content{
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: baseline;
     justify-content: space-between;
     margin: auto;
     flex: 90%;
 }
 .list-item-title{
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
     color: #fff;
 }
 .list-item-subtitle{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     color: #999;
     font-size: 12px;
 }

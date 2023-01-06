@@ -22,6 +22,7 @@
   /*background: linear-gradient(to bottom, #1db954 0%, #0c8d39 100%);*/
   background-color: #1c1c1c;
   height: 100vh;
+  font-size: 14px;
 }
 .page{
   background-color: #1c1c1c;
