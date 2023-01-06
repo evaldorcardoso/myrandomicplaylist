@@ -88,7 +88,8 @@
     try { 
       const { accessToken } = helpers.getLocalStorage()
       const { items } = await spotifyApi.getPlaylists(accessToken)
-      state.playlists_original = items 
+      state.playlists_original = items
+      console.log(items)
       filterPLaylists()
       state.isProcessing = false
     } catch (error) {
@@ -541,7 +542,7 @@
       Curtidas
       </button>
       <p class="message">{{state.message}}</p>
-      <!-- exibir uma lista com as músicas como no spotify-->
+      <!-- lista com as playlists-->
       <div style="margin-top: 20px" class="list-list">
           <ul class="list">
             <li v-for="playlist in state.playlists" class="list-item">
@@ -553,8 +554,13 @@
                 </div>
               </div>
               <div class="list-item-content">
-                <div class="list-item-title">{{playlist.name}}</div>
-                <div class="list-item-subtitle">{{playlist.tracks.total}} músicas</div>
+                <div class="list-item-image">
+                  <img :src="playlist.images[0]?.url" style="width: 40px; height: 40px;margin-right: 20px;" />
+                </div>
+                <div class="list-item-text">
+                  <div class="list-item-title">{{playlist.name}}</div>
+                  <div class="list-item-subtitle">{{playlist.tracks.total}} músicas</div>
+                </div>
               </div>
             </li>
           </ul>
@@ -566,7 +572,7 @@
       <input type="number" v-model="state.number_tracks" class="input-number center" min="1" max="10" />
     </div>
     <div v-if="(state.step == 3)">
-      <h3 @click="getPlaybackState()" v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
+      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
       <div class="list-list">
@@ -579,12 +585,14 @@
                   </label>
                 </div>
               </div>
-              <div class="list-item-content">                
-                <div class="list-item-title">
+              <div class="list-item-content">
+                <div class="list-item-image">
                   <img :src="track.album.images[0].url" style="width: 40px; height: 40px;margin-right: 20px;" />
-                  {{track.name}}
                 </div>
-                <div class="list-item-subtitle">{{track.artists[0].name}}</div>
+                <div class="list-item-text">
+                  <div class="list-item-title">{{track.name}}</div>
+                  <div class="list-item-subtitle">{{track.artists[0].name}}</div>
+                </div>
               </div>
             </li>
           </ul>
@@ -626,13 +634,13 @@
   font-size: 11px;
   outline: none;
   margin: 3px;
+  cursor: pointer;
 }
 .button-dark {
   background: rgb(30, 215, 96);
   color: rgb(255, 255, 255);
   border: 1px solid rgb(30, 215, 96);
 }
-
 .button-light {
   background: none;
   color: rgb(200, 200, 200);
@@ -675,7 +683,6 @@
     justify-content: right;
     flex: 10%;
 }
-
 .label-checkbox {
   border: 1px solid #fff;
   box-sizing: border-box;
@@ -689,7 +696,6 @@
   font-size: 0px;
   line-height: 0px;
 }
-
 .check-day {
   visibility: hidden;
   position: absolute;
@@ -698,19 +704,17 @@
   -webkit-appearance: none;
   -moz-appearance: none;
 }
-
 .checked {
   background: #fff;
   color: transparent;
 }
-
 .list-item-content{
-    display: flex;
-    flex-direction: column;
-    align-items: baseline;
-    justify-content: space-between;
-    margin: auto;
-    flex: 90%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  margin: auto;
+  flex: 90%;
 }
 .list-item-title{
     color: #fff;
