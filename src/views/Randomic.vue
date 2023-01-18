@@ -13,15 +13,15 @@
 
   const state = reactive({
     isProcessing: false,
-    processing_start: 0,
-    processing_end: 0,
-    is_playing: false,
-    randomic_playlist: null,
-    playlists_original:[],
+    processingStart: 0,
+    processingEnd: 0,
+    isPlaying: false,
+    randomPlaylist: null,
+    playlistsOriginal:[],
     playlists: [],
     tracks: [],
     devices: [],
-    number_tracks: 2,
+    numberTracks: 2,
     user: null,
     message: '',
     step: 1,
@@ -88,8 +88,7 @@
     try { 
       const { accessToken } = helpers.getLocalStorage()
       const { items } = await spotifyApi.getPlaylists(accessToken)
-      state.playlists_original = items
-      console.log(items)
+      state.playlistsOriginal = items
       filterPLaylists()
       state.isProcessing = false
     } catch (error) {
@@ -98,13 +97,13 @@
   }
 
   const getRandomInt = (min, max) => {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min;
-  }  
+    min = Math.ceil(min)
+    max = Math.floor(max)
+    return Math.floor(Math.random() * (max - min)) + min
+  }
 
   const pickTracks = async(tracksitems) => {
-    let tracksToPick = state.number_tracks
+    let tracksToPick = state.numberTracks
     let tracks = 0
     if(tracksToPick > tracksitems.length){
       tracksToPick = tracksitems.length
@@ -118,12 +117,12 @@
         if(undefined == state.tracks.find(item => item.track.id === track.id)){
           track.checked = true
           state.tracks.push(track)
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 100))
           tracks++
         }
       }
       //limpa os itens repetidos em um array
-      state.tracks = [...new Set(state.tracks)]         
+      //state.tracks = [...new Set(state.tracks)]         
     }          
   }
 
@@ -146,10 +145,10 @@
 
   const generatePlaylist = async() => {    
     state.isProcessing = true
-    state.processing_start = 1
-    state.processing_end = state.tracks.length
+    state.processingStart = 1
+    state.processingEnd = state.tracks.length
     state.message = 'Gerando playlist, aguarde...'
-    state.randomic_playlist = null
+    state.randomPlaylist = null
     const playlists_selecteds = state.playlists.filter(item => item.checked)    
     state.tracks = []
     const unresolved = playlists_selecteds.map(async(playlist) => {
@@ -203,7 +202,7 @@
     try{
       const { accessToken } = helpers.getLocalStorage()
       const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
-      state.is_playing = is_playing
+      state.isPlaying = is_playing
     }
     catch(error){
       console.log(error)
@@ -220,7 +219,7 @@
     try{
       const { accessToken } = helpers.getLocalStorage()
       await spotifyApi.startResumePlayback(accessToken)      
-      state.is_playing = true
+      state.isPlaying = true
     }catch(error){
       console.log(error)
       alert.value.showAlert(
@@ -257,7 +256,7 @@
       }
       await spotifyApi.transferPlayback(accessToken, formData)      
       const device = state.devices.find(device => device.id === device_id)
-      if((device.is_active)&&(!state.is_playing)){
+      if((device.is_active)&&(!state.isPlaying)){
         skipToNext()
         startResumePlayback()
       }    
@@ -277,15 +276,15 @@
       state.isProcessing = true
       const { accessToken } = helpers.getLocalStorage()
       const user_id = state.user.id
-      const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatória')
+      const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatoria')
       const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
-      const _public = true    
+      const _public = false    
       const formData = {
         'name' : name,
         'description': description,
         'public': _public
       }
-      state.randomic_playlist = await spotifyApi.savePlaylist(accessToken, user_id, formData)      
+      state.randomPlaylist = await spotifyApi.savePlaylist(accessToken, user_id, formData)      
       state.message = 'Playlist criada com sucesso!'
       alert.value.showAlert(
         'success', // There are 4 types of alert: success, info, warning, error
@@ -293,9 +292,9 @@
         'Tudo certo', // Header of the alert
         ALERT_OPTIONS
       )
-      addTracksToPlaylist(response.data.id)
+      addTracksToPlaylist(state.randomPlaylist.id)
       state.isProcessing = false
-    }catch(error){      
+    }catch(error){
       console.log(error)
       state.isProcessing = false
       alert.value.showAlert(
@@ -307,15 +306,26 @@
     }
   }
 
+  const separar = (items, max) => {
+    return items.reduce((accumulator, item, index) => {
+      const group = Math.floor(index / max)
+      accumulator[group] = [...(accumulator[group] || []), item]
+      return accumulator
+    }, [])
+  }
+
   const addTracksToPlaylist = async(playlist_id) => {
-    try{  
+    try{
       state.isProcessing = true
       const { accessToken } = helpers.getLocalStorage()    
       const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
-      const formData = {
-        'uris': tracks
-      }
-      state.randomic_playlist = await spotifyApi.addTracksToPlaylist(accessToken, playlist_id, formData)
+      const tracksGroups = separar(tracks, 100)
+      tracksGroups.forEach(async (trackGroup) => {
+        const formData = {
+          'uris': trackGroup
+        }
+        state.randomPlaylist = await spotifyApi.addTracksToPlaylist(accessToken, playlist_id, formData)
+      })
       state.message = 'As músicas foram adicionadas com sucesso!'
       alert.value.showAlert(
         'success', // There are 4 types of alert: success, info, warning, error
@@ -354,13 +364,13 @@
   }
 
   const executePlaylist = async() => {
-    state.processing_start = 1    
+    state.processingStart = 1    
     state.isProcessing = true
     const { accessToken } = helpers.getLocalStorage()
-    if(state.randomic_playlist){
+    if(state.randomPlaylist){
       try{
         const formData = {
-          "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
+          "context_uri": "spotify:playlist:" + state.randomPlaylist.id,
             "offset": {
               "position": 0
             },
@@ -383,7 +393,7 @@
     //nao salvou a playlist apenas adiciona a lista de reprodução
     state.message = 'Adicionando músicas a fila de reprodução, aguarde...'
     await getPlaybackState()
-    if(!state.is_playing){
+    if(!state.isPlaying){
       await getDevices()      
       if(state.devices.length == 0){
         state.message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
@@ -401,15 +411,15 @@
     }
     const tracks = state.tracks.filter(track => track.checked).map(track => track.uri)
     let added = false
-    state.processing_end = tracks.length
+    state.processingEnd = tracks.length
     for (let i = 0; i < tracks.length; i++) {
-      state.processing_start = i+1
-      await new Promise(r => setTimeout(r, 200));
-      added = await addTrackToQueue(tracks[i]);
+      state.processingStart = i+1
+      await new Promise(r => setTimeout(r, 200))
+      added = await addTrackToQueue(tracks[i])
     }
     if(!added){
-      if(state.randomic_playlist){
-        openPlaylistApp(state.randomic_playlist.id)
+      if(state.randomPlaylist){
+        openPlaylistApp(state.randomPlaylist.id)
         state.isProcessing = false
         return
       }
@@ -464,37 +474,37 @@
   }
 
   const filterPLaylists = async (value = 'all') => {
-    state.filters = [value];
+    state.filters = [value]
 
     state.filters.map(item => {
       switch (item) {
         case 'all':
-          state.playlists = state.playlists_original
-          break;
+          state.playlists = state.playlistsOriginal
+          break
 
         case 'liked':
           filterPrivatePlaylists(false)
-          break;
+          break
 
         case 'private':
           filterPrivatePlaylists(true)
-          break;
+          break
       
         default:
-          break;
+          break
       }
     })
   }
 
   const filterPrivatePlaylists = async (value = true) => {
     if (value) {
-      state.playlists = state.playlists_original.filter(
+      state.playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == state.user.display_name          
       )
-      return;
+      return
     }
     
-    state.playlists = state.playlists_original.filter(
+    state.playlists = state.playlistsOriginal.filter(
       playlist => playlist.owner.display_name != state.user.display_name          
     )
   }
@@ -569,7 +579,7 @@
     <div v-if="(state.step == 2)">
       <h3 class="center" style="margin-top: 20px;color:#fff">Quantas músicas devemos utilizar de cada playlist?</h3>          
       <p class="message">{{state.message}}</p>
-      <input type="number" v-model="state.number_tracks" class="input-number center" min="1" max="10" />
+      <input type="number" v-model="state.numberTracks" class="input-number center" min="1" max="10" />
     </div>
     <div v-if="(state.step == 3)">
       <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
@@ -617,7 +627,7 @@
         <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
         <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
         <div v-if="!(state.isProcessing)"> Executar</div>
-        <div v-if="(state.isProcessing)"> Aguarde... {{state.processing_start}}/{{state.processing_end}}</div>
+        <div v-if="(state.isProcessing)"> Aguarde... {{state.processingStart}}/{{state.processingEnd}}</div>
       </button>
     </div>          
   </div>
