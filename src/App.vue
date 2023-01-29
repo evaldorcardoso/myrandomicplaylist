@@ -1,11 +1,8 @@
 <script setup>
-  import Navbar from '@/components/Navbar.vue'
-  
   document.title = 'My Randomic Playlist'
 </script>
 <template>
   <div id="main">
-    <Navbar />
     <router-view/>
   </div>
 </template>
@@ -26,7 +23,7 @@
 }
 .page{
   background-color: #1c1c1c;
-  height: 100%;
+  height: 90%;
   padding-bottom: 65px;
   overflow-y: scroll;   
   padding: 5px;

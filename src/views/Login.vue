@@ -1,11 +1,7 @@
 <script setup>
   import { onMounted, reactive, ref } from 'vue'
-  import { useRouter } from 'vue-router'
-  import helpers from '../support/helpers'
-  import { LOCALSTORAGE_KEYS } from '../support/helpers'
-  import spotifyApi from '../support/spotifyApi'
 
-  const msg = ref('Gerador de playlist aleatória do')
+  const msg = ref('Gerador de playlist aleatória do Spotify')
 
   const state = reactive({    
     user: null,
@@ -13,35 +9,17 @@
     version: '',
   })
 
-  const router = useRouter()
-  
-  const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = helpers.getLocalStorage()
-    if(!accessToken || !timestamp || !expireTime){
-      return true      
-    }    
-    const millisecondsElapsed = Date.now() - Number(timestamp)
-    if ((millisecondsElapsed / 1000) > Number(expireTime)) {
-      authorize();
-      return true;
-    }
-    
-    return false;
-  }
-
-  const buildAuthorizeRequest = () => {
-    let code = helpers.getLocalStorage().code
-    //the parameters encoded in application/x-www-form-urlencoded:
-    const formData = new URLSearchParams()
-    formData.append('grant_type', 'authorization_code')
-    formData.append('code', code)
-    formData.append('redirect_uri', window.location.origin)
-    
-    return formData
-  }
+  const getAuthorizeUrl = () => (
+      `https://accounts.spotify.com/authorize?` +
+      `client_id=${import.meta.env.VITE_SPOTIFY_CLIENT_ID}` +
+      `&response_type=code` +
+      `&redirect_uri=${window.location.origin}/callback` +
+      `&scope=user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read` +
+      `&state=34fFs29kd09`
+    )
 
   const authorize = () => {
-    window.location.href = spotifyApi.getAuthorizeUrl() //url + query    
+    window.location.href = getAuthorizeUrl()
   }
 
   const openLink = (url) => {
@@ -50,41 +28,6 @@
 
   onMounted(async () => {
     state.version = import.meta.env.PACKAGE_VERSION
-    
-    var params = window.location.search.substr(1)
-    if(params){
-      params = params.split('&')
-      params = params.map(param => {
-        param = param.split('=')      
-        return {
-          key: param[0],
-          value: param[1]
-        }
-      })
-
-      params = params.reduce((acc, param) => {
-        acc[param.key] = param.value
-        return acc
-      }, {}) 
-      if(params.code){
-        helpers.setLocalStorage(LOCALSTORAGE_KEYS.code, params.code)
-        const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-        const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-        try {
-          const data = await spotifyApi.authorize(clientId, clientSecret, buildAuthorizeRequest())          
-          helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, data.access_token)
-          helpers.setLocalStorage(LOCALSTORAGE_KEYS.refreshToken, data.refresh_token)        
-          helpers.setLocalStorage(LOCALSTORAGE_KEYS.expireTime, data.expires_in)
-          helpers.setLocalStorage(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-        } catch(error) {
-          console.log(error)
-        }
-      }      
-    }
-
-    if(!hasTokenExpired()){
-        router.push('/home')
-    }
   })
 
 </script>
@@ -108,9 +51,6 @@
 </template>
 
 <style scoped>
-.page{
-  height: 50%;
-}
 .login{
   display: flex;
   flex-direction: column;

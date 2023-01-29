@@ -1,9 +1,17 @@
 <script setup>
-  import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { onMounted, computed, reactive, ref } from 'vue'
   import VueBasicAlert from 'vue-basic-alert'
-  import spotifyApi from '../support/spotifyApi'
-  import helpers from '../support/helpers'
+  import { useProfile } from '@/support/spotifyApi'
+
+  const { 
+    getTopItens, 
+    getRecommendations, 
+    getDevices, 
+    getPlaybackState, 
+    transferPlayback, 
+    addTrackToQueue 
+  } = useProfile();
+
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
   const ALERT_OPTIONS = { 
@@ -13,178 +21,73 @@
   } 
 
   const state = reactive({
-    // title: 'Gerador de playlist aleatória do Spotify',
     isProcessing: false,
-    randomic_playlist: null,
-    is_playing: false,
+    isPlaying: false,
     playlists: [],
     devices: [],
     tracks: [],
-    top_tracks: [],
+    topTracks: [],
     recommendations: [],
     user: null,
+    userPopularity: 0,
     message: '',
   })
 
-  const internalInstance = getCurrentInstance()
-  const axios = internalInstance.appContext.config.globalProperties.axios
-  const router = useRouter()
+  const props = defineProps({
+    userData: {
+        type: Object,
+        default: () => { },
+    },
+  });
+
+  const currentUser = computed(() => {
+    return props.userData;
+  });
+
   const alert = ref(null)
-  
-  const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = helpers.getLocalStorage()
-    let expired = true
-    if(!accessToken || !timestamp || !expireTime){ 
-      console.log('Token expired')
-      return true      
-    }    
-    const millisecondsElapsed = Date.now() - Number(timestamp)
-    expired = (millisecondsElapsed / 1000) > Number(expireTime)
-    if(expired){
-      getRefreshedToken()
-      return false
-    }
+
+  const getUserTopItems = async() => {
+    const { data } = await getTopItens()
+    state.topTracks =data.items
+    testPopularityLevel();
   }
 
-  const logout = () => {
-    helpers.logout()
-    state.user = null
-    router.push('/')
-    setTimeout(() => {
-      window.location.reload()
-    }, 1000)
-  } 
-
-  const getProfile = async() => {
-    try {
-      const { accessToken } = helpers.getLocalStorage()
-      state.user = await spotifyApi.getProfile(accessToken)
-    } catch (error) {
-        console.log('Houve um erro ao buscar seu perfil!')
-        console.log(error)
-        logout()
-    }
-  }
-
-  const getDevices = async() => {
-    try {
-      const { accessToken } = getLocalStorage()
-      state.devices = await spotifyApi.getDevices(accessToken)
-    } catch (error) {
-      console.log(`Erro ao buscar os devices. ${error}`)
-    }
-  }
-
-  const getUsersTopItems = async() => {
-    try {
-      const { accessToken } = helpers.getLocalStorage()
-      state.top_tracks = await spotifyApi.getUserTopItens(accessToken)
-      testPopularityLevel();
-    } catch (error) {
-      console.log(`Erro ao buscar os top itens. ${error}`)
-    }
-  }
-
-  const getUsersRecommendations = async() => {
-    try {
-      const { accessToken } = helpers.getLocalStorage()
-      const top_tracks = state.top_tracks.slice(0, 5).map((top_track) => {
-        return top_track.id
-      });
-      state.recommendations = await spotifyApi.getUserRecommendations(accessToken, top_tracks)
-    } catch (error) {
-      console.log(`Erro ao buscar as recomendações do usuário. ${error}`)
-    }
+  const getUserRecommendations = async() => {
+    const topTracks = state.topTracks.slice(0, 5).map((top_track) => {
+      return top_track.id
+    });
+    const { data } = await getRecommendations(topTracks);
+    state.recommendations = data.tracks
   }
 
   const testPopularityLevel = ()=>{
-    var popularity = 0;
-    const tracks = state.top_tracks;
+    let popularity = 0;
+    const tracks = state.topTracks;
     tracks.map(async(item) => {
       let track = JSON.parse(JSON.stringify(item));
       popularity+=track.popularity;
     });
-    state.user.popularity = popularity / state.top_tracks.length;
-  }
-
-  const getRefreshedToken = async() => {
-    try{
-      const { refreshToken } = helpers.getLocalStorage()
-      const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-      const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET      
-      const formData = new URLSearchParams()
-      formData.append('grant_type', 'refresh_token')
-      formData.append('refresh_token', refreshToken)
-      const { access_token, expires_in, timestamp } = await spotifyApi.getRefreshedToken(formData, client_id, client_secret)              
-      window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
-      window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
-      localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-      router.push('/')
-    }catch(error){
-      console.log(error)
-      alert.value.show({
-        type: 'error',
-        title: 'Error',
-        message: 'Something went wrong, please try again later',
-        options: ALERT_OPTIONS
-      })
-      logout()
-    }
-  }
-
-  const openPlaylistApp = (playlist_id) => {
-    window.open(`https://open.spotify.com/playlist/${playlist_id}`)
+    state.userPopularity = popularity / state.topTracks.length;
   }
 
   const openLink = (url) => {
     window.open(url, '_blank')
   }
 
-  const getPlaybackState = async() => {
-    try{
-      const { accessToken } = getLocalStorage()
-      const { is_playing } = await spotifyApi.getPlaybackState(accessToken)
-      state.is_playing = is_playing
-    }
-    catch(error){
-      console.log(error)
-      alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
-        ALERT_OPTIONS
-      )
-    }
-  }
-
-  const addTrackToQueue = async(track) => {
-    try{
-      const { accessToken } = getLocalStorage()
-      await spotifyApi.addTrackToQueue(accessToken, track)
-      return true
-    }catch(error){
-      console.log(error)
-      alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
-        ALERT_OPTIONS
-      )
-      return false
-    }
-  }
-
   const executePlaylist = async() => {  
     state.isProcessing = true
     state.message = 'Adicionando músicas a fila de reprodução, aguarde...'  
-    await getPlaybackState()
-    if(!state.is_playing){
-      await getDevices()      
+    const { data } = await getPlaybackState()
+    state.isPlaying = data.is_playing
+    if(!state.isPlaying){
+      const { data } = await getDevices()
+      state.devices = data.devices
       if(state.devices.length == 0){
-        state.message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
+        let message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
+        state.message = message
         alert.value.showAlert(
           'info', // There are 4 types of alert: success, info, warning, error
-          `Nenhum dispositivo conectado, não foi possível executar a playlist!`, // Message of the alert
+          message, // Message of the alert
           'Informação', // Header of the alert
           ALERT_OPTIONS
         )
@@ -192,13 +95,18 @@
         return
       }
       const device_id = state.devices[0].id
-      await transferPlayback(device_id)
+      const formData = {
+        "device_ids": [device_id],
+        "play": true
+      }
+      await transferPlayback(formData)
     }
     const tracks = state.recommendations.map(track => track.uri)
     let added = false
     for (let i = 0; i < tracks.length; i++) {
       await new Promise(r => setTimeout(r, 500));
-      added = await addTrackToQueue(tracks[i]);
+      await addTrackToQueue(tracks[i]);
+      added = true
     }
     if(!added){
       alert.value.showAlert(
@@ -209,31 +117,27 @@
       )
       return
     }
+    let message = `As músicas foram adicionadas a lista de reprodução!`
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
-      `As músicas foram adicionadas a lista de reprodução!`, // Message of the alert
+      message, // Message of the alert
       'Tudo certo', // Header of the alert
       ALERT_OPTIONS
     )
-    state.message = 'As músicas foram adicionadas a lista de reprodução!'
+    state.message = message
     state.isProcessing = false
   }
 
-  onMounted(async () => {
-    if(hasTokenExpired()){              
-      logout()
-      return
-    }      
-    getProfile()
-    await getUsersTopItems()
-    getUsersRecommendations();
+  onMounted(async () => {      
+    await getUserTopItems()
+    await getUserRecommendations();
   })
 
 </script>
 
 <template>
   <div class="page">
-    <h2 class="center title">{{ msg }}</h2>      
+    <h2 class="center title">{{ msg }}</h2>
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <router-link to="/randomic" style="text-decoration:none">
       <button class="btn-generate">
@@ -241,17 +145,17 @@
       </button>
     </router-link>
     <br><br><hr>
-    <h3 class="center statistics-title">As top 10 de {{state.user?.display_name}} </h3>
+    <h3 class="center statistics-title">As top 10 de {{currentUser?.display_name}} </h3>
     <p class="center statistics-subtitle">No último mês</p>
     <p class="center" style="color: white;display: table;font-size: 12px;">
-      <font-awesome-icon v-if="(state.user?.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.user?.popularity >= 40 && state.user?.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.user?.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-      {{state.user?.popularity}}
+      <font-awesome-icon v-if="(state.userPopularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
+      <font-awesome-icon v-else-if="(state.userPopularity >= 40 && state.userPopularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
+      <font-awesome-icon v-else-if="(state.userPopularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+      {{state.userPopularity}}
     </p>
     <div class="list-list">
       <ul class="list">
-        <li v-for="track in state.top_tracks" class="list-item">
+        <li v-for="track in state.topTracks" class="list-item">
           <img :src="track.album.images[0].url" class="music-cover" />
           <div class="list-item-content">                
             <div class="list-item-title">
@@ -356,13 +260,6 @@
     margin: auto;
     width: 100%;
     height: 50px;
-}
-.container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: right;
-    flex: 10%;
 }
 .list-item-content {
     display: flex;
