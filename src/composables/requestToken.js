@@ -44,7 +44,6 @@ export function useRequestToken() {
     };
 
     const refreshToken = async () => {
-        console.log('refreshtoken')
         const { refreshToken } = helpers.getLocalStorage()
         const data = {
             grant_type: "refresh_token",
@@ -66,6 +65,14 @@ export function useRequestToken() {
             "https://accounts.spotify.com/api/token",
             options
         );
+        if (response.status == 400) {
+            helpers.logout() 
+            router.push('/login')
+            setTimeout(() => {
+                window.location.reload()
+            }, 100)
+            return
+        }
         const { access_token, expires_in } = await response.json();
         const tokenExpiresIn = Date.now() + (expires_in - 400) * 3600;
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, access_token)

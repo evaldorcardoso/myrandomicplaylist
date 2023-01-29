@@ -104,6 +104,7 @@ onMounted(async () => {
         z-index: 1;
         background-image: linear-gradient(60deg, #e0eb98, #62faf5);
         justify-content: space-between;
+        padding-bottom: 20px;
     }
     .player img{
         border-radius: 4px;
@@ -122,7 +123,7 @@ onMounted(async () => {
     .player .bar-progress{
         background-color: hsla(0,0%,100%,.3);
         border-radius: 2px;
-        bottom: 0px;
+        bottom: 10px;
         grid-area: progress;
         height: 2px;
         left: 0;

@@ -11,9 +11,8 @@ import helpers from "@/support/helpers"
 const isLogged = (to, from, next) => {
 	const { accessToken } = helpers.getLocalStorage()
   if (!accessToken) {
-    next('Login')
+    next({ name: 'Login' })
   }
-  
   next()
 };
 
