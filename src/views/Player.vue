@@ -1,353 +1,185 @@
 <script setup>
-  import { getCurrentInstance, onMounted, computed, reactive, ref } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { onMounted, reactive } from 'vue'
+  import { useProfile } from '@/support/spotifyApi'
 
-  // Map for localStorage keys
-  const LOCALSTORAGE_KEYS = {
-    accessToken: 'spotify_access_token',
-    refreshToken: 'spotify_refresh_token',
-    expireTime: 'spotify_token_expire_time',
-    timestamp: 'spotify_token_timestamp',
-  }
-
-  const getLocalStorage = () =>{
-    // Map to retrieve localStorage values
-    const LOCALSTORAGE_VALUES = {    
-      accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
-      expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
-      timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
-    };
-    return LOCALSTORAGE_VALUES
-  }
+  var intervalProgress;
+  const { 
+    getDevices, 
+    getPlaybackState,
+    skipToNext,
+    skipToPrevious,
+    pausePlayback,
+    startResumePlayback,
+    transferPlayback
+  } = useProfile()
 
   const state = reactive({
-    // title: 'Gerador de playlist aleatória do Spotify',    
+    progPerc: 0,
+    prog: 0,
+    progOrig: 0,
     devices: [],
-    is_playing: false,
-    user: null,
+    isPlaying: false,
     message: '',
+    progressMs: 0,
+    item: null,
     track: {
       name: '',
-      artists: [{
-        name: '',
-      }],
       time: "",
       time_total: "",
+      display_time_total: '',
       progress: 0,
-      album: {
-        images : [{
-          url: ''
-        }],
-      },
     },
   })
 
-  const internalInstance = getCurrentInstance()
-  const axios = internalInstance.appContext.config.globalProperties.axios
-  const router = useRouter()
-  
-  const hasTokenExpired = () => {
-    const { accessToken, timestamp, expireTime } = getLocalStorage()
-    let expired = true
-    if(!accessToken || !timestamp || !expireTime){ 
-      return true      
-    }    
-    const millisecondsElapsed = Date.now() - Number(timestamp)
-    expired = (millisecondsElapsed / 1000) > Number(expireTime)
-    if(expired){
-      getRefreshedToken()
-      return false
+  const getUserDevices = async() => {
+    const { data } = await getDevices()
+    state.devices = data.devices
+  }
+
+  const getPlaybackUserState = async() => {
+    const { data } = await getPlaybackState()
+    state.isPlaying = data.is_playing
+    let date = new Date(data.progress_ms);          
+    state.item = data.item
+    state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
+    date = new Date(data.item.duration_ms);
+    state.track.time_total = data.item.duration_ms
+    state.track.display_time_total = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
+    state.track.progress = (data.progress_ms / state.track.duration_ms) * 100
+    state.progressMs = data.progress_ms
+  }
+
+  const resumeUserPlayback = async() => {
+    const { status } = await startResumePlayback()
+    if (status == 204){
+        state.isPlaying = !state.isPlaying
+        progress()
     }
   }
 
-  const logout = () => {
-    // Clear all localStorage items
-    for (const property in LOCALSTORAGE_KEYS) {
-      window.localStorage.removeItem(LOCALSTORAGE_KEYS[property]);
-    }
-    state.user = null
-    router.push('/')
-    setTimeout(() => {
-      window.location.reload()
-    }, 1000)
+  const pauseUserPlayback = async() => {
+      const { status } = await pausePlayback()
+      if (status == 204){
+          state.isPlaying = !state.isPlaying
+          clearInterval(intervalProgress);
+      }
   }
 
-  const getRefreshedToken = async() => {
-    const { refreshToken } = getLocalStorage()
-    const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-    const client_secret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-    //the parameters encoded in application/x-www-form-urlencoded:
-    const formData = new URLSearchParams()
-    formData.append('grant_type', 'refresh_token')
-    formData.append('refresh_token', refreshToken)
-    await axios
-      .post('https://accounts.spotify.com/api/token', formData, {
-            headers: {
-              Authorization: 'Basic ' + btoa(`${client_id}:${client_secret}`),
-              "Content-type": "application/x-www-form-urlencoded"
-            }
-      })
-      .then(response => {
-        console.log(response.data)
-        const { access_token, expires_in, timestamp } = response.data
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.accessToken, access_token)
-        window.localStorage.setItem(LOCALSTORAGE_KEYS.expireTime, expires_in)
-        localStorage.setItem(LOCALSTORAGE_KEYS.timestamp, Date.now())            
-        router.push('/')
-      })
-      .catch(error => {
-        console.log(error)
-        alert('Houve um erro ao buscar o token!')
-        logout()
-      })
+  const skipToUserNext = async() => {
+      const { status } = await skipToNext()
+      if (status == 204){
+        state.progPerc = 0
+      }
   }
 
-  const getProfile = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.user = response.data
-      })
+  const skipToUserPrevious = async() => {
+      const { status } = await skipToPrevious()
+      if (status == 204){
+        state.progPerc = 0
+      }
   }
-  
-  const executePlaylist = async() => {
-    const { accessToken } = getLocalStorage()
+
+  const transferUserPlayback = async(deviceId) => {
     const formData = {
-       "context_uri": "spotify:playlist:" + state.randomic_playlist.id,
-        "offset": {
-          "position": 0
-        },
-        "position_ms": 0,
+      "device_ids": [deviceId]
     }
-    axios
-      .put(`https://api.spotify.com/v1/me/player/play`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-  }
-
-  const getDevices = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        state.devices = response.data.devices        
-      })
-  }
-
-  const getPlaybackState = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .get('https://api.spotify.com/v1/me/player', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {                
-        if(response.data){          
-          state.is_playing = response.data.is_playing
-          let date = new Date(response.data.progress_ms);          
-          state.track = response.data.item
-          state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
-          date = new Date(state.track.duration_ms);
-          state.track.time_total = date.getUTCMinutes() + ':' + date.getUTCSeconds()
-          state.track.progress = (response.data.progress_ms / state.track.duration_ms) * 100
-        }
-      })
-  }
-
-  const startResumePlayback = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .put(`https://api.spotify.com/v1/me/player/play`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        state.is_playing = true
-        getPlaybackState()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
-  }
-
-  const pausePlayback = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .put(`https://api.spotify.com/v1/me/player/pause`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        state.is_playing = false
-        getPlaybackState()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
-  }
-
-  const skipToPrevious = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .post(`https://api.spotify.com/v1/me/player/previous`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        getPlaybackState()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
-  }
-
-  const skipToNext = async() => {
-    const { accessToken } = getLocalStorage()
-    await axios
-      .post(`https://api.spotify.com/v1/me/player/next`, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      })
-      .then(response => {
-        getPlaybackState()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
-  }
-
-  const transferPlayback = async(device_id) => {
-    const { accessToken } = getLocalStorage()
-    const formData = {
-      "device_ids": [device_id]
+    await transferPlayback(formData)
+    const device = state.devices.find(device => device.id === deviceId)
+    if((device.is_active)&&(!state.isPlaying)){
+      await startResumePlayback()
     }
-    await axios
-      .put(`https://api.spotify.com/v1/me/player`, JSON.stringify(formData), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-type": "application/json"
-        }
-      })
-      .then(response => {
-        console.log(response.data)
-        const device = state.devices.find(device => device.id === device_id)
-        if((device.is_active)&&(!state.is_playing)){
-          startResumePlayback()
-        }
-        getDevices()
-      })
-      .catch(error => {
-        console.log(error)
-        state.message = error.response.data.error.message
-      })
+    await getUserDevices()
   }
 
-  const openPlaylistApp = (playlist_id) => {
-    window.open(`https://open.spotify.com/playlist/${playlist_id}`)
-  }
+  const progress = async() => {
+    const interval = 500
+    intervalProgress = setInterval(function() {
+        if (!state.isPlaying){
+            return
+        }
+        state.prog = state.prog + interval
+        if (state.prog >= state.track.time_total) {
+            state.prog = 0
+            getPlaybackUserState()
+            return
+        }
+        if (state.progOrig != state.progressMs) {
+            state.progOrig = state.progressMs
+            state.prog = state.progressMs
+        }
+        state.progPerc = (state.prog / state.item.duration_ms) * 100
+        let date = new Date(state.prog);          
+        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
+    }, interval)
+};
 
   onMounted(async () => {
-    if(hasTokenExpired()){        
-      logout()
-      return
-    }      
-    getProfile()    
-    getDevices()
-    getPlaybackState()
-
-    var atualizador = setInterval(() => {
-      getDevices()
-      getPlaybackState()
-    }, 10000)
-    
+    await getUserDevices()
+    await getPlaybackUserState()
+    progress()
   })
 
 </script>
 
 <template> 
-<div class="page"> 
-  <p class="message">{{state.message}}</p>     
-  <div class="player" v-if="state.is_playing">
-    <div class="artwork">
-      <img v-bind:src="state.track?.album.images[0].url" style="width: 100%; height: 100%;" />
+  <div class="page"> 
+    <p class="message">{{state.message}}</p>     
+    <div class="player" v-if="state.devices.length > 0">
+      <div class="artwork">
+        <img v-bind:src="state.item?.album.images[0].url" style="width: 100%; height: 100%;" />
+      </div>
+      <div class="track-name">
+        <h3>{{ state.item?.name }}</h3>
+      </div>
+      <div class="track-artists">
+        <!-- exibir os artistas separados por vírgula-->
+        <h4>{{ state.item?.artists.map(artist => artist.name).join(', ') }}</h4>
+      </div>
+      <div class="bar-progress">
+        <div class="bar-progress-fill" :style="{ width: (state.progPerc) + '%'}"></div>
+      </div>
+      <div class="track-time">
+        <span>{{ state.track?.time }}</span>
+        <span>{{ state.track?.display_time_total }}</span>
+      </div>
+      <div class="player-controls">
+        <button class="btn-previous" @click="skipToUserPrevious()"><font-awesome-icon icon="step-backward"/></button>
+        <button v-if="!state.isPlaying" class="btn-play" @click="resumeUserPlayback()"><font-awesome-icon icon="play"/></button>
+        <button v-if="state.isPlaying" class="btn-play" @click="pauseUserPlayback()"><font-awesome-icon icon="pause"/></button>
+        <button class="btn-next" @click="skipToUserNext()"><font-awesome-icon icon="step-forward"/></button>
+      </div>
+    </div>         
+    <div class="devices" v-if="state.devices.length > 0">
+      <h3>Dispositivos disponíveis:</h3>
+      <div class="device" v-for="device in state.devices" @click="transferUserPlayback(device.id)">
+        <div class="device-name">
+          <h4 v-if="device.is_active" :style="{ color: '#fff'}">{{ device.name }}</h4>
+          <h4 v-else>{{ device.name }}</h4>
+        </div>      
+      </div>
     </div>
-    <div class="track-name">
-      <h3>{{ state.track?.name }}</h3>
-    </div>
-    <div class="track-artists">
-      <!-- exibir os artistas separados por vírgula-->
-      <h4>{{ state.track?.artists.map(artist => artist.name).join(', ') }}</h4>
-    </div>
-    <div class="bar-progress">
-      <div class="bar-progress-fill" :style="{ width: state.track.progress + '%' }"></div>
-    </div>
-    <div class="track-time">
-      <span>{{ state.track?.time }}</span>
-      <span>{{ state.track?.time_total }}</span>
-    </div>
-    <div class="player-controls">
-      <button class="btn-previous" @click="skipToPrevious()"><font-awesome-icon icon="step-backward"/></button>
-      <button v-if="!state.is_playing" class="btn-play" @click="startResumePlayback()"><font-awesome-icon icon="play"/></button>
-      <button v-if="state.is_playing" class="btn-play" @click="pausePlayback()"><font-awesome-icon icon="pause"/></button>
-      <button class="btn-next" @click="skipToNext()"><font-awesome-icon icon="step-forward"/></button>
-    </div>
-  </div>         
-  <div class="devices" v-if="state.devices.length > 0">
-    <h3>Dispositivos disponíveis:</h3>
-    <div class="device" v-for="device in state.devices" @click="transferPlayback(device.id)">
-      <div class="device-name">
-        <h4 v-if="device.is_active" :style="{ color: '#fff'}">{{ device.name }}</h4>
-        <h4 v-else>{{ device.name }}</h4>
-      </div>      
+    <div v-if="(state.devices.length == 0)">
+      <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
     </div>
   </div>
-  <div v-if="(state.devices.length == 0)">
-    <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
-  </div>
-</div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .message{
     color: #fff;
     font-size: 12px;
     text-align: center;
-}
-.no-devices{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
 }
 .span-no-devices{
   text-align: center;
   font-size: 18px;
   margin-top: 40px;
   color: #fff;
+}
+.center{
+  display: block;
+    margin-left: auto;
+    margin-right: auto
 }
 .player{
   margin: 40px auto 40px auto;
@@ -407,6 +239,7 @@
   height: 4px;
   background-color: #42b983;
   border-radius: 4px;
+  transition: width 0.1s;
 }
 .track-time{
   margin-top: 5px;
@@ -429,6 +262,17 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-gap: 10px;
+}
+.btn-down{
+  font-size: 20px;
+  border-radius: 50%;
+  background-color: #1c1c1c;
+  border: none;
+  outline: none;
+  margin-top: 10px;
+  cursor: pointer;
+  color: #999;
+  text-align: center;
 }
 .btn-previous{
   font-size: 20px;
