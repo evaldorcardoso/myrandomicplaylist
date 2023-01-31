@@ -196,6 +196,9 @@
         state.randomPlaylist = data
       })
       state.message = 'As músicas foram adicionadas com sucesso!'
+      setTimeout(() => {
+        router.push('/playlist/' + playlistId)
+      }, 1000)
     }catch(error){
       console.log(error)
       alert.value.showAlert(
@@ -248,7 +251,7 @@
         state.isProcessing = false
         return
       }
-      let message = 'Não foi possível adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.'
+      let message = 'Não foi possível adicionar as músicas a fila de reprodução! Tente salvar a playlist e tentar novamente.'
       state.message = message
       alert.value.showAlert(
         'error', // There are 4 types of alert: success, info, warning, error
@@ -259,7 +262,7 @@
       state.isProcessing = false
       return
     }
-    let message = 'As músicas foram adicionadas a lista de reprodução!'
+    let message = 'As músicas foram adicionadas a fila de reprodução!'
     state.message = message
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
@@ -286,7 +289,7 @@
           },
           "position_ms": 0,
       }
-      await executePlaylist(formData)     
+      await executePlaylist(formData)
       state.isProcessing = false
     }catch(error){
       console.log(error)
@@ -386,11 +389,11 @@
       Selecione as playlists que você mais gosta:
       </h4>          
       <button 
-        class="button-spotify" 
-        :class="{ 'button-dark': state.filters.includes('all'), 'button-light': !state.filters.includes('all') }" 
+        class="button-spotify-clear-filter button-light" 
+        v-if="!state.filters.includes('all')"
         @click="filterPLaylists('all')"
       >
-      Todas
+      X
       </button>
       <button 
         class="button-spotify" 
@@ -493,7 +496,17 @@
 .page{
   margin-top: 40px;
 }
-
+.button-spotify-clear-filter {
+  border-radius: 20px;
+  border: none;
+  padding: 10px 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  outline: none;
+  margin: 3px;
+  cursor: pointer;
+}
 .button-spotify {
   border-radius: 20px;
   border: none;
@@ -610,6 +623,9 @@
   color: #fff;
   margin-right: 25px;
   cursor: pointer;
+  border: 1px solid rgb(200, 200, 200);
+  padding: 10px 20px;
+  border-radius: 20px;
 }
 .btn-next{
     margin-right: 10px;
@@ -666,7 +682,7 @@
     background-color: #1c1c1c;
     padding: 10px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     align-items: center;
 }
 </style>
