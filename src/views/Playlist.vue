@@ -42,7 +42,7 @@
           "position_ms": 0,
       }
       const { status } = await executePlaylist(formData)
-      if (status == 204){
+      if (status != 204){
         openPlaylistApp(state.playlist.id)
         return
       }

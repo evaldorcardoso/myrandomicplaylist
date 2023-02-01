@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, reactive } from 'vue'
+  import { onMounted, onBeforeMount, reactive } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
 
   var intervalProgress;
@@ -114,9 +114,12 @@
 };
 
   onMounted(async () => {
+    progress()
+  })
+  
+  onBeforeMount(async () => {
     await getUserDevices()
     await getPlaybackUserState()
-    progress()
   })
 
 </script>
