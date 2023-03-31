@@ -1,16 +1,19 @@
 <script setup>
   import { onMounted, computed, reactive, ref } from 'vue'
   import VueBasicAlert from 'vue-basic-alert'
-  import { useProfile } from '@/support/spotifyApi'
+  import { useProfile, useGeneral } from '@/support/spotifyApi'
 
   const { 
     getTopItens, 
-    getRecommendations, 
+    getProfile, 
+    getPlaylists,
     getDevices, 
     getPlaybackState, 
     transferPlayback, 
     addTrackToQueue 
   } = useProfile();
+
+  const { getTracks } = useGeneral();
 
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
@@ -27,7 +30,7 @@
     devices: [],
     tracks: [],
     topTracks: [],
-    recommendations: [],
+    popTracks: [],
     user: null,
     userPopularity: 0,
     message: '',
@@ -52,12 +55,37 @@
     testPopularityLevel();
   }
 
-  const getUserRecommendations = async() => {
-    const topTracks = state.topTracks.slice(0, 5).map((top_track) => {
-      return top_track.id
-    });
-    const { data } = await getRecommendations(topTracks);
-    state.recommendations = data.tracks
+  const getUserPlaylists = async() => {
+    const { data } = await getPlaylists()
+    state.playlists = data.items
+    state.playlists = state.playlists.filter(
+      playlist => playlist.owner.display_name == state.user.display_name
+    )
+  }
+
+  const getPlaylistTracks = async(playlistId) => {
+    const { data } = await getTracks(playlistId)
+    state.tracks = state.tracks.concat(data.items)
+  }
+
+  const getUserPlaylistTracks = async() => {
+    state.isProcessing = true
+    state.message = 'Buscando músicas, aguarde...'  
+    await getUserPlaylists()
+    state.tracks = []
+    const unresolved = state.playlists.map(async(playlist) => {
+      await getPlaylistTracks(playlist.id)
+    })
+    await Promise.all(unresolved)
+    filterPopTracks()
+    state.isProcessing = false
+    state.message = ''
+  }
+
+  const filterPopTracks = () => {
+    state.popTracks = state.tracks
+    state.popTracks.sort((a, b) => b.track.popularity - a.track.popularity)
+    state.popTracks = state.popTracks.slice(0, 49)
   }
 
   const testPopularityLevel = ()=>{
@@ -101,13 +129,14 @@
       }
       await transferPlayback(formData)
     }
-    const tracks = state.recommendations.map(track => track.uri)
+
     let added = false
-    for (let i = 0; i < tracks.length; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      await addTrackToQueue(tracks[i]);
-      added = true
+    while (state.popTracks.length > 0) {
+      let track = state.popTracks.shift()
+      await addTrackToQueue(track.track.uri)
     }
+    added = true
+    
     if(!added){
       alert.value.showAlert(
         'error', // There are 4 types of alert: success, info, warning, error
@@ -115,6 +144,7 @@
         'Ops', // Header of the alert
         ALERT_OPTIONS
       )
+      state.isProcessing = false
       return
     }
     let message = `As músicas foram adicionadas a lista de reprodução!`
@@ -129,8 +159,8 @@
   }
 
   onMounted(async () => {      
-    await getUserTopItems()
-    await getUserRecommendations();
+    const { data } = await getProfile()
+    state.user = data
   })
 
 </script>
@@ -147,7 +177,11 @@
     <br><br><hr>
     <h3 class="center statistics-title">As top 10 de {{currentUser?.display_name}} </h3>
     <p class="center statistics-subtitle">No último mês</p>
-    <p class="center" style="color: white;display: table;font-size: 12px;">
+    <button v-if="state.topTracks.length === 0" class="center btn-execute" @click="getUserTopItems()" :disabled="state.isProcessing">
+      <p style="margin: 0" v-if="!(state.isProcessing)"> Buscar</p>
+      <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Buscando, aguarde...</p>
+    </button>
+    <p v-if="state.topTracks.length > 0" class="center" style="color: white;display: table;font-size: 12px;">
       <font-awesome-icon v-if="(state.userPopularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
       <font-awesome-icon v-else-if="(state.userPopularity >= 40 && state.userPopularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
       <font-awesome-icon v-else-if="(state.userPopularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
@@ -172,27 +206,31 @@
         </li>
       </ul>
     </div>
-    <h3 class="center statistics-title">Baseado no que você ouve: </h3>
-    <button class="center btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
+    <h3 class="center statistics-title">As top 50 mais populares de {{currentUser?.display_name}}: </h3>
+    <button v-if="state.popTracks.length === 0" class="center btn-execute" @click="getUserPlaylistTracks()" :disabled="state.isProcessing">
+      <p style="margin: 0" v-if="!(state.isProcessing)"> Buscar</p>
+      <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Buscando, aguarde...</p>
+    </button>
+    <button v-if="state.popTracks.length > 0" class="center btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
         <p style="margin: 0" v-if="!(state.isProcessing)"><font-awesome-icon icon="play" /> Adicionar à fila</p>
         <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Adicionando, aguarde...</p>
     </button>
     <div class="list-list">
       <ul class="list">
-        <li v-for="track in state.recommendations" class="list-item">
-          <img :src="track.album.images[0].url" class="music-cover" />
+        <li v-for="track in state.popTracks" class="list-item">
+          <img :src="track.track.album.images[0].url" class="music-cover" />
           <div class="list-item-content">                
             <div class="list-item-title">
-              {{track.name}}
+              {{track.track.name}}
             </div>
-            <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.popularity}}%
-            </div>
+            <div class="list-item-subtitle">{{track.track.artists[0].name}}</div>
           </div>
-          <div class="list-item-subtitle">{{track.artists[0].name}}</div>
+          <div class="list-item-popularity">
+            <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
+            <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
+            <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+            {{track.track.popularity}}%
+          </div>
         </li>
       </ul>
     </div>
@@ -204,11 +242,11 @@
 
 <style scoped>
 .center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
 }
 .title {
   margin-top: 20px;
@@ -230,10 +268,11 @@
   color: black;
   border: none;
   padding: 10px 20px;
-  border-radius: 4px;
   font-size: 16px;
   cursor: pointer;
   display: flex;
+  border-radius: 20px;
+  border: none;
 }
 .music-cover {
   width: 40px; 
@@ -241,7 +280,7 @@
   margin-right: 20px;
 }
 .list-list {
-  margin-bottom: 80px;
+  margin-bottom: 50px;
   padding: 10px;
 }
 .list {
@@ -281,9 +320,8 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     color: #fff;
-    width: 100%;
     font-size: 11px;
 }
 .icon-popularity-bad{
@@ -301,11 +339,12 @@
 .list-item-subtitle {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
+    align-items: baseline;
+    justify-content: flex-start;
     color: #999;
-    font-size: 12px;
-    text-align: right;
+    font-size: 11px;
+    text-align: left;
+    width: 100%;
 }
 .btn-execute{
     margin-top: 15px;
@@ -313,7 +352,8 @@
     color: #1c1c1c;
     border: none;
     padding: 10px 20px;
-    border-radius: 4px;
+    border-radius: 20px;
+    border: none;
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -324,7 +364,7 @@
   align-items: center;
   justify-content: center;
   bottom: 85px;
-  position: relative;
+  position: fixed;
   width: 100%;
   opacity: 0.3;
 }
