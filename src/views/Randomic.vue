@@ -13,12 +13,13 @@
     transferPlayback,
     skipToNext,
     startResumePlayback,
-    addTrackToQueue
+    addTrackToQueue,
+    getTopItens
   } = useProfile()
   const { getTracks, addTracksToPlaylist, savePlaylist } = useGeneral()
 
   const ALERT_OPTIONS = { 
-    iconSize: 35, // Size of the icon (px)
+    iconSize: 35,
     iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
     position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
   } 
@@ -33,11 +34,13 @@
     playlists: [],
     tracks: [],
     devices: [],
-    numberTracks: 2,
+    numberTracks: 50,
     user: null,
     message: '',
     step: 1,
     filters: ['all'],
+    pickMode: 'random',
+    orderMode: 'top'
   })
 
   const router = useRouter()
@@ -47,6 +50,7 @@
     state.isProcessing = true
     const { data } = await getPlaylists()
     state.playlistsOriginal = data.items
+    state.playlistsOriginal.forEach(item => item.checked = false)
     filterPLaylists()
     state.isProcessing = false
   }
@@ -59,37 +63,39 @@
 
   const pickTracks = async(allTracks) => {
     let tracksToPick = state.numberTracks
-    let tracks = 0
+    let tracks = []
     if(tracksToPick > allTracks.length){
       tracksToPick = allTracks.length
     }
-    while(tracks < tracksToPick) {
+    
+    while(tracks.length < tracksToPick) {
       let random = getRandomInt(0, allTracks.length)
-      let track = allTracks[random].track
+      let track = allTracks[random]
       if(track){
-        //somente adiciona se já não existir
-        if(undefined == state.tracks.find(item => item.track.id === track.id)){
-          track.checked = true
-          state.tracks.push(track)
-          await new Promise(r => setTimeout(r, 100))
-          tracks++
+        if(! tracks.find(item => item.id === track.id)){
+          tracks.push(track)
         }
       }
-      //limpa os itens repetidos em um array
-      //state.tracks = [...new Set(state.tracks)]         
-    }          
+    }  
+
+    state.tracks = tracks     
   }
 
   const getPlaylistTracks = async(playlistId) => {
     const { data } = await getTracks(playlistId)
-    return await pickTracks(data.items)
+    
+    data.items.map(item => {
+      item.track.checked = true 
+      state.tracks.push(item.track)
+    })
   }
 
-  const generatePlaylist = async() => {    
+  const generatePlaylist = async() => {  
+    setMode('random')  
     state.isProcessing = true
     state.processingStart = 1
     state.processingEnd = state.tracks.length
-    state.message = 'Gerando playlist, aguarde...'
+    state.message = 'Picking songs, wait...'
     state.randomPlaylist = null
     const playlists_selected = state.playlists.filter(item => item.checked)    
     state.tracks = []
@@ -97,14 +103,54 @@
       await getPlaylistTracks(playlist.id)
     })
     const resolved = await Promise.all(unresolved)
+    await pickTracks(state.tracks)
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
-      `Playlist gerada com sucesso com ${state.tracks.length} músicas!`, // Message of the alert
-      'Tudo certo', // Header of the alert
+      `Successful ${state.tracks.length} songs picked!`, // Message of the alert
+      'Alright', // Header of the alert
       ALERT_OPTIONS
     )
     state.message = ''
     state.isProcessing = false
+    state.step = 99
+  }
+
+  const getUserPlaylistTracks = async() => {
+    state.isProcessing = true
+    state.message = 'Searching for songs, wait...'  
+    const playlists_selected = state.playlists.filter(item => item.checked)    
+    state.tracks = []
+    const unresolved = playlists_selected.map(async(playlist) => {
+      await getPlaylistTracks(playlist.id)
+    })
+    await Promise.all(unresolved)
+    filterPopTracks()
+    state.isProcessing = false
+    state.message = ''
+  }
+
+  const getUserTopItems = async() => {
+    const { data } = await getTopItens(state.numberTracks)
+    data.items.map(item => {
+      item.checked = true 
+      state.tracks.push(item)
+    })
+
+    if (state.orderMode == 'bottom') {
+      state.tracks = state.tracks.reverse()
+    }
+  }
+
+  const filterPopTracks = () => {
+    if (state.orderMode == 'top') {
+      state.tracks.sort((a, b) => b.popularity - a.popularity)
+      state.tracks = state.tracks.slice(0, state.numberTracks)
+      return
+    }
+
+    state.tracks.sort((a, b) => a.popularity - b.popularity)
+    state.tracks = state.tracks.slice(0, state.numberTracks)
+    state.tracks = state.tracks.reverse()
   }
 
   const getPlaybackUserState = async() => {
@@ -195,7 +241,7 @@
         const { data } = await addTracksToPlaylist(playlistId, formData)
         state.randomPlaylist = data
       })
-      state.message = 'As músicas foram adicionadas com sucesso!'
+      state.message = 'The songs was successful added!'
       setTimeout(() => {
         router.push('/playlist/' + playlistId)
       }, 1000)
@@ -307,30 +353,59 @@
     window.open(`https://open.spotify.com/playlist/${playlist_id}`)
   }
 
-  const increaseStep = async() => {
+  const increaseStep = async(comp) => {
     if((state.step == 1)&&(state.playlists.filter(item => item.checked).length == 0)) {
-      let message = 'Selecione pelo menos 1 playlist!'
+      let message = 'Select at least 1 playlist!'
       state.message = message
       alert.value.showAlert(
         'warning', // There are 4 types of alert: success, info, warning, error
         message, // Message of the alert
         'Atenção', // Header of the alert
         ALERT_OPTIONS
-      )
-      return
+        )
+        return
     }
     state.message = ''
     state.step++
-    if(state.step == 3) {
-      await generatePlaylist()
+  }
+
+  const setPickMode = (mode) => {
+    state.pickMode = mode
+  }
+
+  const setOrderMode = (order) => {
+    state.orderMode = order
+    setMode()
+  }
+
+  const setMode = async() => {
+    switch (state.pickMode) {
+      case 'popularity':
+        await getUserPlaylistTracks()
+        state.step = 99
+        break;
+      
+      case 'usertopitems':
+        await getUserTopItems()
+        state.step = 99
+        
+      default:
+        break;
     }
   }
 
   const decreaseStep = () => {
-    if(state.step == 1){
+    state.tracks = []
+    if (state.step == 1) {
       router.push('/')
       return
     }
+
+    if (state.step == 99) {
+      state.step = 3
+      return
+    }
+
     state.step--
   }
 
@@ -358,6 +433,7 @@
   }
 
   const filterPrivatePlaylists = (value = true) => {
+    state.playlists.forEach(item => item.checked = false)
     if (value) {
       state.playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == state.user.display_name          
@@ -368,6 +444,16 @@
     state.playlists = state.playlistsOriginal.filter(
       playlist => playlist.owner.display_name != state.user.display_name          
     )
+  }
+
+  const selectAll = () => {
+    const playlists_selected = state.playlists.filter(item => item.checked)
+    if (playlists_selected.length < state.playlists.length) {
+      state.playlists.forEach(item => item.checked = true)
+      return
+    }
+
+    state.playlists.forEach(item => item.checked = false)
   }
 
   onMounted(async () => {    
@@ -381,12 +467,31 @@
 <template>
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
+    <div class="footer-fixed">
+      <a class="btn-voltar" @click="decreaseStep()">Previous</a>
+      <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
+        <!-- <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/> -->
+        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
+        <div v-if="!(state.isProcessing)">Next step</div>
+      </button>
+      <button v-if="state.step == 99" class="btn-save" @click="saveUserPlaylist()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
+      </button>
+      <button v-if="state.step == 99" class="btn-execute" @click="executeUserPlaylist()" :disabled="state.isProcessing">
+        <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
+        <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
+        <div v-if="!(state.isProcessing)"> Play</div>
+        <div v-if="(state.isProcessing)"> Loading... {{state.processingStart}}/{{state.processingEnd}}</div>
+      </button>
+    </div> 
+    <hr style="margin-top: 15px;">
     <div v-if="(state.step == 1)">
       <h4 
         class="center" 
         style="margin: 20px 0 20px 0;color:#fff"
       >
-      Selecione as playlists que você mais gosta:
+      Select the playlists you like the most:
       </h4>          
       <button 
         class="button-spotify-clear-filter button-light" 
@@ -400,14 +505,21 @@
         :class="{ 'button-dark': state.filters.includes('private'), 'button-light': !state.filters.includes('private') }"
         @click="filterPLaylists('private')"
       >
-      Minhas
+      My playlists
       </button>
       <button 
         class="button-spotify" 
         :class="{ 'button-dark': state.filters.includes('liked'), 'button-light': !state.filters.includes('liked') }" 
         @click="filterPLaylists('liked')"
       >
-      Curtidas
+      Liked
+      </button>
+      <button 
+        class="button-spotify-no-border" 
+        :class="'button-light-no-border'" 
+        @click="selectAll()"
+      >
+      Select all
       </button>
       <p class="message">{{state.message}}</p>
       <!-- lista com as playlists-->
@@ -427,7 +539,7 @@
                 </div>
                 <div class="list-item-text">
                   <div class="list-item-title">{{playlist.name}}</div>
-                  <div class="list-item-subtitle">{{playlist.tracks.total}} músicas</div>
+                  <div class="list-item-subtitle">{{playlist.tracks.total}} songs</div>
                 </div>
               </div>
             </li>
@@ -435,12 +547,33 @@
       </div>
     </div>
     <div v-if="(state.step == 2)">
-      <h3 class="center" style="margin-top: 20px;color:#fff">Quantas músicas devemos utilizar de cada playlist?</h3>          
+      <h3 class="center" style="margin-top: 20px;color:#fff">How many songs ?</h3>          
       <p class="message">{{state.message}}</p>
-      <input type="number" v-model="state.numberTracks" class="input-number center" min="1" max="10" />
+      <input type="number" v-model="state.numberTracks" class="input-number center" min="1" max="999" />
     </div>
     <div v-if="(state.step == 3)">
-      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Aqui está sua nova playlist gerada com {{state.tracks.filter(track => track.checked).length}} música(s):</h3>          
+      <h3 class="center" style="margin-top: 20px;color:#fff">How the songs will be picked?</h3>          
+      <p class="message">{{state.message}}</p>
+      <button class="button-spotify button-light" 
+        @click="generatePlaylist()">Random
+      </button>
+      <button class="button-spotify" 
+        :class="{ 'button-dark': state.pickMode == 'popularity', 'button-light': state.pickMode != 'popularity' }" 
+        @click="setPickMode('popularity')">By popularity
+      </button>
+      <button class="button-spotify" 
+      :class="{ 'button-dark': state.pickMode == 'usertopitems', 'button-light': state.pickMode != 'usertopitems' }" 
+        @click="setPickMode('usertopitems')">User top items</button>
+    </div>
+    <div v-if="((state.pickMode == 'popularity') || (state.pickMode == 'usertopitems')) &&
+      state.step == 3">
+      <h3 class="center" style="margin-top: 20px;color:#fff">How the songs will be ordered?</h3>          
+      <p class="message">{{state.message}}</p>
+      <button class="button-spotify button-light" @click="setOrderMode('top')">Top first</button>
+      <button class="button-spotify button-light" @click="setOrderMode('bottom')">Top last</button>
+    </div>
+    <div v-if="(state.step == 99)">
+      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Here are your {{state.tracks.filter(track => track.checked).length}} picked track(s):</h3>          
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
       <div class="list-list">
@@ -462,32 +595,16 @@
                   <div class="list-item-subtitle">{{track.artists[0].name}}</div>
                 </div>
               </div>
+              <div class="list-item-popularity">
+                <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+                {{track.popularity}}%
+              </div>
             </li>
           </ul>
       </div>
-    </div>
-    <div class="footer-fixed">
-      <a class="btn-voltar" @click="decreaseStep()">Voltar</a>
-      <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
-        <!-- <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/> -->
-        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
-        <div v-if="!(state.isProcessing)">Avançar</div>
-      </button>
-      <button v-if="state.step == 3" class="btn-generate" @click="generatePlaylist()" :disabled="state.isProcessing">
-        <font-awesome-icon icon="random" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
-      </button>
-      <button v-if="state.step == 3" class="btn-save" @click="saveUserPlaylist()" :disabled="state.isProcessing">
-        <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
-      </button>
-      <button v-if="state.step == 3" class="btn-execute" @click="executeUserPlaylist()" :disabled="state.isProcessing">
-        <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
-        <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
-        <div v-if="!(state.isProcessing)"> Executar</div>
-        <div v-if="(state.isProcessing)"> Aguarde... {{state.processingStart}}/{{state.processingEnd}}</div>
-      </button>
-    </div>          
+    </div>             
   </div>
 </template>
 
@@ -500,7 +617,6 @@
   border-radius: 20px;
   border: none;
   padding: 10px 13px;
-  text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 11px;
   outline: none;
@@ -510,8 +626,16 @@
 .button-spotify {
   border-radius: 20px;
   border: none;
-  padding: 10px 25px;
-  text-transform: uppercase;
+  padding: 10px 18px;
+  letter-spacing: 1px;
+  font-size: 11px;
+  outline: none;
+  margin: 3px;
+  cursor: pointer;
+}
+.button-spotify-no-border {
+  border: none;
+  padding: 10px 18px;
   letter-spacing: 1px;
   font-size: 11px;
   outline: none;
@@ -527,6 +651,10 @@
   background: none;
   color: rgb(200, 200, 200);
   border: 1px solid rgb(200, 200, 200);
+}
+.button-light-no-border {
+  background: none;
+  color: rgb(200, 200, 200);
 }
 .center{
     display: flex;
@@ -651,17 +779,6 @@
     cursor: pointer;
     display: flex;
 }
-.btn-generate{
-    margin-right: 10px;
-    background-image: transparent;
-    color: black;
-    border: 1px solid #fff;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-}
 .btn-execute{
     margin-right: 10px;
     background-image: linear-gradient(60deg, #e0eb98, #62faf5);
@@ -684,5 +801,25 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+.list-item-popularity{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  color: #fff;
+  font-size: 11px;
+}
+.icon-popularity-bad {
+  color: rgb(255, 23, 23);
+  margin-right: 3px;
+}
+.icon-popularity-medium {
+  color: rgb(255, 240, 30);
+  margin-right: 3px;
+}
+.icon-popularity-good {
+  color: rgb(117, 255, 24);
+  margin-right: 3px;
 }
 </style>
