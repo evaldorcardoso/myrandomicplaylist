@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, reactive, ref } from 'vue'
+  import { onMounted, computed, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useProfile, useGeneral } from '@/support/spotifyApi'
@@ -22,7 +22,7 @@
     iconSize: 35,
     iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
     position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-  } 
+  }
 
   const state = reactive({
     isProcessing: false,
@@ -37,7 +37,6 @@
     numberTracks: 50,
     user: null,
     message: '',
-    step: 1,
     filters: ['all'],
     pickMode: 'random',
     orderMode: 'top'
@@ -90,7 +89,28 @@
     })
   }
 
-  const generatePlaylist = async() => {  
+  const hasPlaylistSelected = () => {
+    if (state.playlists.filter(item => item.checked).length == 0) {
+      let message = 'Select at least 1 playlist!'
+      state.message = message
+      alert.value.showAlert(
+        'warning', // There are 4 types of alert: success, info, warning, error
+        message, // Message of the alert
+        'Atenção', // Header of the alert
+        ALERT_OPTIONS
+      )
+      return false
+    }
+
+    return true
+  }
+
+  const generatePlaylist = async() => {
+    if (! hasPlaylistSelected()) {
+      emit('update-step-data', 1)
+      return
+    }
+    state.tracks = []
     setMode('random')  
     state.isProcessing = true
     state.processingStart = 1
@@ -112,10 +132,14 @@
     )
     state.message = ''
     state.isProcessing = false
-    state.step = 99
+    emit('update-step-data', 99)
   }
 
   const getUserPlaylistTracks = async() => {
+    if (! hasPlaylistSelected()) {
+      emit('update-step-data', 1)
+      return
+    }
     state.isProcessing = true
     state.message = 'Searching for songs, wait...'  
     const playlists_selected = state.playlists.filter(item => item.checked)    
@@ -127,6 +151,7 @@
     filterPopTracks()
     state.isProcessing = false
     state.message = ''
+    emit('update-step-data', 99)
   }
 
   const getUserTopItems = async() => {
@@ -198,8 +223,8 @@
 
   const saveUserPlaylist = async() => {
     state.isProcessing = true
-    const name = prompt('Informe o Nome da playlist: ', 'Playlist Aleatoria')
-    const description = 'Playlist gerada automaticamente pelo gerador de playlist aleatória do Spotify @evaldorcardoso'
+    const name = prompt('Playlist name: ', 'Random Playlist')
+    const description = 'Playlist created by MyRandomicPlaylist App from @evaldorcardoso'
     const _public = false    
     const formData = {
       'name' : name,
@@ -209,12 +234,12 @@
     const userId = state.user.id
     const { data } = await savePlaylist(userId, formData)
     state.randomPlaylist = data
-    let message = 'Playlist criada com sucesso!'
+    let message = 'Playlist created successfully!'
     state.message = message
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
       message, // Message of the alert
-      'Tudo certo', // Header of the alert
+      'Alright', // Header of the alert
       ALERT_OPTIONS
     )
     addTracksToUserPlaylist(state.randomPlaylist.id)
@@ -241,7 +266,7 @@
         const { data } = await addTracksToPlaylist(playlistId, formData)
         state.randomPlaylist = data
       })
-      state.message = 'The songs was successful added!'
+      state.message = 'The songs were successfully added!'
       setTimeout(() => {
         router.push('/playlist/' + playlistId)
       }, 1000)
@@ -261,12 +286,12 @@
     const { data } = await getDevices()
     state.devices = data.devices
     if(state.devices.length == 0){
-      let message = 'Nenhum dispositivo conectado, não foi possível executar a playlist!'
+      let message = 'No device connected!'
       state.message = message
       alert.value.showAlert(
         'info', // There are 4 types of alert: success, info, warning, error
         message, // Message of the alert
-        'Informação', // Header of the alert
+        'Info', // Header of the alert
         ALERT_OPTIONS
       )
       state.isProcessing = false
@@ -277,7 +302,7 @@
   }
 
   const addToQueue = async() => {
-    state.message = 'Adicionando músicas a fila de reprodução, aguarde...'
+    state.message = 'Adding songs, wait...'
     await getPlaybackUserState()
     if(!state.isPlaying){
       tryTransferPLaybackState()
@@ -297,23 +322,23 @@
         state.isProcessing = false
         return
       }
-      let message = 'Não foi possível adicionar as músicas a fila de reprodução! Tente salvar a playlist e tentar novamente.'
+      let message = "It's not possible to add song to the playlist! Try again."
       state.message = message
       alert.value.showAlert(
         'error', // There are 4 types of alert: success, info, warning, error
         message, // Message of the alert
-        'Ops', // Header of the alert
+        'Error', // Header of the alert
         ALERT_OPTIONS
       )
       state.isProcessing = false
       return
     }
-    let message = 'As músicas foram adicionadas a fila de reprodução!'
+    let message = 'Songs added to playlist successfully!'
     state.message = message
     alert.value.showAlert(
       'success', // There are 4 types of alert: success, info, warning, error
       message, // Message of the alert
-      'Tudo certo', // Header of the alert
+      'Alright', // Header of the alert
       ALERT_OPTIONS
     )
     state.isProcessing = false
@@ -343,7 +368,7 @@
       alert.value.showAlert(
         'error', // There are 4 types of alert: success, info, warning, error
         error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'Error', // Header of the alert
         ALERT_OPTIONS
       )
     }
@@ -351,22 +376,6 @@
 
   const openPlaylistApp = (playlist_id) => {
     window.open(`https://open.spotify.com/playlist/${playlist_id}`)
-  }
-
-  const increaseStep = async(comp) => {
-    if((state.step == 1)&&(state.playlists.filter(item => item.checked).length == 0)) {
-      let message = 'Select at least 1 playlist!'
-      state.message = message
-      alert.value.showAlert(
-        'warning', // There are 4 types of alert: success, info, warning, error
-        message, // Message of the alert
-        'Atenção', // Header of the alert
-        ALERT_OPTIONS
-        )
-        return
-    }
-    state.message = ''
-    state.step++
   }
 
   const setPickMode = (mode) => {
@@ -379,34 +388,19 @@
   }
 
   const setMode = async() => {
+    state.tracks = []
     switch (state.pickMode) {
       case 'popularity':
         await getUserPlaylistTracks()
-        state.step = 99
         break;
       
       case 'usertopitems':
         await getUserTopItems()
-        state.step = 99
+        emit('update-step-data', 99)
         
       default:
         break;
     }
-  }
-
-  const decreaseStep = () => {
-    state.tracks = []
-    if (state.step == 1) {
-      router.push('/')
-      return
-    }
-
-    if (state.step == 99) {
-      state.step = 3
-      return
-    }
-
-    state.step--
   }
 
   const filterPLaylists = (value = 'all') => {
@@ -456,10 +450,24 @@
     state.playlists.forEach(item => item.checked = false)
   }
 
+  const props = defineProps({
+    stepData: {
+      type: Number,
+      default: 1
+    }
+  });
+
+  const currentStep = computed(() => {
+    return props.stepData;
+  })
+
+  const emit = defineEmits(['update-step-data'])
+
   onMounted(async () => {    
     const { data } = await getProfile()
     state.user = data
     getUserPlaylists()
+    emit('update-step-data', 1)
   })
 
 </script>
@@ -467,32 +475,25 @@
 <template>
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
-    <div class="footer-fixed">
-      <a class="btn-voltar" @click="decreaseStep()">Previous</a>
-      <button v-if="state.step < 3" class="btn-next" @click="increaseStep()" :disabled="state.isProcessing">
-        <!-- <font-awesome-icon icon="arrow-right" v-if="!(state.isProcessing)"/> -->
-        <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
-        <div v-if="!(state.isProcessing)">Next step</div>
-      </button>
-      <button v-if="state.step == 99" class="btn-save" @click="saveUserPlaylist()" :disabled="state.isProcessing">
+    <div class="footer-fixed" v-if="currentStep == 99">
+      <button class="btn-save" @click="saveUserPlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="save" v-if="!(state.isProcessing)"/>
         <font-awesome-icon icon="spinner" v-if="(state.isProcessing)"/>
       </button>
-      <button v-if="state.step == 99" class="btn-execute" @click="executeUserPlaylist()" :disabled="state.isProcessing">
+      <button class="btn-execute" @click="executeUserPlaylist()" :disabled="state.isProcessing">
         <font-awesome-icon icon="play" v-if="!(state.isProcessing)"/>
         <font-awesome-icon icon="hourglass" v-if="(state.isProcessing)"/>
         <div v-if="!(state.isProcessing)"> Play</div>
         <div v-if="(state.isProcessing)"> Loading... {{state.processingStart}}/{{state.processingEnd}}</div>
       </button>
     </div> 
-    <hr style="margin-top: 15px;">
-    <div v-if="(state.step == 1)">
-      <h4 
+    <div v-if="(currentStep == 1)">
+      <h3
         class="center" 
         style="margin: 20px 0 20px 0;color:#fff"
       >
       Select the playlists you like the most:
-      </h4>          
+      </h3>          
       <button 
         class="button-spotify-clear-filter button-light" 
         v-if="!state.filters.includes('all')"
@@ -546,12 +547,12 @@
           </ul>
       </div>
     </div>
-    <div v-if="(state.step == 2)">
+    <div v-if="(currentStep == 2)">
       <h3 class="center" style="margin-top: 20px;color:#fff">How many songs ?</h3>          
       <p class="message">{{state.message}}</p>
       <input type="number" v-model="state.numberTracks" class="input-number center" min="1" max="999" />
     </div>
-    <div v-if="(state.step == 3)">
+    <div v-if="(currentStep == 3)">
       <h3 class="center" style="margin-top: 20px;color:#fff">How the songs will be picked?</h3>          
       <p class="message">{{state.message}}</p>
       <button class="button-spotify button-light" 
@@ -566,14 +567,14 @@
         @click="setPickMode('usertopitems')">User top items</button>
     </div>
     <div v-if="((state.pickMode == 'popularity') || (state.pickMode == 'usertopitems')) &&
-      state.step == 3">
+      currentStep == 3">
       <h3 class="center" style="margin-top: 20px;color:#fff">How the songs will be ordered?</h3>          
       <p class="message">{{state.message}}</p>
       <button class="button-spotify button-light" @click="setOrderMode('top')">Top first</button>
       <button class="button-spotify button-light" @click="setOrderMode('bottom')">Top last</button>
     </div>
-    <div v-if="(state.step == 99)">
-      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">Here are your {{state.tracks.filter(track => track.checked).length}} picked track(s):</h3>          
+    <div v-if="(currentStep == 99)">
+      <h3 v-if="state.tracks.length > 0" class="center" style="margin-top: 20px;color:#fff">This is your {{state.tracks.filter(track => track.checked).length}} picked track(s):</h3>          
       <p class="message">{{state.message}}</p>
       <!-- exibir uma lista com as músicas como no spotify-->
       <div class="list-list">
@@ -611,7 +612,7 @@
 <style scoped>
 
 .page{
-  margin-top: 40px;
+  /*margin-top: 40px;*/
 }
 .button-spotify-clear-filter {
   border-radius: 20px;
@@ -746,27 +747,6 @@
     line-height: 24px;
     color: black;
 }
-.btn-voltar{
-  display: flex;
-  color: #fff;
-  margin-right: 25px;
-  cursor: pointer;
-  border: 1px solid rgb(200, 200, 200);
-  padding: 10px 20px;
-  border-radius: 20px;
-}
-.btn-next{
-    margin-right: 10px;
-    /*background-image: linear-gradient(60deg, #e0eb98, #62faf5);*/
-    background-color: rgb(30, 215, 96);
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-}
 .btn-save{
     margin-right: 10px;
     /* background-image: linear-gradient(60deg, #e0eb98, #62faf5); */
@@ -795,12 +775,10 @@
     top: 58px;
     left: 0;
     right: 0;
-    /*background-color: #414040;*/
     background-color: #1c1c1c;
     padding: 10px;
     display: flex;
     justify-content: center;
-    align-items: center;
 }
 .list-item-popularity{
   display: flex;

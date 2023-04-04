@@ -7,6 +7,7 @@
     const { getPlaybackState, getProfile } = useProfile()
     const floatPlayerData = ref(null);
     const user = ref(null);
+    const step = ref(null)
 
     const currentData = computed(() => {
         return floatPlayerData.value;
@@ -18,6 +19,18 @@
     const getUserProfile = async() => {
         const { data } = await getProfile()
         user.value = data
+        step.value = 0
+    }
+
+    const props = defineProps({
+        stepData: {
+            type: Number,
+            default: 0
+        }
+    });
+
+    const onUpdateStepData = (value) => {
+        step.value = value
     }
 
     setInterval(async () => {
@@ -37,7 +50,7 @@
 </script>
 
 <template>
-    <Navbar :user-data="user" />
+    <Navbar :user-data="user" :step-data="step" @update-step-data="onUpdateStepData"/>
     <FloatPlayer v-if="floatPlayerData" :current-data="currentData"/>
-    <router-view :user-data="user" />
+    <router-view :user-data="user" :step-data="step" @update-step-data="onUpdateStepData"/>
 </template>
