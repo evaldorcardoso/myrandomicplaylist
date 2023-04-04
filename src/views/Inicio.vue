@@ -1,228 +1,56 @@
 <script setup>
-  import { onMounted, computed, reactive, ref } from 'vue'
+  import { onMounted, ref } from 'vue'
   import VueBasicAlert from 'vue-basic-alert'
-  import { useProfile } from '@/support/spotifyApi'
 
-  const { 
-    getTopItens, 
-    getRecommendations, 
-    getDevices, 
-    getPlaybackState, 
-    transferPlayback, 
-    addTrackToQueue 
-  } = useProfile();
-
-  const msg = ref('Gerador de playlist aleatória do Spotify')
-
-  const ALERT_OPTIONS = { 
-    iconSize: 35, // Size of the icon (px)
-    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-  } 
-
-  const state = reactive({
-    isProcessing: false,
-    isPlaying: false,
-    playlists: [],
-    devices: [],
-    tracks: [],
-    topTracks: [],
-    recommendations: [],
-    user: null,
-    userPopularity: 0,
-    message: '',
-  })
-
-  const props = defineProps({
-    userData: {
-        type: Object,
-        default: () => { },
-    },
-  });
-
-  const currentUser = computed(() => {
-    return props.userData;
-  });
 
   const alert = ref(null)
-
-  const getUserTopItems = async() => {
-    const { data } = await getTopItens()
-    state.topTracks =data.items
-    testPopularityLevel();
-  }
-
-  const getUserRecommendations = async() => {
-    const topTracks = state.topTracks.slice(0, 5).map((top_track) => {
-      return top_track.id
-    });
-    const { data } = await getRecommendations(topTracks);
-    state.recommendations = data.tracks
-  }
-
-  const testPopularityLevel = ()=>{
-    let popularity = 0;
-    const tracks = state.topTracks;
-    tracks.map(async(item) => {
-      let track = JSON.parse(JSON.stringify(item));
-      popularity+=track.popularity;
-    });
-    state.userPopularity = popularity / state.topTracks.length;
-  }
 
   const openLink = (url) => {
     window.open(url, '_blank')
   }
 
-  const executePlaylist = async() => {  
-    state.isProcessing = true
-    state.message = 'Adicionando músicas a fila de reprodução, aguarde...'  
-    const { data } = await getPlaybackState()
-    state.isPlaying = data.is_playing
-    if(!state.isPlaying){
-      const { data } = await getDevices()
-      state.devices = data.devices
-      if(state.devices.length == 0){
-        let message = 'Nenhum dispositivo conectado, não foi possivel executar a playlist!'
-        state.message = message
-        alert.value.showAlert(
-          'info', // There are 4 types of alert: success, info, warning, error
-          message, // Message of the alert
-          'Informação', // Header of the alert
-          ALERT_OPTIONS
-        )
-        state.isProcessing = false
-        return
-      }
-      const device_id = state.devices[0].id
-      const formData = {
-        "device_ids": [device_id],
-        "play": true
-      }
-      await transferPlayback(formData)
-    }
-    const tracks = state.recommendations.map(track => track.uri)
-    let added = false
-    for (let i = 0; i < tracks.length; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      await addTrackToQueue(tracks[i]);
-      added = true
-    }
-    if(!added){
-      alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        `Não foi possivel adicionar as músicas a lista de reprodução! Tente salvar a playlist e tentar novamente.`, // Message of the alert
-        'Ops', // Header of the alert
-        ALERT_OPTIONS
-      )
-      return
-    }
-    let message = `As músicas foram adicionadas a lista de reprodução!`
-    alert.value.showAlert(
-      'success', // There are 4 types of alert: success, info, warning, error
-      message, // Message of the alert
-      'Tudo certo', // Header of the alert
-      ALERT_OPTIONS
-    )
-    state.message = message
-    state.isProcessing = false
-  }
-
-  onMounted(async () => {      
-    await getUserTopItems()
-    await getUserRecommendations();
-  })
+  onMounted(async () => {})
 
 </script>
 
 <template>
   <div class="page">
-    <h2 class="center title">{{ msg }}</h2>
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <router-link to="/randomic" style="text-decoration:none">
-      <button class="btn-generate">
-        <font-awesome-icon icon="play" /> Começar
-      </button>
-    </router-link>
-    <br><br><hr>
-    <h3 class="center statistics-title">As top 10 de {{currentUser?.display_name}} </h3>
-    <p class="center statistics-subtitle">No último mês</p>
-    <p class="center" style="color: white;display: table;font-size: 12px;">
-      <font-awesome-icon v-if="(state.userPopularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.userPopularity >= 40 && state.userPopularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.userPopularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-      {{state.userPopularity}}
-    </p>
-    <div class="list-list">
-      <ul class="list">
-        <li v-for="track in state.topTracks" class="list-item">
-          <img :src="track.album.images[0].url" class="music-cover" />
-          <div class="list-item-content">                
-            <div class="list-item-title">
-              {{track.name}}
-            </div>
-            <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.popularity}}%
-            </div>
-          </div>
-          <div class="list-item-subtitle">{{track.artists[0].name}}</div>
-        </li>
-      </ul>
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+    <div class="content">
+      <div class="content__container">
+        <p class="content__container__text">
+          Play
+        </p>
+        
+        <ul class="content__container__list">
+          <li class="content__container__list__item">random items !</li>
+          <li class="content__container__list__item">top items !</li>
+          <li class="content__container__list__item">library items !</li>
+          <li class="content__container__list__item">spotify !</li>
+        </ul>
+      </div>
+      <router-link to="/randomic" props="stepData" style="text-decoration:none;margin-top: 75px;display: block;">
+        <button class="btn-generate">
+          Start now !
+        </button>
+      </router-link>
     </div>
-    <h3 class="center statistics-title">Baseado no que você ouve: </h3>
-    <button class="center btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
-        <p style="margin: 0" v-if="!(state.isProcessing)"><font-awesome-icon icon="play" /> Adicionar à fila</p>
-        <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Adicionando, aguarde...</p>
-    </button>
-    <div class="list-list">
-      <ul class="list">
-        <li v-for="track in state.recommendations" class="list-item">
-          <img :src="track.album.images[0].url" class="music-cover" />
-          <div class="list-item-content">                
-            <div class="list-item-title">
-              {{track.name}}
-            </div>
-            <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.popularity}}%
-            </div>
-          </div>
-          <div class="list-item-subtitle">{{track.artists[0].name}}</div>
-        </li>
-      </ul>
-    </div>
+
     <div class="footer">
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>    
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-}
-.title {
-  margin-top: 20px;
-  color:#fff;
-  text-align: center;
-}
-.statistics-title {
-  margin-top: 20px;
-  color:#fff;
-}
-.statistics-subtitle {
-  margin-top: 0px;
-  color:#fff;
-  font-size:12px
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
 }
 .btn-generate {
   margin: 25px auto auto auto;
@@ -230,93 +58,11 @@
   color: black;
   border: none;
   padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
-}
-.music-cover {
-  width: 40px; 
-  height: 40px;
-  margin-right: 20px;
-}
-.list-list {
-  margin-bottom: 80px;
-  padding: 10px;
-}
-.list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    padding: 0px;
-}
-.list-item {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    width: 100%;
-    height: 50px;
-}
-.list-item-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    margin: auto;
-    flex: 90%;
-}
-.list-item-title {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    color: #fff;
-    width: 100%;
-}
-.list-item-popularity{
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    color: #fff;
-    width: 100%;
-    font-size: 11px;
-}
-.icon-popularity-bad{
-    color: rgb(255, 23, 23);
-    margin-right: 3px;
-}
-.icon-popularity-medium{
-    color: rgb(255, 240, 30);
-    margin-right: 3px;
-}
-.icon-popularity-good{
-    color: rgb(117, 255, 24);
-    margin-right: 3px;
-}
-.list-item-subtitle {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    color: #999;
-    font-size: 12px;
-    text-align: right;
-}
-.btn-execute{
-    margin-top: 15px;
-    background-image: linear-gradient(60deg, #e0eb98, #62faf5);
-    color: #1c1c1c;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
+  border-radius: 20px;
+  border: none;
 }
 .footer {
   display: flex;
@@ -324,8 +70,138 @@
   align-items: center;
   justify-content: center;
   bottom: 85px;
-  position: relative;
+  position: fixed;
   width: 100%;
   opacity: 0.3;
+}
+/*NEW CODE */
+.content {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 160px;
+  overflow:hidden;
+  
+  font-family: 'Lato', sans-serif;
+  font-size: 27px;
+  line-height: 40px;
+  color: #ecf0f1;
+  
+  &__container {
+    font-weight: 600;
+    overflow: hidden;
+    height: 40px;
+    padding: 0 40px;
+
+    &:before {
+      content: '[';
+      left: 0;
+    }
+
+    &:after {
+      content: ']';
+      position: absolute;
+      right: 0;
+    }
+
+    &:after, &:before {
+      position: absolute;
+      top: 0;
+      
+      color: rgb(30, 215, 96);
+      font-size: 34px;
+      line-height: 40px;
+      
+      -webkit-animation-name: opacity;
+      -webkit-animation-duration: 2s;
+      -webkit-animation-iteration-count: infinite;
+      animation-name: opacity;
+      animation-duration: 2s;
+      animation-iteration-count: infinite;
+    }
+
+    &__text {
+      display: inline;
+      float: left;
+      margin: 0;
+    }
+
+    &__list {
+      margin-top: 0;
+      padding-left: 70px;
+      text-align: left;
+      list-style: none;
+      width: 180px;
+      
+      -webkit-animation-name: change;
+      -webkit-animation-duration: 10s;
+      -webkit-animation-iteration-count: infinite;
+      animation-name: change;
+      animation-duration: 10s;
+      animation-iteration-count: infinite;
+
+      &__item {
+        line-height:40px;
+        margin:0;
+      }
+    }
+  }
+}
+
+@-webkit-keyframes opacity {
+  0%, 100% {opacity:0;}
+  50% {opacity:1;}
+}
+
+@-webkit-keyframes change {
+  0%, 12.66%, 100% {transform:translate3d(0,0,0);}
+  16.66%, 29.32% {transform:translate3d(0,-25%,0);}
+  33.32%,45.98% {transform:translate3d(0,-50%,0);}
+  49.98%,62.64% {transform:translate3d(0,-75%,0);}
+  66.64%,79.3% {transform:translate3d(0,-50%,0);}
+  83.3%,95.96% {transform:translate3d(0,-25%,0);}
+}
+
+@-o-keyframes opacity {
+  0%, 100% {opacity:0;}
+  50% {opacity:1;}
+}
+
+@-o-keyframes change {
+  0%, 12.66%, 100% {transform:translate3d(0,0,0);}
+  16.66%, 29.32% {transform:translate3d(0,-25%,0);}
+  33.32%,45.98% {transform:translate3d(0,-50%,0);}
+  49.98%,62.64% {transform:translate3d(0,-75%,0);}
+  66.64%,79.3% {transform:translate3d(0,-50%,0);}
+  83.3%,95.96% {transform:translate3d(0,-25%,0);}
+}
+
+@-moz-keyframes opacity {
+  0%, 100% {opacity:0;}
+  50% {opacity:1;}
+}
+
+@-moz-keyframes change {
+  0%, 12.66%, 100% {transform:translate3d(0,0,0);}
+  16.66%, 29.32% {transform:translate3d(0,-25%,0);}
+  33.32%,45.98% {transform:translate3d(0,-50%,0);}
+  49.98%,62.64% {transform:translate3d(0,-75%,0);}
+  66.64%,79.3% {transform:translate3d(0,-50%,0);}
+  83.3%,95.96% {transform:translate3d(0,-25%,0);}
+}
+
+@keyframes opacity {
+  0%, 100% {opacity:0;}
+  50% {opacity:1;}
+}
+
+@keyframes change {
+  0%, 12.66%, 100% {transform:translate3d(0,0,0);}
+  16.66%, 29.32% {transform:translate3d(0,-25%,0);}
+  33.32%,45.98% {transform:translate3d(0,-50%,0);}
+  49.98%,62.64% {transform:translate3d(0,-75%,0);}
+  66.64%,79.3% {transform:translate3d(0,-50%,0);}
+  83.3%,95.96% {transform:translate3d(0,-25%,0);}
 }
 </style>

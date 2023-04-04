@@ -10,6 +10,7 @@ import {
     faBook,
     faChartLine,
     faChevronLeft,
+    faChevronRight,
     faHome,
     faHourglass,
     faMobileAlt, 
@@ -45,7 +46,8 @@ library.add(
     faSave,
     faBook,
     faChartLine,
-    faChevronLeft
+    faChevronLeft,
+    faChevronRight,
 )
 
 const app  = createApp(App)

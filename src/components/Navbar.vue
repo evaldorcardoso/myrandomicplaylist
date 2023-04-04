@@ -15,17 +15,30 @@
         type: Object,
         default: () => { },
     },
+    stepData: {
+      type: Number,
+      default: 1
+    }
   });
 
   const currentUser = computed(() => {
       return props.userData;
   });
 
+  const currentStep = computed(() => {
+    return props.stepData;
+  })
+
   const openLink = (link) => {
     window.open(link, '_blank')
   }
 
   const goBack = () => {
+    if (currentStep.value > 0) {
+      decreaseStep()
+      return
+    }
+
 	  router.go(-1);
   };
 
@@ -36,6 +49,27 @@
     setTimeout(() => {
       window.location.reload()
     }, 100)
+  }
+
+  const emit = defineEmits(['update-step-data'])
+
+  const increaseStep = () => {
+    emit('update-step-data', currentStep.value + 1)
+  }
+
+  const decreaseStep = () => {
+    if (currentStep.value == 1) {
+      emit('update-step-data', 0)
+      router.push('/')
+      return
+    }
+
+    if (currentStep.value == 99) {
+      emit('update-step-data', 3)
+      return
+    }
+
+    emit('update-step-data', currentStep.value - 1)
   }
 
   onMounted(async () => {
@@ -54,9 +88,24 @@
             <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" />
           </div>
         </div>
-        <div class="right" style="margin: auto">
-          <font-awesome-icon icon="bars" style="width:30px;height:30px;color:black;margin:auto" @click="state.menuOpen = !state.menuOpen"/>
+        <div class="center" style="text-align: center;">
+          <div v-if="$router.currentRoute.value.name != 'Home'">
+            <!-- <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" /> -->
+            <p>@{{ currentUser?.display_name }}</p>
+          </div>
         </div>
+        <div class="right" style="margin: auto" v-if="currentStep == 0">
+          <font-awesome-icon icon="bars"
+            style="width:30px;height:30px;color:black;margin:auto"
+            @click="state.menuOpen = !state.menuOpen"
+          />
+          </div>
+          <div class="right" style="margin: auto" v-if="(currentStep > 0) && (currentStep < 99)" @click="increaseStep()">
+            <font-awesome-icon v-if="router.name != 'Home'"
+              icon="chevron-right"
+              style="width:30px;height:30px;color:black;margin:auto"
+            />
+          </div>
       </div>
       <div class="div-opacity" @click="state.menuOpen = !state.menuOpen" v-if="state.menuOpen">
       </div>

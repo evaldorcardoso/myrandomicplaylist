@@ -76,8 +76,10 @@
 
 <template>
   <div class="page" style="height: 88%;">
-    <div >
-      <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" />
+    <div style="display: flex;justify-content: center" >
+      <img :src="currentUser.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
+    </div>
+    <div style="display: flex;justify-content: center" >
       <h2 style="padding-top: 15px;color:#fff">{{ msg + currentUser?.display_name }}</h2>
     </div>
     <div style="margin-top: 10px;height:30px;line-height:30px;">
