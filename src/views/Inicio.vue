@@ -1,141 +1,21 @@
 <script setup>
-  import { onMounted, computed, reactive, ref } from 'vue'
+  import { onMounted, ref } from 'vue'
   import VueBasicAlert from 'vue-basic-alert'
-  import { useProfile, useGeneral } from '@/support/spotifyApi'
 
-  const { 
-    getTopItens, 
-    getProfile, 
-    getPlaylists,
-    getDevices, 
-    getPlaybackState, 
-    transferPlayback, 
-    addTrackToQueue 
-  } = useProfile();
-
-  const { getTracks } = useGeneral();
-
-  const msg = ref('Gerador de playlist aleatória do Spotify')
-
-  const ALERT_OPTIONS = { 
-    iconSize: 35, // Size of the icon (px)
-    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
-  } 
-
-  const state = reactive({
-    isProcessing: false,
-    isPlaying: false,
-    playlists: [],
-    devices: [],
-    tracks: [],
-    topTracks: [],
-    popTracks: [],
-    user: null,
-    userPopularity: 0,
-    message: '',
-  })
-
-  const props = defineProps({
-    userData: {
-        type: Object,
-        default: () => { },
-    },
-  });
-
-  const currentUser = computed(() => {
-    return props.userData;
-  });
 
   const alert = ref(null)
-
-  const testPopularityLevel = ()=>{
-    let popularity = 0;
-    const tracks = state.topTracks;
-    tracks.map(async(item) => {
-      let track = JSON.parse(JSON.stringify(item));
-      popularity+=track.popularity;
-    });
-    state.userPopularity = popularity / state.topTracks.length;
-  }
 
   const openLink = (url) => {
     window.open(url, '_blank')
   }
 
-  onMounted(async () => {      
-    // const { data } = await getProfile()
-    // state.user = data
-  })
+  onMounted(async () => {})
 
 </script>
 
 <template>
   <div class="page">
-    <!-- <h2 class="center title">{{ msg }}</h2> -->
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <!--
-    <br><br><hr>
-    <h3 class="center statistics-title">As top 10 de {{currentUser?.display_name}} </h3>
-    <p class="center statistics-subtitle">No último mês</p>
-    <button v-if="state.topTracks.length === 0" class="center btn-execute" @click="getUserTopItems()" :disabled="state.isProcessing">
-      <p style="margin: 0" v-if="!(state.isProcessing)"> Buscar</p>
-      <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Buscando, aguarde...</p>
-    </button>
-    <p v-if="state.topTracks.length > 0" class="center" style="color: white;display: table;font-size: 12px;">
-      <font-awesome-icon v-if="(state.userPopularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.userPopularity >= 40 && state.userPopularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-      <font-awesome-icon v-else-if="(state.userPopularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-      {{state.userPopularity}}
-    </p>
-    <div class="list-list">
-      <ul class="list">
-        <li v-for="track in state.topTracks" class="list-item">
-          <img :src="track.album.images[0].url" class="music-cover" />
-          <div class="list-item-content">                
-            <div class="list-item-title">
-              {{track.name}}
-            </div>
-            <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 40 && track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.popularity}}%
-            </div>
-          </div>
-          <div class="list-item-subtitle">{{track.artists[0].name}}</div>
-        </li>
-      </ul>
-    </div>
-    <h3 class="center statistics-title">As top 50 mais populares de {{currentUser?.display_name}}: </h3>
-    <button v-if="state.popTracks.length === 0" class="center btn-execute" @click="getUserPlaylistTracks()" :disabled="state.isProcessing">
-      <p style="margin: 0" v-if="!(state.isProcessing)"> Buscar</p>
-      <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Buscando, aguarde...</p>
-    </button>
-    <button v-if="state.popTracks.length > 0" class="center btn-execute" @click="executePlaylist()" :disabled="state.isProcessing">
-        <p style="margin: 0" v-if="!(state.isProcessing)"><font-awesome-icon icon="play" /> Adicionar à fila</p>
-        <p style="margin: 0" v-if="(state.isProcessing)"><font-awesome-icon icon="hourglass" /> Adicionando, aguarde...</p>
-    </button>
-    <div class="list-list">
-      <ul class="list">
-        <li v-for="track in state.popTracks" class="list-item">
-          <img :src="track.track.album.images[0].url" class="music-cover" />
-          <div class="list-item-content">                
-            <div class="list-item-title">
-              {{track.track.name}}
-            </div>
-            <div class="list-item-subtitle">{{track.track.artists[0].name}}</div>
-          </div>
-          <div class="list-item-popularity">
-            <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-            <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-            <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-            {{track.track.popularity}}%
-          </div>
-        </li>
-      </ul>
-    </div>
-    -->
     <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
 
     <div class="content">
@@ -151,7 +31,7 @@
           <li class="content__container__list__item">spotify !</li>
         </ul>
       </div>
-      <router-link to="/randomic" style="text-decoration:none;margin-top: 75px;display: block;">
+      <router-link to="/randomic" props="stepData" style="text-decoration:none;margin-top: 75px;display: block;">
         <button class="btn-generate">
           Start now !
         </button>
