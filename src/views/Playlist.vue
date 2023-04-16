@@ -8,6 +8,12 @@
   const { executePlaylist } = useProfile()
 
   const playlistId = computed(() => route.params.id);
+  const emit = defineEmits([
+    'update-menu-opened',
+    'update-menu-data',
+    'force-refresh'
+  ])
+  //const isMenuOpened = ref(null)
 
   const ALERT_OPTIONS = { 
     iconSize: 35, // Size of the icon (px)
@@ -19,6 +25,28 @@
     isPlaying: false,
     playlist: null,
     tracks: [],
+    visible: false,
+  })
+
+  const props = defineProps({
+    userData: {
+        type: Object,
+        default: () => { },
+    },
+    forceRefresh: {
+        type: Boolean,
+        default: false,
+    }
+  });
+
+  const currentUser = computed(() => {
+    return props.userData;
+  });
+
+  const forceRefresh = computed(() => {
+    getPlaylistTracks(playlistId.value)
+    emit('force-refresh', false)
+    return props.forceRefresh
   })
 
   const alert = ref(null)
@@ -62,6 +90,20 @@
     window.open(url, '_blank')
   }
 
+  const holdItem = (event) => {
+    let element = event.target
+    while (element.tagName !== 'LI') {
+      element = element.parentNode
+    }
+    let track = state.tracks.find(track => track.track.id === element.id)
+    track['playlist'] = {
+      id: state.playlist.id,
+      isOwner: state.playlist.owner.display_name == currentUser.value.display_name
+    }
+    emit('update-menu-data', track)
+    emit('update-menu-opened', true)
+  }
+
   onMounted(async () => {
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
@@ -79,7 +121,7 @@
         <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
       </button>
       <div class="playlist-description">
-        <h3 class="playlist-title">{{state.playlist?.name}} </h3>
+        <h3 class="playlist-title">{{state.playlist?.name}}</h3>
         <p class="playlist-subtitle">{{state.playlist?.description}} </p>
       </div>
     </div>
@@ -87,26 +129,31 @@
     <br>
     <div class="list-list">
       <ul class="list">
-        <li v-for="track in state.tracks" class="list-item">
-          <img :src="track.track.album.images[0].url" class="music-cover" />
-          <div class="list-item-content">                
-            <div class="list-item-title">
-              {{track.track.name}}
+        <li :id="track.track.id" v-for="track in state.tracks" class="list-item" 
+          @touchstart="holdItem($event)"
+          >
+          <div class="list-item-div">
+            <img :src="track.track.album.images[0].url" class="music-cover"/>
+            <div class="list-item-content">                
+              <div class="list-item-title">
+                {{track.track.name}}
+              </div>
+              <div class="list-item-subtitle">{{track.track.artists[0].name}}</div>
             </div>
-            <div class="list-item-subtitle">{{track.track.artists[0].name}}</div>
-          </div>
-          <div class="list-item-popularity">
-            <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-            <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-            <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
-            {{track.track.popularity}}%
+            <div class="list-item-popularity">
+              <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+              {{track.track.popularity}}%
+            </div>
           </div>
         </li>
       </ul>
     </div>
     <div class="footer">
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
-    </div>    
+    </div>
+    <div>{{ forceRefresh }}</div>
   </div>
 </template>
 
@@ -174,12 +221,21 @@
 }
 .list-item {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     margin: auto;
     width: 100%;
-    height: 50px;
+    height: auto;
+}
+.list-item-div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  width: 100%;
+  height: 50px;
 }
 .list-item-content {
     display: flex;

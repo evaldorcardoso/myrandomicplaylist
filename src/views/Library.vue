@@ -5,7 +5,7 @@
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
-  const msg = ref('Playlists de ')
+  const msg = ref('Your library')
 
   const props = defineProps({
     userData: {
@@ -80,7 +80,7 @@
       <img :src="currentUser.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
     </div>
     <div style="display: flex;justify-content: center" >
-      <h2 style="padding-top: 15px;color:#fff">{{ msg + currentUser?.display_name }}</h2>
+      <h2 style="padding-top: 15px;color:#fff">{{ msg }}</h2>
     </div>
     <div style="margin-top: 10px;height:30px;line-height:30px;">
       <button 
@@ -95,14 +95,14 @@
         :class="{ 'button-dark': state.filters.includes('private'), 'button-light': !state.filters.includes('private') }"
         @click="filterPLaylists('private')"
       >
-      Minhas
+      My playlists
       </button>
       <button 
         class="button-spotify" 
         :class="{ 'button-dark': state.filters.includes('liked'), 'button-light': !state.filters.includes('liked') }" 
         @click="filterPLaylists('liked')"
       >
-      Curtidas
+      Liked
       </button>
     </div>
     <div class="playlists">
@@ -124,7 +124,6 @@
   border-radius: 20px;
   border: none;
   padding: 10px 25px;
-  text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 11px;
   outline: none;
@@ -135,7 +134,6 @@
   border-radius: 20px;
   border: none;
   padding: 10px 13px;
-  text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 11px;
   outline: none;
@@ -151,9 +149,6 @@
   background: none;
   color: rgb(200, 200, 200);
   border: 1px solid rgb(200, 200, 200);
-}
-.playlists{
-    
 }
 .playlists ul{
     list-style-type: none;
