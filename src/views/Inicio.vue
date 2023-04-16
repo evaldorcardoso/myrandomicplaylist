@@ -25,9 +25,9 @@
         </p>
         
         <ul class="content__container__list">
-          <li class="content__container__list__item">random items !</li>
-          <li class="content__container__list__item">top items !</li>
-          <li class="content__container__list__item">library items !</li>
+          <li class="content__container__list__item">random!</li>
+          <li class="content__container__list__item">top!</li>
+          <li class="content__container__list__item">library!</li>
           <li class="content__container__list__item">spotify !</li>
         </ul>
       </div>

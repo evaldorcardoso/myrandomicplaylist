@@ -69,7 +69,7 @@ const closeMenu = () => {
 
 <template>
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <div id="backdrop" :class="{'displayed' : menuOpened, 'hidden' : !menuOpened}"></div>    
+    <div id="backdrop" :class="{'displayed' : menuOpened, 'hidden' : !menuOpened}" @touchstart="closeMenu"></div>    
     <div class="menu" v-if="menuOpened">
         <div class="menu-content">
             <hr class="menu-bar" @click="closeMenu">

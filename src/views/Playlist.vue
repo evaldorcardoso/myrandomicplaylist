@@ -104,6 +104,10 @@
     emit('update-menu-opened', true)
   }
 
+  const test = () => {
+    emit('update-menu-opened', true)
+  }
+
   onMounted(async () => {
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
@@ -129,9 +133,7 @@
     <br>
     <div class="list-list">
       <ul class="list">
-        <li :id="track.track.id" v-for="track in state.tracks" class="list-item" 
-          @touchstart="holdItem($event)"
-          >
+        <li :id="track.track.id" v-for="track in state.tracks" class="list-item">
           <div class="list-item-div">
             <img :src="track.track.album.images[0].url" class="music-cover"/>
             <div class="list-item-content">                
@@ -145,6 +147,9 @@
               <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
               <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
               {{track.track.popularity}}%
+            </div>
+            <div class="list-item-popularity" style="width: 50px;" @click="holdItem($event)">
+              <img class="center" alt="options" src="../assets/options.png" style="width: 30px;"/>
             </div>
           </div>
         </li>
