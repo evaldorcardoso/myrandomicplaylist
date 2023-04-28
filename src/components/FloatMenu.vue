@@ -1,13 +1,14 @@
 <script setup>
-import { onMounted, computed, ref } from "vue";
-import { useGeneral } from '@/support/spotifyApi'
+import { onMounted, computed, reactive, ref } from "vue";
+import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 
 const emit = defineEmits([
     'update-menu-opened',
     'force-refresh'
 ])
-const { removeTracksOfPlaylist } = useGeneral()
+const { addTracksToPlaylist, removeTracksOfPlaylist } = useGeneral()
+const { getPlaylists } = useProfile()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -15,6 +16,11 @@ const ALERT_OPTIONS = {
     position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
   }
 const alert = ref(null)
+
+const state = reactive({
+    playlistsOriginal:[],
+    playlists: [],
+  })
 
 const props = defineProps({
     menuOpened: {
@@ -24,7 +30,11 @@ const props = defineProps({
     menuData: {
         type: Object,
         default: () => { }
-    }
+    },
+    userData: {
+        type: Object,
+        default: () => { },
+    },
 });
 
 const menuOpened = computed(() => {
@@ -33,7 +43,33 @@ const menuOpened = computed(() => {
 
 const menuData = computed(() => {
     return props.menuData;
-})
+});
+
+const currentUser = computed(() => {
+    return props.userData;
+});
+
+const selectPlaylist = async(playlistId) => {
+    try {
+        const formData = {
+            'uris': [
+                menuData.value.track.uri
+            ]
+        }
+        const { status } = await addTracksToPlaylist(playlistId, formData)
+        if (status === 201) {
+            alert.value.showAlert(
+                'success', // There are 4 types of alert: success, info, warning, error
+                'Song added!', // Message of the alert
+                'Alright', // Header of the alert
+                ALERT_OPTIONS
+            )
+            closeMenu()
+        }
+    }catch(error){
+      console.log(error)
+    }
+}
 
 const removeTrack = async() => {
     try {
@@ -58,11 +94,20 @@ const removeTrack = async() => {
     }
 }
 
+const listPlaylists = async() => {
+    const { data } = await getPlaylists()
+    state.playlistsOriginal = data.items
+    state.playlists = state.playlistsOriginal.filter(
+        playlist => playlist.owner.display_name == currentUser.value.display_name          
+    )
+}
+
 onMounted(async () => {    
     
 })
 
 const closeMenu = () => {
+    state.playlists = null
     emit('update-menu-opened', false)
 }
 </script>
@@ -84,6 +129,19 @@ const closeMenu = () => {
             </div>
             <div class="menu-item" v-if="menuData.playlist.isOwner" @click="removeTrack">
                 <h3 class="menu-item-option">Remove from this playlist</h3>
+            </div>
+            <div class="menu-item" v-if="! state.playlists" @click="listPlaylists">
+                <h3 class="menu-item-option">Add to another playlist</h3>
+            </div>
+            <div class="playlists" v-if="state.playlists">
+                <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)" v-if="menuData">
+                    <img :src="playlist.images[0]?.url" class="playlist-cover"/>
+                    <div class="menu-item-track-content">                
+                      <div class="menu-item-track-title">
+                        {{playlist.name}}
+                      </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>   
@@ -150,8 +208,14 @@ const closeMenu = () => {
         width: 60px;
         height: 60px;
         margin: 10px 10px 20px 10px;
-      }
-      .menu-item-track-content {
+    }
+    .playlist-cover {
+        width: 40px;
+        height: 40px;
+        border-radius: 30px;
+        margin: 0px 10px 0px 10px;
+    }
+    .menu-item-track-content {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -186,5 +250,19 @@ const closeMenu = () => {
         width: 100%;
         height: 50px;
         margin-bottom: 20px;
+    }
+    .menu-item-playlist {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin: auto;
+        width: 100%;
+        height: 40px;
+        margin-bottom: 10px;
+    }
+    .playlists {
+        overflow: scroll;
+        max-height: 500px;
     }
 </style>
