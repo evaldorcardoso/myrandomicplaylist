@@ -92,7 +92,8 @@
     />
     <FloatMenu 
         :menu-opened="menuOpened"
-        :menu-data="menuData"  
+        :menu-data="menuData"
+        :user-data="user"
         @update-menu-opened="onUpdateMenuOpened" 
         @force-refresh="onForceRefresh"
     />
