@@ -25,6 +25,7 @@ import {
     faStepBackward,
     faStepForward,
     faUser, 
+    faSort,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 
@@ -49,6 +50,7 @@ library.add(
     faChartLine,
     faChevronLeft,
     faChevronRight,
+    faSort,
 )
 
 const app  = createApp(App)

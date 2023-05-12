@@ -26,6 +26,7 @@
     playlist: null,
     tracks: [],
     visible: false,
+    orderMode: 'default'
   })
 
   const props = defineProps({
@@ -86,6 +87,23 @@
     }
   }
 
+  const sortUserPlaylist = async() => {
+    if (state.orderMode === 'default') {
+      state.tracks.sort((a, b) => b.track.popularity - a.track.popularity)
+      state.orderMode = 'top'
+      return
+    }
+    if (state.orderMode === 'top') {
+      state.tracks.sort((a, b) => a.track.popularity - b.track.popularity)
+      state.orderMode = 'bottom'
+      return
+    }
+    if (state.orderMode === 'bottom') {
+      getPlaylistTracks(playlistId.value)
+      return
+    }
+  }
+
   const openLink = (url) => {
     window.open(url, '_blank')
   }
@@ -120,14 +138,19 @@
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <img class="center img-album" :src="state.playlist?.images[0]?.url" />
-    <div class="playlist-header">
-      <button class="button-spotify">
-        <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
-      </button>
+    <div class="playlist-header">      
       <div class="playlist-description">
         <h3 class="playlist-title">{{state.playlist?.name}}</h3>
         <p class="playlist-subtitle">{{state.playlist?.description}} </p>
       </div>
+    </div>
+    <div class="playlist-sub">
+      <button class="button-spotify">
+        <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
+      </button>
+      <button class="button-spotify-noborder">
+        <font-awesome-icon icon="sort" style="vertical-align:middle;margin-left:3px;" @click="sortUserPlaylist()" />
+      </button>
     </div>
     <p class="center playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} seguindo</p>
     <br>
@@ -184,6 +207,19 @@
   height: 50px;
   width: 50px;
 }
+.button-spotify-noborder {
+  padding: 0px 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 19px;
+  outline: none;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  border: none;
+  height: 50px;
+  width: 50px;
+}
 .img-album {
   width: 200px;
   padding: 10px
@@ -206,6 +242,12 @@
   margin-top: 0px;
   color:#999797;
   font-size:12px;
+}
+.playlist-sub {
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }
 .music-cover {
   width: 40px; 
