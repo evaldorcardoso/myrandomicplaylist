@@ -21,12 +21,20 @@
     position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
   } 
 
+  const sortOptions = [
+    'default',
+    'top first',
+    'top last',
+    'added first',
+    'added last'
+  ]
+
   const state = reactive({
     isPlaying: false,
     playlist: null,
     tracks: [],
     visible: false,
-    orderMode: 'default'
+    sortPosition: 0
   })
 
   const props = defineProps({
@@ -120,17 +128,27 @@
   }
 
   const sortUserPlaylist = async() => {
-    if (state.orderMode === 'default') {
+    state.sortPosition++
+    if (state.sortPosition >= sortOptions.length) {
+      state.sortPosition = 0
+    }
+    if (sortOptions[state.sortPosition] === 'top first') {
       state.tracks.sort((a, b) => b.track.popularity - a.track.popularity)
-      state.orderMode = 'top'
       return
     }
-    if (state.orderMode === 'top') {
+    if (sortOptions[state.sortPosition] === 'top last') {
       state.tracks.sort((a, b) => a.track.popularity - b.track.popularity)
-      state.orderMode = 'bottom'
       return
     }
-    if (state.orderMode === 'bottom') {
+    if (sortOptions[state.sortPosition] === 'added first') {
+      state.tracks.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
+      return
+    }
+    if (sortOptions[state.sortPosition] === 'added last') {
+      state.tracks.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
+      return
+    }
+    if (sortOptions[state.sortPosition] === 'default') {
       getPlaylistTracks(playlistId.value)
       return
     }
@@ -184,7 +202,11 @@
         <font-awesome-icon icon="sort" style="vertical-align:middle;margin-left:3px;" @click="sortUserPlaylist()" />
       </button>
     </div>
-    <p class="center playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} seguindo</p>
+    <div class="playlist-details">
+      <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} seguindo</p>
+      <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
+      <p class="playlist-subtitle" style="margin-top:10px">sort: {{sortOptions[state.sortPosition]}}</p>
+    </div>
     <br>
     <div class="list-list">
       <ul class="list">
@@ -280,6 +302,11 @@
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+}
+.playlist-details {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
 }
 .music-cover {
   width: 40px; 
