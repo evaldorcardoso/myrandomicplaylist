@@ -5,7 +5,7 @@
   import { useGeneral, useProfile } from '@/support/spotifyApi'
   const route = useRoute();
   const { getPlaylist, getTracks } = useGeneral()
-  const { executePlaylist } = useProfile()
+  const { executePlaylist, pausePlayback } = useProfile()
 
   const playlistId = computed(() => route.params.id);
   const emit = defineEmits([
@@ -63,12 +63,44 @@
 
   const executeUserPlaylist = async() => {
     try{
+      if (state.isPlaying) {
+        const { status } = await pausePlayback()
+        if (status != 204){
+          openPlaylistApp(state.playlist.id)
+          return
+        }
+        state.isPlaying = false
+
+        return
+      }
       const formData = {
         "context_uri": "spotify:playlist:" + state.playlist.id,
           "offset": {
             "position": 0
           },
           "position_ms": 0,
+      }
+      const { status } = await executePlaylist(formData)
+      if (status != 204){
+        openPlaylistApp(state.playlist.id)
+        return
+      }
+      state.isPlaying = true  
+    }catch(error){
+      console.log(error.response)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response.data.error.message, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
+  }
+
+  const executeTrack = async(track) => {
+    try{
+      const formData = {
+        "uris": [ track.track.uri ]
       }
       const { status } = await executePlaylist(formData)
       if (status != 204){
@@ -157,7 +189,7 @@
     <div class="list-list">
       <ul class="list">
         <li :id="track.track.id" v-for="track in state.tracks" class="list-item">
-          <div class="list-item-div">
+          <div class="list-item-div" @click="executeTrack(track)">
             <img :src="track.track.album.images[0].url" class="music-cover"/>
             <div class="list-item-content">                
               <div class="list-item-title">
