@@ -8,7 +8,7 @@ const emit = defineEmits([
     'force-refresh'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist } = useGeneral()
-const { getPlaylists } = useProfile()
+const { getPlaylists, executePlaylist } = useProfile()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -42,6 +42,7 @@ const menuOpened = computed(() => {
 });
 
 const menuData = computed(() => {
+    console.log(props.menuData)
     return props.menuData;
 });
 
@@ -70,6 +71,28 @@ const selectPlaylist = async(playlistId) => {
       console.log(error)
     }
 }
+
+const executeTrack = async(track) => {
+    try{
+      const formData = {
+        "uris": [ track.track.uri ]
+      }
+      const { status } = await executePlaylist(formData)
+      if (status != 204){
+        openPlaylistApp(state.playlist.id)
+        return
+      }
+      state.isPlaying = true  
+    }catch(error){
+      console.log(error.response)
+      alert.value.showAlert(
+        'error', // There are 4 types of alert: success, info, warning, error
+        error.response.data.error.message, // Message of the alert
+        'Ops', // Header of the alert
+        ALERT_OPTIONS
+      )
+    }
+  }
 
 const removeTrack = async() => {
     try {
@@ -127,11 +150,24 @@ const closeMenu = () => {
                   <div class="menu-item-track-subtitle">{{menuData.track.artists[0].name}}</div>
                 </div>
             </div>
-            <div class="menu-item" v-if="menuData.playlist.isOwner" @click="removeTrack">
-                <h3 class="menu-item-option">Remove from this playlist</h3>
+            <div class="menu-item-track-details">
+                Added: {{ new Date(menuData.added_at).toLocaleDateString() }} <br>
+                Released: {{ new Date(menuData.track.album.release_date).toLocaleDateString() }} <br>
+                Duration: {{ new Date(menuData.track.duration_ms).toISOString().slice(14, 19) }} <br>
+                Popularity: {{ menuData.track.popularity }}<br>
             </div>
-            <div class="menu-item" v-if="! state.playlists" @click="listPlaylists">
+            <hr class="style-one">
+            <div class="menu-item" @click="executeTrack(menuData.track)">
+                <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                <h3 class="menu-item-option">Play</h3>
+            </div>
+            <div class="menu-item" @click="listPlaylists">
+                <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                 <h3 class="menu-item-option">Add to another playlist</h3>
+            </div>
+            <div class="menu-item" v-if="menuData.playlist.isOwner" @click="removeTrack">
+                <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                <h3 class="menu-item-option">Remove from this playlist</h3>
             </div>
             <div class="playlists" v-if="state.playlists">
                 <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)" v-if="menuData">
@@ -198,6 +234,13 @@ const closeMenu = () => {
         height: 45px;
         margin-left: 10px;
     }
+    hr.style-one {
+        width: 100%;
+        border: 0;
+        height: 0px;
+        border-top: 1% solid #b3b3b3;
+        border-bottom: 1px solid #b3b3b3;
+    }
     .menu-item-option{
         margin: 0;
         white-space: nowrap;
@@ -240,6 +283,12 @@ const closeMenu = () => {
         font-size: 11px;
         text-align: left;
         width: 100%;
+    }
+    .menu-item-track-details {
+        color: #999;
+        font-size: 12px;
+        text-align: center;
+        margin-bottom: 20px;
     }
     .menu-item-track {
         display: flex;

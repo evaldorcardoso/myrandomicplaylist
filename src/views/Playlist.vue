@@ -105,28 +105,6 @@
     }
   }
 
-  const executeTrack = async(track) => {
-    try{
-      const formData = {
-        "uris": [ track.track.uri ]
-      }
-      const { status } = await executePlaylist(formData)
-      if (status != 204){
-        openPlaylistApp(state.playlist.id)
-        return
-      }
-      state.isPlaying = true  
-    }catch(error){
-      console.log(error.response)
-      alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response.data.error.message, // Message of the alert
-        'Ops', // Header of the alert
-        ALERT_OPTIONS
-      )
-    }
-  }
-
   const sortUserPlaylist = async() => {
     state.sortPosition++
     if (state.sortPosition >= sortOptions.length) {
@@ -198,35 +176,32 @@
       <button class="button-spotify">
         <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
       </button>
-      <button class="button-spotify-noborder">
-        <font-awesome-icon icon="sort" style="vertical-align:middle;margin-left:3px;" @click="sortUserPlaylist()" />
-      </button>
-    </div>
-    <div class="playlist-details">
-      <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} seguindo</p>
-      <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
-      <p class="playlist-subtitle" style="margin-top:10px">sort: {{sortOptions[state.sortPosition]}}</p>
+      <div class="playlist-details">
+        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
+        <p class="playlist-subtitle" style="margin-top:10px" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+      </div>
     </div>
     <br>
     <div class="list-list">
       <ul class="list">
         <li :id="track.track.id" v-for="track in state.tracks" class="list-item">
-          <div class="list-item-div" @click="executeTrack(track)">
+          <div class="list-item-div" @click="holdItem($event)">
             <img :src="track.track.album.images[0].url" class="music-cover"/>
             <div class="list-item-content">                
               <div class="list-item-title">
                 {{track.track.name}}
               </div>
-              <div class="list-item-subtitle">{{track.track.artists[0].name}}</div>
+              <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
+                <div class="list-item-subtitle">{{ track.track.artists[0].name }}</div>
+                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;align-items: end;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
+              </div>
             </div>
             <div class="list-item-popularity">
               <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
               <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
               <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
               {{track.track.popularity}}%
-            </div>
-            <div class="list-item-popularity" style="width: 50px;" @click="holdItem($event)">
-              <img class="center" alt="options" src="../assets/options.png" style="width: 30px;"/>
             </div>
           </div>
         </li>
@@ -307,6 +282,8 @@
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
+  min-width: 300px;
+  margin-top: 10px;
 }
 .music-cover {
   width: 40px; 
@@ -367,6 +344,7 @@
     color: #fff;
     width: 10%;
     font-size: 11px;
+    margin-left: 5px;
 }
 .icon-popularity-bad{
     color: rgb(255, 23, 23);

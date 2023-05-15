@@ -26,6 +26,9 @@ import {
     faStepForward,
     faUser, 
     faSort,
+    faMusic,
+    faTrash,
+    faHeart,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 
@@ -51,6 +54,9 @@ library.add(
     faChevronLeft,
     faChevronRight,
     faSort,
+    faMusic,
+    faTrash,
+    faHeart,
 )
 
 const app  = createApp(App)
