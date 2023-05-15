@@ -2,6 +2,8 @@
   import { onMounted, computed, reactive, ref } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
   import { useRouter } from 'vue-router'
+  import helpers from '../support/helpers'
+  import { LOCALSTORAGE_KEYS } from '../support/helpers'
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
@@ -31,6 +33,7 @@
   }
 
   const filterPLaylists = (value = 'all') => {
+    helpers.setLocalStorage(LOCALSTORAGE_KEYS.filterLibrary, value)
     state.filters = [value]
 
     state.filters.map(item => {
@@ -69,7 +72,8 @@
   onMounted(async () => {
     const { data } = await getPlaylists()
     state.playlistsOriginal = data.items
-    filterPLaylists()
+    const { filterLibrary } = helpers.getLocalStorage()
+    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
   })
 
 </script>

@@ -5,6 +5,7 @@ export const LOCALSTORAGE_KEYS = {
     refreshToken: 'spotify_refresh_token',
     expireTime: 'spotify_token_expire_time',
     //timestamp: 'spotify_token_timestamp',
+    filterLibrary: 'spotify_filter_library',
 }
 
 export default {
@@ -16,6 +17,7 @@ export default {
           refreshToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.refreshToken),
           expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
           //timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
+          filterLibrary: window.localStorage.getItem(LOCALSTORAGE_KEYS.filterLibrary)
         };
         return LOCALSTORAGE_VALUES
     },
