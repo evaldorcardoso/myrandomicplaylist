@@ -75,11 +75,16 @@ const selectPlaylist = async(playlistId) => {
 const executeTrack = async(track) => {
     try{
       const formData = {
-        "uris": [ track.track.uri ]
+        "uris": [ track.uri ]
       }
       const { status } = await executePlaylist(formData)
       if (status != 204){
-        openPlaylistApp(state.playlist.id)
+        alert.value.showAlert(
+            'error', // There are 4 types of alert: success, info, warning, error
+            error.response.data.error.message, // Message of the alert
+            'Ops', // Header of the alert
+            ALERT_OPTIONS
+        )
         return
       }
       state.isPlaying = true  
