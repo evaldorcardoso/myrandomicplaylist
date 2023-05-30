@@ -3,6 +3,7 @@
   import { useRoute } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
+
   const route = useRoute();
   const { getPlaylist, getTracks } = useGeneral()
   const { executePlaylist, pausePlayback } = useProfile()
@@ -13,12 +14,11 @@
     'update-menu-data',
     'force-refresh'
   ])
-  //const isMenuOpened = ref(null)
 
   const ALERT_OPTIONS = { 
-    iconSize: 35, // Size of the icon (px)
-    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+    iconSize: 35,
+    iconType: 'solid',
+    position: 'top right'
   } 
 
   const sortOptions = [
@@ -45,6 +45,10 @@
     forceRefresh: {
         type: Boolean,
         default: false,
+    },
+    removeTrack: {
+      type: String,
+      default: ''
     }
   });
 
@@ -53,9 +57,19 @@
   });
 
   const forceRefresh = computed(() => {
-    getPlaylistTracks(playlistId.value)
+    getPlaylistTracks()
     emit('force-refresh', false)
     return props.forceRefresh
+  })
+
+  const removeTrack = computed(() => {
+    if ((props.removeTrack)&&(props.removeTrack !== '')) {
+      state.tracks = state.tracks.filter(function(track) {
+        return track.track.uri !== props.removeTrack
+      })
+      emit('remove-track', '')
+    }
+    return props.removeTrack
   })
 
   const alert = ref(null)
@@ -64,9 +78,19 @@
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
   }
 
-  const getPlaylistTracks = async(playlistId) => {
-    const { data } = await getTracks(playlistId)
+  const getPlaylistTracks = async() => {
+    const { data } = await getTracks(playlistId.value)
     state.tracks = data.items
+    state.tracks.forEach((track, index) => {
+      track.id = index + 1
+    })
+  }
+
+  const doRefresh = async() => {
+    const { data } = await getPlaylist(playlistId.value)
+    state.playlist = data
+    await getPlaylistTracks()
+    sortUserPlaylist(false)
   }
 
   const executeUserPlaylist = async() => {
@@ -97,19 +121,22 @@
     }catch(error){
       console.log(error.response)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response.data.error.message, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response.data.error.message,
+        'Ops',
         ALERT_OPTIONS
       )
     }
   }
 
-  const sortUserPlaylist = async() => {
-    state.sortPosition++
-    if (state.sortPosition >= sortOptions.length) {
-      state.sortPosition = 0
+  const sortUserPlaylist = async(increment = true) => {
+    if(increment) {
+      state.sortPosition++
+      if (state.sortPosition >= sortOptions.length) {
+        state.sortPosition = 0
+      }
     }
+    
     if (sortOptions[state.sortPosition] === 'top first') {
       state.tracks.sort((a, b) => b.track.popularity - a.track.popularity)
       return
@@ -127,7 +154,7 @@
       return
     }
     if (sortOptions[state.sortPosition] === 'default') {
-      getPlaylistTracks(playlistId.value)
+      state.tracks.sort((a, b) => a.id - b.id)
       return
     }
   }
@@ -150,14 +177,10 @@
     emit('update-menu-opened', true)
   }
 
-  const test = () => {
-    emit('update-menu-opened', true)
-  }
-
   onMounted(async () => {
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
-    getPlaylistTracks(playlistId.value)
+    getPlaylistTracks()
   })
 
 </script>
@@ -177,6 +200,7 @@
         <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
       </button>
       <div class="playlist-details">
+        <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
@@ -210,7 +234,10 @@
     <div class="footer">
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>
-    <div>{{ forceRefresh }}</div>
+    <div>
+      {{ forceRefresh }}
+      {{ removeTrack }}
+    </div>
   </div>
 </template>
 
