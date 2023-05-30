@@ -29,6 +29,7 @@ import {
     faMusic,
     faTrash,
     faHeart,
+    faSync
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 
@@ -57,6 +58,7 @@ library.add(
     faMusic,
     faTrash,
     faHeart,
+    faSync
 )
 
 const app  = createApp(App)

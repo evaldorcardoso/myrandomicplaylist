@@ -5,15 +5,16 @@ import VueBasicAlert from 'vue-basic-alert'
 
 const emit = defineEmits([
     'update-menu-opened',
-    'force-refresh'
+    'force-refresh',
+    'remove-track'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist } = useGeneral()
 const { getPlaylists, executePlaylist } = useProfile()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
-    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+    iconType: 'solid',
+    position: 'top right'
   }
 const alert = ref(null)
 
@@ -42,7 +43,6 @@ const menuOpened = computed(() => {
 });
 
 const menuData = computed(() => {
-    console.log(props.menuData)
     return props.menuData;
 });
 
@@ -60,9 +60,9 @@ const selectPlaylist = async(playlistId) => {
         const { status } = await addTracksToPlaylist(playlistId, formData)
         if (status === 201) {
             alert.value.showAlert(
-                'success', // There are 4 types of alert: success, info, warning, error
-                'Song added!', // Message of the alert
-                'Alright', // Header of the alert
+                'success',
+                'Song added!',
+                'Alright',
                 ALERT_OPTIONS
             )
             closeMenu()
@@ -80,9 +80,9 @@ const executeTrack = async(track) => {
       const { status } = await executePlaylist(formData)
       if (status != 204){
         alert.value.showAlert(
-            'error', // There are 4 types of alert: success, info, warning, error
-            error.response.data.error.message, // Message of the alert
-            'Ops', // Header of the alert
+            'error',
+            error.response.data.error.message,
+            'Ops',
             ALERT_OPTIONS
         )
         return
@@ -91,9 +91,9 @@ const executeTrack = async(track) => {
     }catch(error){
       console.log(error.response)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response.data.error.message, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response.data.error.message,
+        'Ops',
         ALERT_OPTIONS
       )
     }
@@ -109,13 +109,13 @@ const removeTrack = async() => {
         const { status } = await removeTracksOfPlaylist(menuData.value.playlist.id, formData)
         if (status === 200) {
             alert.value.showAlert(
-                'success', // There are 4 types of alert: success, info, warning, error
-                'Song removed!', // Message of the alert
-                'Alright', // Header of the alert
+                'success',
+                'Song removed!',
+                'Alright',
                 ALERT_OPTIONS
             )
+            emit('remove-track', menuData.value.track.uri)
             closeMenu()
-            emit('force-refresh', true)
         }
     }catch(error){
       console.log(error)

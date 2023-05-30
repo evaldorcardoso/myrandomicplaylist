@@ -1,6 +1,6 @@
 {
   "name": "myrandomicplaylist",
-  "version": "3.3.3",
+  "version": "3.4.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -8,8 +8,9 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
+    "@fortawesome/free-regular-svg-icons": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
-    "@fortawesome/vue-fontawesome": "^3.0.0-5",
+    "@fortawesome/vue-fontawesome": "^3.0.3",
     "@vue/cli": "^4.5.15",
     "@vue/cli-service-global": "^4.5.15",
     "axios": "^0.25.0",
