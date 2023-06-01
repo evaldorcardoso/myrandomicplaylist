@@ -1,6 +1,6 @@
 {
   "name": "myrandomicplaylist",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,15 +11,18 @@
     "@fortawesome/free-regular-svg-icons": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
+    "@supabase/supabase-js": "^2.24.0",
     "@vue/cli": "^4.5.15",
     "@vue/cli-service-global": "^4.5.15",
     "axios": "^0.25.0",
+    "chart.js": "^4.3.0",
     "global": "^4.4.0",
     "sass": "^1.57.1",
     "vite-plugin-package-version": "^1.0.2",
     "vue": "^3.2.25",
     "vue-axios": "^3.4.0",
     "vue-basic-alert": "^1.1.0",
+    "vue-chartjs": "^5.2.0",
     "vue-router": "^4.0.12",
     "vue3-touch-events": "^4.1.2"
   },
