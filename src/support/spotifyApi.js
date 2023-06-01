@@ -93,9 +93,9 @@ export function useGeneral() {
             .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}`)
     }
     
-    const getTracks = async (playlistId) => {
+    const getTracks = async (playlistId, offset = 0) => {
         return $axios
-            .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}/tracks`)
+            .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}/tracks?limit=100&offset=${offset}`)
     }
 
     const addTracksToPlaylist = async(playlistId, formData) => {
