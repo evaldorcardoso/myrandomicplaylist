@@ -24,7 +24,10 @@
     iconSize: 35,
     iconType: 'solid',
     position: 'top right'
-  } 
+  }
+
+  const MAX_STATISTICS_ITEMS_TO_RETAIN = 10
+  const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 7
 
   const sortOptions = [
     'default',
@@ -122,6 +125,7 @@
         'Alright',
         ALERT_OPTIONS
       )
+      getStatistics()
     } catch (error) {
       console.log(error.message)
       alert.value.showAlert(
@@ -133,36 +137,57 @@
     }
   }
 
-  const getStatistics = async() => {
-    if(new Date().getDay() == 1) {
-      console.log('save statistics for '+ state.playlist?.id)
-      await saveStatistics()
-    }
+  const deleteStatistic = async(id) => {
+    console.log('delete statistic for id '+ id)
+    let { error, status } = await supabase
+        .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
+        .delete()
+        .eq('id', id)
+
+      if (error && status !== 406) throw error
+  }
+
+  const getStatistics = async() => {    
     try {
       let { data, error, status } = await supabase
         .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
-        .select(`likes_count, created_at`)
+        .select(`id, likes_count, created_at`)
         .eq('playlist_id', state.playlist?.id)
         .order('created_at')
 
       if (error && status !== 406) throw error
 
       if (data) {
-        let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
-        let likes = data.map(row => row.likes_count)
-        state.chartData = {
-        labels,      
-        datasets: [
-          {
-            label: 'Likes',
-            backgroundColor: '#1ed760',
-            borderColor: '#fff',
-            borderWidth: 1,
-            data: likes
+        if (data.length > MAX_STATISTICS_ITEMS_TO_RETAIN) {
+          let row = data.shift()
+          await deleteStatistic(row.id)
+        }
+        if(data.length > 0) {
+          let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
+          let likes = data.map(row => row.likes_count)
+          state.chartData = {
+            labels,      
+            datasets: [
+              {
+                label: 'Likes',
+                backgroundColor: '#1ed760',
+                borderColor: '#fff',
+                borderWidth: 1,
+                data: likes
+              }
+            ]
           }
-        ]
+          let today = new Date()
+          let lastStatistic = new Date(data[data.length -1].created_at)
+          let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+          var diffDays = Math.abs((today.getTime() - lastStatistic.getTime()) / (oneDay));
+          
+          if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
+            return
+          }
         }
       }
+      await saveStatistics()
     } catch (error) {
       console.log(error.message)
       alert.value.showAlert(
@@ -262,7 +287,7 @@
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
     getPlaylistTracks()
-    console.log('playlist id: '+ state.playlist?.id)
+    getStatistics()
   })
 
 </script>
