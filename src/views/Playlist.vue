@@ -4,6 +4,10 @@
   import VueBasicAlert from 'vue-basic-alert'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
   import { supabase } from '@/support/supabaseClient'
+  import { Line } from 'vue-chartjs'
+  import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
+
+  ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement,)
 
   const route = useRoute();
   const { getPlaylist, getTracks } = useGeneral()
@@ -35,7 +39,14 @@
     playlist: null,
     tracks: [],
     visible: false,
-    sortPosition: 0
+    sortPosition: 0,
+    chartData: {
+      labels: [],
+      datasets: []
+    },
+    chartOptions: {
+      responsive: true
+    }
   })
 
   const props = defineProps({
@@ -101,7 +112,7 @@
         playlist_id: state.playlist?.id
       }
 
-      let { error } = await supabase.from('playlists_statistics').insert(data)
+      let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
 
@@ -120,6 +131,47 @@
         ALERT_OPTIONS
       )
     }
+  }
+
+  const getStatistics = async() => {
+    if(new Date().getDay() == 1) {
+      console.log('save statistics for '+ state.playlist?.id)
+      await saveStatistics()
+    }
+    try {
+      let { data, error, status } = await supabase
+        .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
+        .select(`likes_count, created_at`)
+        .eq('playlist_id', state.playlist?.id)
+        .order('created_at')
+
+      if (error && status !== 406) throw error
+
+      if (data) {
+        let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
+        let likes = data.map(row => row.likes_count)
+        state.chartData = {
+        labels,      
+        datasets: [
+          {
+            label: 'Likes',
+            backgroundColor: '#1ed760',
+            borderColor: '#fff',
+            borderWidth: 1,
+            data: likes
+          }
+        ]
+        }
+      }
+    } catch (error) {
+      console.log(error.message)
+      alert.value.showAlert(
+        'error',
+        error.message,
+        'Ops',
+        ALERT_OPTIONS
+      )
+    } 
   }
 
   const executeUserPlaylist = async() => {
@@ -210,6 +262,7 @@
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
     getPlaylistTracks()
+    console.log('playlist id: '+ state.playlist?.id)
   })
 
 </script>
@@ -230,11 +283,19 @@
       </button>
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p class="playlist-subtitle" style="margin-top:10px" @click="getStatistics()"><font-awesome-icon icon="chart-bar" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
     </div>
+    <br>
+    <Line
+      id="my-chart-id"
+      v-if="state.chartData.datasets.length > 0"
+      :options="state.chartOptions"
+      :data="state.chartData"
+    />
     <br>
     <div class="list-list">
       <ul class="list">
