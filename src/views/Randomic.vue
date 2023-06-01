@@ -20,8 +20,8 @@
 
   const ALERT_OPTIONS = { 
     iconSize: 35,
-    iconType: 'solid', // Icon styles: now only 2 styles 'solid' and 'regular'
-    position: 'top right' // Position of the alert 'top right', 'top left', 'bottom left', 'bottom right'
+    iconType: 'solid',
+    position: 'top right'
   }
 
   const state = reactive({
@@ -30,6 +30,7 @@
     processingEnd: 0,
     isPlaying: false,
     randomPlaylist: null,
+    playlistName: 'Random Playlist',
     playlistsOriginal:[],
     playlists: [],
     tracks: [],
@@ -84,8 +85,10 @@
     const { data } = await getTracks(playlistId)
     
     data.items.map(item => {
-      item.track.checked = true 
-      state.tracks.push(item.track)
+      if (item.track) {
+        item.track.checked = true 
+        state.tracks.push(item.track)
+      }
     })
   }
 
@@ -94,9 +97,9 @@
       let message = 'Select at least 1 playlist!'
       state.message = message
       alert.value.showAlert(
-        'warning', // There are 4 types of alert: success, info, warning, error
-        message, // Message of the alert
-        'Atenção', // Header of the alert
+        'warning',
+        message,
+        'Atenção',
         ALERT_OPTIONS
       )
       return false
@@ -125,9 +128,9 @@
     const resolved = await Promise.all(unresolved)
     await pickTracks(state.tracks)
     alert.value.showAlert(
-      'success', // There are 4 types of alert: success, info, warning, error
-      `Successful ${state.tracks.length} songs picked!`, // Message of the alert
-      'Alright', // Header of the alert
+      'success',
+      `Successful ${state.tracks.length} songs picked!`,
+      'Alright',
       ALERT_OPTIONS
     )
     state.message = ''
@@ -186,9 +189,9 @@
     catch(error){
       console.log(error)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response,
+        'Ops',
         ALERT_OPTIONS
       )
     }
@@ -213,9 +216,9 @@
     }catch(error){
       console.log(error)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response,
+        'Ops',
         ALERT_OPTIONS
       )
     }
@@ -223,11 +226,17 @@
 
   const saveUserPlaylist = async() => {
     state.isProcessing = true
-    const name = prompt('Playlist name: ', 'Random Playlist')
+    try {
+      await fetch("https://random-word-api.vercel.app/api?words=1&type=capitalized")
+        .then(response => response.json())
+        .then(data => state.playlistName = data[0])
+    } catch(error) {
+      console.log(error)
+    }
     const description = 'Playlist created by MyRandomicPlaylist App from @evaldorcardoso'
     const _public = false    
     const formData = {
-      'name' : name,
+      'name' : state.playlistName,
       'description': description,
       'public': _public
     }
@@ -237,9 +246,9 @@
     let message = 'Playlist created successfully!'
     state.message = message
     alert.value.showAlert(
-      'success', // There are 4 types of alert: success, info, warning, error
-      message, // Message of the alert
-      'Alright', // Header of the alert
+      'success',
+      message,
+      'Alright',
       ALERT_OPTIONS
     )
     addTracksToUserPlaylist(state.randomPlaylist.id)
