@@ -3,6 +3,7 @@
   import { useRoute } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
+  import { supabase } from '@/support/supabaseClient'
 
   const route = useRoute();
   const { getPlaylist, getTracks } = useGeneral()
@@ -91,6 +92,34 @@
     state.playlist = data
     await getPlaylistTracks()
     sortUserPlaylist(false)
+  }
+
+  const saveStatistics = async() => {
+    try {
+      const data = {
+        likes_count: state.playlist?.followers.total,
+        playlist_id: state.playlist?.id
+      }
+
+      let { error } = await supabase.from('playlists_statistics').insert(data)
+
+      if (error) throw error
+
+      alert.value.showAlert(
+        'success',
+        'Statistics registered!',
+        'Alright',
+        ALERT_OPTIONS
+      )
+    } catch (error) {
+      console.log(error.message)
+      alert.value.showAlert(
+        'error',
+        error.message,
+        'Ops',
+        ALERT_OPTIONS
+      )
+    }
   }
 
   const executeUserPlaylist = async() => {
