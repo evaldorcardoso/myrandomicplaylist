@@ -4,10 +4,10 @@
   import VueBasicAlert from 'vue-basic-alert'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
   import { supabase } from '@/support/supabaseClient'
-  import { Line } from 'vue-chartjs'
-  import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
+  import { Line, Pie } from 'vue-chartjs'
+  import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
 
-  ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement,)
+  ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
   const route = useRoute();
   const { getPlaylist, getTracks } = useGeneral()
@@ -44,6 +44,10 @@
     visible: false,
     sortPosition: 0,
     chartData: {
+      labels: [],
+      datasets: []
+    },
+    chartDataPopularity: {
       labels: [],
       datasets: []
     },
@@ -125,7 +129,7 @@
         'Alright',
         ALERT_OPTIONS
       )
-      getStatistics()
+      getLikesStats()
     } catch (error) {
       console.log(error.message)
       alert.value.showAlert(
@@ -148,6 +152,11 @@
   }
 
   const getStatistics = async() => {    
+    await getLikesStats()
+    await mountPopularityStatsChart()
+  }
+
+  const getLikesStats = async() => {
     try {
       let { data, error, status } = await supabase
         .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
@@ -162,26 +171,10 @@
           let row = data.shift()
           await deleteStatistic(row.id)
         }
+
         if(data.length > 0) {
-          let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
-          let likes = data.map(row => row.likes_count)
-          state.chartData = {
-            labels,      
-            datasets: [
-              {
-                label: 'Likes',
-                backgroundColor: '#1ed760',
-                borderColor: '#fff',
-                borderWidth: 1,
-                data: likes
-              }
-            ]
-          }
-          let today = new Date()
-          let lastStatistic = new Date(data[data.length -1].created_at)
-          let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
-          var diffDays = Math.abs((today.getTime() - lastStatistic.getTime()) / (oneDay));
-          
+          await mountLikeStatsChart(data)
+          let diffDays = calcDiffDays(new Date(), new Date(data[data.length -1].created_at));
           if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
             return
           }
@@ -196,7 +189,50 @@
         'Ops',
         ALERT_OPTIONS
       )
-    } 
+    }
+  }
+
+  const mountLikeStatsChart = async(data) => {
+    let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
+    let likes = data.map(row => row.likes_count)
+    state.chartData = {
+      labels,      
+      datasets: [
+        {
+          label: 'Likes',
+          backgroundColor: '#1ed760',
+          borderColor: '#fff',
+          borderWidth: 1,
+          data: likes
+        }
+      ]
+    }
+  }
+
+  const mountPopularityStatsChart = async() => {
+    let labels = ['0-40%', '40-70%', '70-100%']
+    let level1 = state.tracks.filter(track => track.track.popularity <= 40);
+    let level2 = state.tracks.filter(track => track.track.popularity > 40 && track.track.popularity <= 70);
+    let level3 = state.tracks.filter(track => track.track.popularity > 70);
+    
+    let popularity = [level1.length, level2.length, level3.length]
+    state.chartDataPopularity = {
+      labels,      
+      datasets: [
+        {
+          label: 'Popularity',
+          backgroundColor: ['#ff1717', '#fff01e', '#75ff18'],
+          borderColor: '#fff',
+          borderWidth: 1,
+          data: popularity
+        }
+      ]
+    }
+  }
+
+  const calcDiffDays = (data1, data2) => {
+    let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+    return Math.abs((data1.getTime() - data2.getTime()) / (oneDay));
   }
 
   const executeUserPlaylist = async() => {
@@ -316,10 +352,16 @@
     </div>
     <br>
     <Line
-      id="my-chart-id"
+      id="chart-likes"
       v-if="state.chartData.datasets.length > 0"
       :options="state.chartOptions"
       :data="state.chartData"
+    />
+    <Pie
+      id="chart-popularity"
+      v-if="state.chartDataPopularity.datasets.length > 0"
+      :options="state.chartOptions"
+      :data="state.chartDataPopularity"
     />
     <br>
     <div class="list-list">
@@ -337,9 +379,9 @@
               </div>
             </div>
             <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.track.popularity < 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track.popularity >= 40 && track.track.popularity < 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track.popularity >= 70)" class="icon-popularity-good" icon="chart-line"/>
+              <font-awesome-icon v-if="(track.track.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
               {{track.track.popularity}}%
             </div>
           </div>

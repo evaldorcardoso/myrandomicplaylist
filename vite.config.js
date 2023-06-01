@@ -7,7 +7,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue(), loadVersion(), VitePWA({ 
-    registerType: 'autoUpdate', 
+    registerType: 'autoUpdate',
+    devOptions: {
+      enabled: true
+    },
     includeAssets: ['favicon.ico', 'apple-icon-180x180.png', 'masked-icon.svg'],
     manifest: {
       name: 'My Randomic Playlist',
