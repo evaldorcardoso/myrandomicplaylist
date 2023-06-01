@@ -75,11 +75,11 @@
     return props.userData;
   });
 
-  const forceRefresh = computed(() => {
-    getPlaylistTracks()
-    emit('force-refresh', false)
-    return props.forceRefresh
-  })
+  // const forceRefresh = computed(async () => {
+  //   await getPlaylistTracks()
+  //   emit('force-refresh', false)
+  //   return props.forceRefresh
+  // })
 
   const removeTrack = computed(() => {
     if ((props.removeTrack)&&(props.removeTrack !== '')) {
@@ -98,8 +98,15 @@
   }
 
   const getPlaylistTracks = async() => {
-    const { data } = await getTracks(playlistId.value)
-    state.tracks = data.items
+    var offset = 0
+    state.tracks = []
+    const { data } = await getTracks(playlistId.value, offset)
+    state.tracks = data.items    
+    while (state.tracks.length < data.total) {
+      offset += 100
+      let { data } = await getTracks(playlistId.value, offset)
+      state.tracks = state.tracks.concat(data.items)
+    }
     state.tracks.forEach((track, index) => {
       track.id = index + 1
     })
