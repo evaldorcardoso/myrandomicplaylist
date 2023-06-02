@@ -330,7 +330,6 @@
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
     getPlaylistTracks()
-    getStatistics()
   })
 
 </script>
