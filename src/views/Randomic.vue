@@ -3,6 +3,7 @@
   import { useRouter } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useProfile, useGeneral } from '@/support/spotifyApi'
+  import { useUserStore } from '@/stores/user'
 
   const { 
     getProfile, 
@@ -23,6 +24,8 @@
     iconType: 'solid',
     position: 'top right'
   }
+
+  const userStore = useUserStore()
 
   const state = reactive({
     isProcessing: false,
@@ -49,6 +52,7 @@
   const getUserPlaylists = async() => {
     state.isProcessing = true
     const { data } = await getPlaylists()
+    console.log(data)
     state.playlistsOriginal = data.items
     state.playlistsOriginal.forEach(item => item.checked = false)
     filterPLaylists()
@@ -474,8 +478,7 @@
   const emit = defineEmits(['update-step-data'])
 
   onMounted(async () => {    
-    const { data } = await getProfile()
-    state.user = data
+    state.user = userStore.user
     getUserPlaylists()
     emit('update-step-data', 1)
   })

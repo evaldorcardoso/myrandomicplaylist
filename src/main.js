@@ -33,6 +33,7 @@ import {
     faChartBar
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
+import { createPinia } from 'pinia';
 
 library.add(
     faSignOutAlt, 
@@ -64,7 +65,9 @@ library.add(
 )
 
 const app  = createApp(App)
+const pinia = createPinia()
 app.use(router)
+app.use(pinia)
 app.use(axiosPlugin)
 app.use(Vue3TouchEvents)
 app.component("font-awesome-icon", FontAwesomeIcon)

@@ -4,6 +4,7 @@
     import FloatPlayer from '@/components/FloatPlayer.vue'
     import FloatMenu from '@/components/FloatMenu.vue'
     import { useProfile } from '@/support/spotifyApi'
+    import { useUserStore } from '@/stores/user'
 
     const { getPlaybackState, getProfile } = useProfile()
     const floatPlayerData = ref(null)
@@ -13,6 +14,7 @@
     const menuData = ref(null)
     const refresh = ref(null)
     const removeTrackRef = ref(null)
+    const userStore = useUserStore()
 
     const currentData = computed(() => {
         return floatPlayerData.value;
@@ -35,6 +37,7 @@
 
     const getUserProfile = async() => {
         const { data } = await getProfile()
+        userStore.setUser(data)
         user.value = data
         step.value = 0
     }
@@ -78,14 +81,14 @@
         removeTrackRef.value = value
     }
 
-    setInterval(async () => {
-        try{
-            const { data } = await getPlaybackState()
-            floatPlayerData.value = data
-        } catch(error) {
-            console.log('error on get playback state')
-        }
-    }, 30000)
+    // setInterval(async () => {
+    //     try{
+    //         const { data } = await getPlaybackState()
+    //         floatPlayerData.value = data
+    //     } catch(error) {
+    //         console.log('error on get playback state')
+    //     }
+    // }, 30000)
 
     onMounted(async () => {
         const { data } = await getPlaybackState()
