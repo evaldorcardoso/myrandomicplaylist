@@ -4,6 +4,7 @@ import router from './router'
 import axiosPlugin from './axios-plugin';
 import { library } from '@fortawesome/fontawesome-svg-core'
 import Vue3TouchEvents from 'vue3-touch-events';
+import { registerSW } from 'virtual:pwa-register'
 import { 
     faArrowDown,
     faArrowRight,
@@ -64,6 +65,10 @@ library.add(
     faChartBar
 )
 
+const updateSW = registerSW({
+    onNeedRefresh() {},
+    onOfflineReady() {},
+})
 const app  = createApp(App)
 const pinia = createPinia()
 app.use(router)
