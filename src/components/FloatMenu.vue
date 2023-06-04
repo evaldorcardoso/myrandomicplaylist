@@ -2,6 +2,7 @@
 import { onMounted, computed, reactive, ref } from "vue";
 import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
+import { usePlaylistStore } from '@/stores/playlist'
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -9,7 +10,8 @@ const emit = defineEmits([
     'remove-track'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist } = useGeneral()
-const { getPlaylists, executePlaylist } = useProfile()
+const { executePlaylist } = useProfile()
+const playlistStore = usePlaylistStore()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -65,6 +67,7 @@ const selectPlaylist = async(playlistId) => {
                 'Alright',
                 ALERT_OPTIONS
             )
+            playlistStore.loadTracks(playlistId, await getTracks(playlistId))
             closeMenu()
         }
     }catch(error){
@@ -123,8 +126,7 @@ const removeTrack = async() => {
 }
 
 const listPlaylists = async() => {
-    const { data } = await getPlaylists()
-    state.playlistsOriginal = data.items
+    state.playlistsOriginal = playlistStore.playlists
     state.playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == currentUser.value.display_name          
     )

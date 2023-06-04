@@ -4,9 +4,11 @@
   import { useRouter } from 'vue-router'
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
+  import { usePlaylistStore } from '@/stores/playlist'
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
+  const playlistStore = usePlaylistStore()
   const msg = ref('Your library')
 
   const props = defineProps({
@@ -70,8 +72,11 @@
   }
 
   onMounted(async () => {
-    const { data } = await getPlaylists()
-    state.playlistsOriginal = data.items
+    if (! playlistStore.isLoaded) {
+      const { data } = await getPlaylists()
+      playlistStore.loadAll(data.items)
+    }
+    state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
   })
