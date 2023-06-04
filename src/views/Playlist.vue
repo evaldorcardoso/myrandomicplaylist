@@ -6,11 +6,13 @@
   import { supabase } from '@/support/supabaseClient'
   import { Line, Pie } from 'vue-chartjs'
   import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
+  import { usePlaylistStore } from '@/stores/playlist'
 
   ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
   const route = useRoute();
-  const { getPlaylist, getTracks } = useGeneral()
+  const playlistStore = usePlaylistStore()
+  const { getPlaylist, getPlaylists, getTracks } = useGeneral()
   const { executePlaylist, pausePlayback } = useProfile()
 
   const playlistId = computed(() => route.params.id);
@@ -75,17 +77,11 @@
     return props.userData;
   });
 
-  // const forceRefresh = computed(async () => {
-  //   await getPlaylistTracks()
-  //   emit('force-refresh', false)
-  //   return props.forceRefresh
-  // })
-
-  const removeTrack = computed(() => {
-    if ((props.removeTrack)&&(props.removeTrack !== '')) {
-      state.tracks = state.tracks.filter(function(track) {
-        return track.track.uri !== props.removeTrack
-      })
+  const removeTrack = computed(async () => {
+    if ((props.removeTrack) && (props.removeTrack !== '')) {
+      playlistStore.removeTrack(playlistId.value, props.removeTrack)
+      await getPlaylistTracks()
+      sortUserPlaylist(false)
       emit('remove-track', '')
     }
     return props.removeTrack
@@ -97,15 +93,11 @@
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
   }
 
-  const getPlaylistTracks = async() => {
-    var offset = 0
-    state.tracks = []
-    const { data } = await getTracks(playlistId.value, offset)
-    state.tracks = data.items    
-    while (state.tracks.length < data.total) {
-      offset += 100
-      let { data } = await getTracks(playlistId.value, offset)
-      state.tracks = state.tracks.concat(data.items)
+  const getPlaylistTracks = async(force = false) => {
+    state.tracks = await playlistStore.getTracks(playlistId.value)
+    if ((state.tracks.length === 0) || force) {
+      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+      state.tracks = await playlistStore.getTracks(playlistId.value)
     }
     state.tracks.forEach((track, index) => {
       track.id = index + 1
@@ -115,7 +107,7 @@
   const doRefresh = async() => {
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
-    await getPlaylistTracks()
+    await getPlaylistTracks(true)
     sortUserPlaylist(false)
   }
 
@@ -278,7 +270,7 @@
     }
   }
 
-  const sortUserPlaylist = async(increment = true) => {
+  const sortUserPlaylist = (increment = true) => {
     if(increment) {
       state.sortPosition++
       if (state.sortPosition >= sortOptions.length) {
@@ -327,8 +319,16 @@
   }
 
   onMounted(async () => {
-    const { data } = await getPlaylist(playlistId.value)
-    state.playlist = data
+    if (! playlistStore.isLoaded) {
+      const { data } = await getPlaylists()
+      playlistStore.loadAll(data.items)
+    }
+    state.playlist = await playlistStore.getPlaylist(playlistId.value)
+    if (! state.playlist.followers) {
+      const { data } = await getPlaylist(playlistId.value)
+      playlistStore.load(data)
+      state.playlist = await playlistStore.getPlaylist(playlistId.value)
+    }    
     getPlaylistTracks()
   })
 
@@ -351,7 +351,7 @@
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px" @click="getStatistics()"><font-awesome-icon icon="chart-bar" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>

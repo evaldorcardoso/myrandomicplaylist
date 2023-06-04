@@ -3,6 +3,8 @@
   import { useRouter } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useProfile, useGeneral } from '@/support/spotifyApi'
+  import { useUserStore } from '@/stores/user'
+  import { usePlaylistStore } from '@/stores/playlist'
 
   const { 
     getProfile, 
@@ -23,6 +25,9 @@
     iconType: 'solid',
     position: 'top right'
   }
+
+  const userStore = useUserStore()
+  const playlistStore = usePlaylistStore()
 
   const state = reactive({
     isProcessing: false,
@@ -48,8 +53,11 @@
   
   const getUserPlaylists = async() => {
     state.isProcessing = true
-    const { data } = await getPlaylists()
-    state.playlistsOriginal = data.items
+    if (!playlistStore.isLoaded) {
+      const { data } = await getPlaylists()
+      playlistStore.loadAll(data.items)
+    }
+    state.playlistsOriginal = playlistStore.playlists
     state.playlistsOriginal.forEach(item => item.checked = false)
     filterPLaylists()
     state.isProcessing = false
@@ -82,11 +90,14 @@
   }
 
   const getPlaylistTracks = async(playlistId) => {
-    const { data } = await getTracks(playlistId)
-    
-    data.items.map(item => {
+    var tracks = await playlistStore.getTracks(playlistId)    
+    if (tracks.length === 0) {
+      playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+      tracks = await playlistStore.getTracks(playlistId)
+    }
+    tracks.map(item => {
       if (item.track) {
-        item.track.checked = true 
+        item.track.checked = true
         state.tracks.push(item.track)
       }
     })
@@ -283,9 +294,9 @@
     }catch(error){
       console.log(error)
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Ops', // Header of the alert
+        'error',
+        error.response,
+        'Ops',
         ALERT_OPTIONS
       )
     } 
@@ -299,9 +310,9 @@
       let message = 'No device connected!'
       state.message = message
       alert.value.showAlert(
-        'info', // There are 4 types of alert: success, info, warning, error
-        message, // Message of the alert
-        'Info', // Header of the alert
+        'info',
+        message,
+        'Info',
         ALERT_OPTIONS
       )
       state.isProcessing = false
@@ -335,9 +346,9 @@
       let message = "It's not possible to add song to the playlist! Try again."
       state.message = message
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        message, // Message of the alert
-        'Error', // Header of the alert
+        'error',
+        message,
+        'Error',
         ALERT_OPTIONS
       )
       state.isProcessing = false
@@ -346,9 +357,9 @@
     let message = 'Songs added to playlist successfully!'
     state.message = message
     alert.value.showAlert(
-      'success', // There are 4 types of alert: success, info, warning, error
-      message, // Message of the alert
-      'Alright', // Header of the alert
+      'success',
+      message,
+      'Alright',
       ALERT_OPTIONS
     )
     state.isProcessing = false
@@ -376,9 +387,9 @@
       console.log(error)
       state.isProcessing = false
       alert.value.showAlert(
-        'error', // There are 4 types of alert: success, info, warning, error
-        error.response, // Message of the alert
-        'Error', // Header of the alert
+        'error',
+        error.response,
+        'Error',
         ALERT_OPTIONS
       )
     }
@@ -474,8 +485,7 @@
   const emit = defineEmits(['update-step-data'])
 
   onMounted(async () => {    
-    const { data } = await getProfile()
-    state.user = data
+    state.user = userStore.user
     getUserPlaylists()
     emit('update-step-data', 1)
   })
@@ -621,9 +631,6 @@
 
 <style scoped>
 
-.page{
-  /*margin-top: 40px;*/
-}
 .button-spotify-clear-filter {
   border-radius: 20px;
   border: none;
