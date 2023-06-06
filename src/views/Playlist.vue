@@ -108,7 +108,7 @@
     const { data } = await getPlaylist(playlistId.value)
     state.playlist = data
     await getPlaylistTracks(true)
-    sortUserPlaylist(false)
+    sortUserPlaylist(false)    
   }
 
   const saveStatistics = async() => {
