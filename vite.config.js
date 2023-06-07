@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  assetsInclude: ['**/*.png'],
   plugins: [vue(), loadVersion(), VitePWA({ 
     registerType: 'autoUpdate',
     devOptions: {
