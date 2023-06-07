@@ -9,7 +9,7 @@ const emit = defineEmits([
     'force-refresh',
     'remove-track'
 ])
-const { addTracksToPlaylist, removeTracksOfPlaylist } = useGeneral()
+const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
 
@@ -53,6 +53,16 @@ const currentUser = computed(() => {
 });
 
 const selectPlaylist = async(playlistId) => {
+    if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.track.uri)) {
+        alert.value.showAlert(
+            'error',
+            'This track is already on this playlist!',
+            'Ops',
+            ALERT_OPTIONS
+        )
+        return
+    }
+
     try {
         const formData = {
             'uris': [
@@ -73,6 +83,16 @@ const selectPlaylist = async(playlistId) => {
     }catch(error){
       console.log(error)
     }
+}
+
+const verifyDuplicateTrackInPlaylist = async(playlistId, trackUri) => {
+    var tracks = await playlistStore.getTracks(playlistId)
+    if (tracks.length === 0) {
+      playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+      tracks = await playlistStore.getTracks(playlistId)
+    }
+
+    return tracks.find(element => element.track.uri === trackUri) === undefined
 }
 
 const executeTrack = async(track) => {
