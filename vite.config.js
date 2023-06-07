@@ -15,13 +15,7 @@ export default defineConfig({
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       sourcemap: true
     },
-    includeAssets: [
-      'favicon.ico',
-      'android-icon-192x192.png',
-      'mrp-logo-512x512.png',
-      'apple-icon-180x180.png',
-      'masked-icon.svg'
-    ],
+    includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
     manifest: {
       name: 'My Randomic Playlist',
       short_name: 'MRP',
@@ -29,17 +23,17 @@ export default defineConfig({
       theme_color: '#62faf5',
       icons: [
         {
-          src: './src/assets/android-icon-192x192.png',
+          src: '/pwa-192x192.png',
           sizes: '192x192',
           type: 'image/png'
         },
         {
-          src: './src/assets/mrp-logo-512x512.png',
+          src: '/pwa-512x512.png',
           sizes: '512x512',
           type: 'image/png'
         },
         {
-          src: './src/assets/mrp-logo-512x512.png',
+          src: '/pwa-512x512.png',
           sizes: '512x512',
           type: 'image/png',
           purpose: 'any maskable'

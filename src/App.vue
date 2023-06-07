@@ -1,7 +1,10 @@
 <script setup>
+  import ReloadPWA from "@/components/ReloadPWA.vue"
+
   document.title = 'My Randomic Playlist'
 </script>
 <template>
+  <ReloadPWA />
   <div id="main">
     <router-view/>
   </div>
