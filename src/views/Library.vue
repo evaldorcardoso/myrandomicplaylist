@@ -71,6 +71,14 @@
     )
   }
 
+  const doRefresh = async() => {
+    const { data } = await getPlaylists()
+    playlistStore.loadAll(data.items)
+    state.playlistsOriginal = playlistStore.playlists
+    const { filterLibrary } = helpers.getLocalStorage()
+    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
+  }
+
   onMounted(async () => {
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
@@ -88,8 +96,14 @@
     <div style="display: flex;justify-content: center" >
       <img :src="currentUser.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
     </div>
-    <div style="display: flex;justify-content: center" >
-      <h2 style="padding-top: 15px;color:#fff">{{ msg }}</h2>
+    <div style="display: flex;flex-direction:column" >
+      <h2 style="padding-top: 15px;color:#fff;text-align:center;margin:0">{{ msg }}</h2>
+      <div class="playlist-sub">
+        <div class="playlist-details">
+          <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+          <p class="playlist-subtitle" style="margin-top:10px">{{currentUser.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        </div>
+      </div>
     </div>
     <div style="margin-top: 10px;height:30px;line-height:30px;">
       <button 
@@ -120,6 +134,7 @@
             <img :src="playlist.images[0]?.url" />
             <h4>{{ playlist.name }}</h4>
             <h5>By: {{ playlist.owner.display_name }}</h5>
+            <h5>{{ playlist.tracks.total }} itens</h5>
             <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p>
         </li>
       </ul>
@@ -129,6 +144,23 @@
 
 <style scoped>
 
+.playlist-sub {
+  height: 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.playlist-details {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  min-width: 100%;
+}
+.playlist-subtitle {
+  margin-top: 0px;
+  color:#999797;
+  font-size:12px;
+}
 .button-spotify {
   border-radius: 20px;
   border: none;

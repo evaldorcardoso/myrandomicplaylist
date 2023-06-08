@@ -324,7 +324,7 @@
       playlistStore.loadAll(data.items)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    if (! state.playlist.followers) {
+    if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
       const { data } = await getPlaylist(playlistId.value)
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
@@ -397,8 +397,7 @@
     <div class="footer">
       <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
     </div>
-    <div>
-      {{ forceRefresh }}
+    <div style="color:#1c1c1c">
       {{ removeTrack }}
     </div>
   </div>

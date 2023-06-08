@@ -254,6 +254,7 @@
     const userId = state.user.id
     const { data } = await savePlaylist(userId, formData)
     state.randomPlaylist = data
+    playlistStore.load(data)
     let message = 'Playlist created successfully!'
     state.message = message
     alert.value.showAlert(

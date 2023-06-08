@@ -81,14 +81,14 @@
         removeTrackRef.value = value
     }
 
-    // setInterval(async () => {
-    //     try{
-    //         const { data } = await getPlaybackState()
-    //         floatPlayerData.value = data
-    //     } catch(error) {
-    //         console.log('error on get playback state')
-    //     }
-    // }, 30000)
+    setInterval(async () => {
+        try{
+            const { data } = await getPlaybackState()
+            floatPlayerData.value = data
+        } catch(error) {
+            console.log('error on get playback state')
+        }
+    }, 30000)
 
     onMounted(async () => {
         const { data } = await getPlaybackState()
