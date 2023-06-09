@@ -7,7 +7,6 @@
   import { usePlaylistStore } from '@/stores/playlist'
 
   const { 
-    getProfile, 
     getPlaylists,  
     executePlaylist, 
     getPlaybackState,

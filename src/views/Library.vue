@@ -100,8 +100,8 @@
       <h2 style="padding-top: 15px;color:#fff;text-align:center;margin:0">{{ msg }}</h2>
       <div class="playlist-sub">
         <div class="playlist-details">
-          <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-          <p class="playlist-subtitle" style="margin-top:10px">{{currentUser.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+          <p class="playlist-subtitle" style="cursor:pointer;margin-right: 20px;" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+          <p class="playlist-subtitle">{{currentUser.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         </div>
       </div>
     </div>
@@ -145,7 +145,7 @@
 <style scoped>
 
 .playlist-sub {
-  height: 20px;
+  height: 30px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -153,11 +153,11 @@
 .playlist-details {
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
+  justify-content: center;
   min-width: 100%;
 }
 .playlist-subtitle {
-  margin-top: 0px;
+  margin-top:10px;
   color:#999797;
   font-size:12px;
 }
@@ -203,6 +203,7 @@
     display: flex;
     flex-direction: column;
     border-radius: 5px;
+    cursor: pointer;
 }
 .playlists img{
     max-width: 230px;

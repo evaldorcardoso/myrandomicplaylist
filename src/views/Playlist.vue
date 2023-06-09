@@ -7,13 +7,14 @@
   import { Line, Pie } from 'vue-chartjs'
   import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
   import { usePlaylistStore } from '@/stores/playlist'
+  import FloatMenu from '@/components/FloatMenu.vue'
 
   ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
   const route = useRoute();
   const playlistStore = usePlaylistStore()
   const { getPlaylist, getPlaylists, getTracks } = useGeneral()
-  const { executePlaylist, pausePlayback } = useProfile()
+  const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
   const emit = defineEmits([
@@ -57,6 +58,9 @@
       responsive: true
     }
   })
+  const isMenuOpened = ref(null)
+  const menuDataReactive = ref(null)
+  const alert = ref(null)
 
   const props = defineProps({
     userData: {
@@ -70,6 +74,10 @@
     removeTrack: {
       type: String,
       default: ''
+    },
+    stepData: {
+      type: Number,
+      default: 1
     }
   });
 
@@ -77,17 +85,13 @@
     return props.userData;
   });
 
-  const removeTrack = computed(async () => {
-    if ((props.removeTrack) && (props.removeTrack !== '')) {
-      playlistStore.removeTrack(playlistId.value, props.removeTrack)
-      await getPlaylistTracks()
-      sortUserPlaylist(false)
-      emit('remove-track', '')
-    }
-    return props.removeTrack
+  const menuOpened = computed(() => {
+    return isMenuOpened.value;
   })
 
-  const alert = ref(null)
+  const menuData = computed(() => {
+    return menuDataReactive.value
+  })
 
   const openPlaylistApp = (playlistId) => {
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
@@ -102,13 +106,6 @@
     state.tracks.forEach((track, index) => {
       track.id = index + 1
     })
-  }
-
-  const doRefresh = async() => {
-    const { data } = await getPlaylist(playlistId.value)
-    state.playlist = data
-    await getPlaylistTracks(true)
-    sortUserPlaylist(false)    
   }
 
   const saveStatistics = async() => {
@@ -148,11 +145,6 @@
         .eq('id', id)
 
       if (error && status !== 406) throw error
-  }
-
-  const getStatistics = async() => {    
-    await getLikesStats()
-    await mountPopularityStatsChart()
   }
 
   const getLikesStats = async() => {
@@ -312,10 +304,69 @@
     let track = state.tracks.find(track => track.track.id === element.id)
     track['playlist'] = {
       id: state.playlist.id,
-      isOwner: state.playlist.owner.display_name == currentUser.value.display_name
+      owner: state.playlist.owner.display_name
     }
-    emit('update-menu-data', track)
-    emit('update-menu-opened', true)
+    //emit('update-menu-data', track)
+    //emit('update-menu-opened', true)
+    let menuData = {
+      type: 'track',
+      track
+    }
+    menuDataReactive.value = menuData
+    console.log(menuDataReactive.value)
+    isMenuOpened.value = true
+  }
+
+  const openMenuPlaylist = () => {
+    let menuData = {
+      type: 'playlist',
+      playlist: state.playlist
+    }
+    let popularities = state.tracks.map(track => { return track.track.popularity })
+    let popularity = popularities.reduce(function(a, b) {
+      return a + b
+    })
+    menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
+    menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)
+    menuDataReactive.value = menuData
+    isMenuOpened.value = true
+  }
+
+  const onRemoveTrack = async (value) => {
+    playlistStore.removeTrack(playlistId.value, value)
+    await getPlaylistTracks()
+    sortUserPlaylist(false)
+  }
+
+  const onUpdateMenuOpened = (value) => {
+    isMenuOpened.value = value
+  }
+
+  const onRefreshPage = async() => {
+    const { data } = await getPlaylist(playlistId.value)
+    state.playlist = data
+    await getPlaylistTracks(true)
+    sortUserPlaylist(false)
+  }
+
+  const addToQueue = async(track) => {
+    try {
+      const { status } = await addTrackToQueue(track)
+      alert.value.showAlert(
+        'success',
+        'Song added!',
+        'Alright',
+        ALERT_OPTIONS
+      )
+    } catch (error) {
+      console.log(error)
+      alert.value.showAlert(
+        'error',
+        error.message,
+        'Ops',
+        ALERT_OPTIONS
+      )
+    }
   }
 
   onMounted(async () => {
@@ -335,7 +386,18 @@
 </script>
 
 <template>
-  <div class="page">
+  <FloatMenu 
+        :menu-opened="menuOpened"
+        :menu-data="menuData"
+        :user-data="currentUser"
+        @update-menu-opened="onUpdateMenuOpened" 
+        @remove-track="onRemoveTrack"
+        @refresh-playlist="onRefreshPage"
+        @open-popularity="mountPopularityStatsChart"
+        @open-likes="getLikesStats"
+        @add-queue="addToQueue"
+    />
+  <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <img class="center img-album" :src="state.playlist?.images[0]?.url" />
     <div class="playlist-header">      
@@ -349,11 +411,10 @@
         <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
       </button>
       <div class="playlist-details">
-        <p class="playlist-subtitle" style="margin-top:10px" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p class="playlist-subtitle" style="margin-top:10px" @click="getStatistics()"><font-awesome-icon icon="chart-bar" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
-        <p class="playlist-subtitle" style="margin-top:10px" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
     </div>
     <br>
@@ -373,7 +434,7 @@
     <div class="list-list">
       <ul class="list">
         <li :id="track.track.id" v-for="track in state.tracks" class="list-item">
-          <div class="list-item-div" @click="holdItem($event)">
+          <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
             <img :src="track.track.album.images[0].url" class="music-cover"/>
             <div class="list-item-content">                
               <div class="list-item-title">
@@ -405,11 +466,11 @@
 
 <style scoped>
 .center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
 }
 .button-spotify {
   border-radius: 33px;

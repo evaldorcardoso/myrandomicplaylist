@@ -2,16 +2,15 @@
     import { ref, computed, onMounted } from 'vue'
     import Navbar from '@/components/Navbar.vue'
     import FloatPlayer from '@/components/FloatPlayer.vue'
-    import FloatMenu from '@/components/FloatMenu.vue'
     import { useProfile } from '@/support/spotifyApi'
     import { useUserStore } from '@/stores/user'
 
     const { getPlaybackState, getProfile } = useProfile()
     const floatPlayerData = ref(null)
-    const isMenuOpened = ref(null)
+    
     const user = ref(null)
     const step = ref(null)
-    const menuData = ref(null)
+    
     const refresh = ref(null)
     const removeTrackRef = ref(null)
     const userStore = useUserStore()
@@ -23,9 +22,7 @@
         return user.value;
     })
 
-    const menuOpened = computed(() => {
-        return isMenuOpened.value;
-    })
+    
 
     const forceRefresh = computed(() => {
         return refresh.value;
@@ -65,30 +62,28 @@
         step.value = value
     }
 
-    const onUpdateMenuOpened = (value) => {
-        isMenuOpened.value = value
-    }
+    
 
     const onUpdateMenuData = (value) => {
         menuData.value = value
     }
 
-    const onForceRefresh = (value) => {
-        refresh.value = value
-    }
+    // const onForceRefresh = (value) => {
+    //     refresh.value = value
+    // }
 
-    const onRemoveTrack = (value) => {
-        removeTrackRef.value = value
-    }
+    // const onRemoveTrack = (value) => {
+    //     removeTrackRef.value = value
+    // }
 
-    setInterval(async () => {
-        try{
-            const { data } = await getPlaybackState()
-            floatPlayerData.value = data
-        } catch(error) {
-            console.log('error on get playback state')
-        }
-    }, 30000)
+    // setInterval(async () => {
+    //     try{
+    //         const { data } = await getPlaybackState()
+    //         floatPlayerData.value = data
+    //     } catch(error) {
+    //         console.log('error on get playback state')
+    //     }
+    // }, 30000)
 
     onMounted(async () => {
         const { data } = await getPlaybackState()
@@ -106,24 +101,19 @@
     <FloatPlayer v-if="floatPlayerData" 
         :current-data="currentData"
     />
-    <FloatMenu 
+    <!-- <FloatMenu 
         :menu-opened="menuOpened"
         :menu-data="menuData"
         :user-data="user"
         @update-menu-opened="onUpdateMenuOpened" 
         @force-refresh="onForceRefresh"
         @remove-track="onRemoveTrack"
-    />
+    /> -->
     <router-view 
         :user-data="user" 
         :step-data="step" 
-        :menu-opened="menuOpened" 
-        :force-refresh="forceRefresh"
         :remove-track="removeTrack"
         @update-step-data="onUpdateStepData" 
-        @update-menu-opened="onUpdateMenuOpened" 
-        @update-menu-data="onUpdateMenuData" 
-        @force-refresh="onForceRefresh"
-        @remove-track="onRemoveTrack"
+        @update-menu-data="onUpdateMenuData"
     />
 </template>

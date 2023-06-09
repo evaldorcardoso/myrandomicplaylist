@@ -31,7 +31,9 @@ import {
     faTrash,
     faHeart,
     faSync,
-    faChartBar
+    faChartBar,
+    faChartPie,
+    faEllipsisV
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { createPinia } from 'pinia';
@@ -62,7 +64,9 @@ library.add(
     faTrash,
     faHeart,
     faSync,
-    faChartBar
+    faChartBar,
+    faChartPie,
+    faEllipsisV
 )
 
 const updateSW = registerSW({
@@ -72,6 +76,7 @@ const updateSW = registerSW({
 const app  = createApp(App)
 const pinia = createPinia()
 app.use(router)
+app.use(updateSW)
 app.use(axiosPlugin)
 app.use(Vue3TouchEvents)
 app.component("font-awesome-icon", FontAwesomeIcon)

@@ -80,7 +80,7 @@
 <template>
     <div class="navbar">
       <div class="navbar-inner" v-if="currentUser">
-        <div class="left">
+        <div class="left" style="cursor:pointer">
           <div v-if="$router.currentRoute.value.name != 'Home'" @click="goBack()">
             <font-awesome-icon v-if="router.name != 'Home'" icon="chevron-left" style="width:30px;height:30px;color:black;margin:auto"/>
           </div>
@@ -94,7 +94,7 @@
             <p>@{{ currentUser?.display_name }}</p>
           </div>
         </div>
-        <div class="right" style="margin: auto" v-if="currentStep == 0">
+        <div class="right" style="margin:auto;cursor:pointer" v-if="currentStep == 0">
           <font-awesome-icon icon="bars"
             style="width:30px;height:30px;color:black;margin:auto"
             @click="state.menuOpen = !state.menuOpen"
@@ -177,6 +177,7 @@
   position: relative;
   height: 50px;
   padding: 0 10px;
+  cursor:pointer;
 }
 .navbar-right-inner-item p{
   position: absolute;

@@ -6,8 +6,11 @@ import { usePlaylistStore } from '@/stores/playlist'
 
 const emit = defineEmits([
     'update-menu-opened',
-    'force-refresh',
-    'remove-track'
+    'remove-track',
+    'refresh-playlist',
+    'open-popularity',
+    'open-likes',
+    'add-queue'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
@@ -28,7 +31,7 @@ const state = reactive({
 const props = defineProps({
     menuOpened: {
         type: Boolean,
-        default: false,
+        default: false
     },
     menuData: {
         type: Object,
@@ -36,7 +39,7 @@ const props = defineProps({
     },
     userData: {
         type: Object,
-        default: () => { },
+        default: () => { }
     },
 });
 
@@ -45,7 +48,33 @@ const menuOpened = computed(() => {
 });
 
 const menuData = computed(() => {
-    return props.menuData;
+    let menuData = {};
+    menuData.type = props.menuData.type
+    if (menuData.type == 'playlist') {
+        menuData.id = props.menuData.playlist.id
+        menuData.image = props.menuData.playlist.images[0].url
+        menuData.title = props.menuData.playlist.name
+        menuData.subtitle = props.menuData.playlist.description
+        menuData.followers = props.menuData.playlist.followers.total
+        menuData.owner = props.menuData.playlist.owner.display_name
+        menuData.isOwner = props.menuData.playlist.owner.display_name == currentUser.value.display_name
+        menuData.visibility = props.menuData.playlist.public ? 'Public' : 'Private'
+        menuData.popularity = props.menuData.playlist.popularity
+        return menuData
+    }
+    if (menuData.type == 'track') {
+        menuData.id = props.menuData.track.track.uri
+        menuData.image = props.menuData.track.track.album.images[0].url
+        menuData.title = props.menuData.track.track.name
+        menuData.subtitle = props.menuData.track.track.artists[0].name
+        menuData.addedAt = new Date(props.menuData.track.added_at).toLocaleDateString()
+        menuData.releasedAt = new Date(props.menuData.track.track.album.release_date).toLocaleDateString()
+        menuData.duration = new Date(props.menuData.track.track.duration_ms).toISOString().slice(14, 19)
+        menuData.popularity = props.menuData.track.track.popularity
+        menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
+        menuData.playlist = props.menuData.track.playlist.id
+        return menuData
+    }
 });
 
 const currentUser = computed(() => {
@@ -53,7 +82,7 @@ const currentUser = computed(() => {
 });
 
 const selectPlaylist = async(playlistId) => {
-    if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.track.uri)) {
+    if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.id)) {
         alert.value.showAlert(
             'error',
             'This track is already on this playlist!',
@@ -66,7 +95,7 @@ const selectPlaylist = async(playlistId) => {
     try {
         const formData = {
             'uris': [
-                menuData.value.track.uri
+                menuData.value.id
             ]
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
@@ -98,7 +127,7 @@ const verifyDuplicateTrackInPlaylist = async(playlistId, trackUri) => {
 const executeTrack = async(track) => {
     try{
       const formData = {
-        "uris": [ track.uri ]
+        "uris": [ track ]
       }
       const { status } = await executePlaylist(formData)
       if (status != 204){
@@ -126,10 +155,10 @@ const removeTrack = async() => {
     try {
         const formData = {
             'tracks': [
-                { 'uri': menuData.value.track.uri }
+                { 'uri': menuData.value.id }
             ]
         }
-        const { status } = await removeTracksOfPlaylist(menuData.value.playlist.id, formData)
+        const { status } = await removeTracksOfPlaylist(menuData.value.playlist, formData)
         if (status === 200) {
             alert.value.showAlert(
                 'success',
@@ -137,12 +166,32 @@ const removeTrack = async() => {
                 'Alright',
                 ALERT_OPTIONS
             )
-            emit('remove-track', menuData.value.track.uri)
+            emit('remove-track', menuData.value.id)
             closeMenu()
         }
     }catch(error){
       console.log(error)
     }
+}
+
+const doRefresh = () => {
+    emit('refresh-playlist')
+    closeMenu()
+}
+
+const doPopularity = () => {
+    emit('open-popularity')
+    closeMenu()
+}
+
+const doLikes = () => {
+    emit('open-likes')
+    closeMenu()
+}
+
+const doQueue = (track) => {
+    emit('add-queue', track)
+    closeMenu()
 }
 
 const listPlaylists = async() => {
@@ -168,44 +217,72 @@ const closeMenu = () => {
     <div class="menu" v-if="menuOpened">
         <div class="menu-content">
             <hr class="menu-bar" @click="closeMenu">
-            <div class="menu-item-track" v-if="menuData">
-                <img :src="menuData.track.album.images[0].url" class="music-cover"/>
-                <div class="menu-item-track-content">                
-                  <div class="menu-item-track-title">
-                    {{menuData.track.name}}
-                  </div>
-                  <div class="menu-item-track-subtitle">{{menuData.track.artists[0].name}}</div>
-                </div>
-            </div>
-            <div class="menu-item-track-details">
-                Added: {{ new Date(menuData.added_at).toLocaleDateString() }} <br>
-                Released: {{ new Date(menuData.track.album.release_date).toLocaleDateString() }} <br>
-                Duration: {{ new Date(menuData.track.duration_ms).toISOString().slice(14, 19) }} <br>
-                Popularity: {{ menuData.track.popularity }}<br>
-            </div>
-            <hr class="style-one">
-            <div class="menu-item" @click="executeTrack(menuData.track)">
-                <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                <h3 class="menu-item-option">Play</h3>
-            </div>
-            <div class="menu-item" @click="listPlaylists">
-                <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                <h3 class="menu-item-option">Add to another playlist</h3>
-            </div>
-            <div class="menu-item" v-if="menuData.playlist.isOwner" @click="removeTrack">
-                <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                <h3 class="menu-item-option">Remove from this playlist</h3>
-            </div>
-            <div class="playlists" v-if="state.playlists">
-                <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)" v-if="menuData">
-                    <img :src="playlist.images[0]?.url" class="playlist-cover"/>
+            <div>
+                <div class="menu-item-track">
+                    <img :src="menuData.image" class="music-cover"/>
                     <div class="menu-item-track-content">                
                       <div class="menu-item-track-title">
-                        {{playlist.name}}
+                        {{menuData.title}}
                       </div>
+                      <div class="menu-item-track-subtitle">{{menuData.subtitle}}</div>
                     </div>
                 </div>
-            </div>
+                <div class="menu-item-track-details" v-if="menuData.type == 'track'">
+                    Added: {{ menuData.addedAt }} <br>
+                    Released: {{ menuData.releasedAt }} <br>
+                    Duration: {{ menuData.duration }} <br>
+                    Popularity: {{ menuData.popularity }}<br>
+                </div>
+                <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
+                    Followers: {{ menuData.followers }} <br>
+                    Created by: {{ menuData.owner }} <br>
+                    Visibility: {{ menuData.visibility }} <br>
+                    Popularity: {{ menuData.popularity }}<br>
+                </div>
+                <hr class="style-one">
+                <div v-if="menuData.type == 'track'">
+                    <div class="menu-item" @click="executeTrack(menuData.id)">
+                        <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Play</h3>
+                    </div>
+                    <div class="menu-item" @click="doQueue(menuData.id)">
+                        <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Add to queue</h3>
+                    </div>
+                    <div class="menu-item" @click="listPlaylists">
+                        <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Add to another playlist</h3>
+                    </div>
+                    <div class="menu-item" v-if="menuData.isOwner" @click="removeTrack">
+                        <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Remove from this playlist</h3>
+                    </div>
+                    <div class="playlists" v-if="state.playlists">
+                        <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
+                            <img :src="playlist.images[0]?.url" class="playlist-cover"/>
+                            <div class="menu-item-track-content">                
+                              <div class="menu-item-track-title">
+                                {{playlist.name}}
+                              </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="menuData.type == 'playlist'">
+                    <div class="menu-item" @click="doRefresh">
+                        <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Refresh</h3>
+                    </div>
+                    <div class="menu-item" @click="doPopularity">
+                        <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Popularity chart</h3>
+                    </div>
+                    <div class="menu-item" @click="doLikes">
+                        <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Likes chart</h3>
+                    </div>
+                </div>
+            </div>            
         </div>
     </div>   
 </template>
@@ -239,6 +316,7 @@ const closeMenu = () => {
         background-color: #b3b3b3;
         margin: 10px auto 10px auto;
         border-radius: 10px;
+        cursor: pointer;
     }
     .menu-content{
         display: flex;
@@ -260,6 +338,7 @@ const closeMenu = () => {
         justify-content: baseline;
         height: 45px;
         margin-left: 10px;
+        cursor: pointer;
     }
     hr.style-one {
         width: 100%;
