@@ -134,7 +134,7 @@
             <img :src="playlist.images[0]?.url" />
             <h4>{{ playlist.name }}</h4>
             <h5>By: {{ playlist.owner.display_name }}</h5>
-            <h5>{{ playlist.tracks.total }} itens</h5>
+            <h5>{{ playlist.tracks.total || playlist.tracks.length }} itens</h5>
             <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p>
         </li>
       </ul>

@@ -271,11 +271,11 @@
     }
     
     if (sortOptions[state.sortPosition] === 'top first') {
-      state.tracks.sort((a, b) => b.track.popularity - a.track.popularity)
+      state.tracks.sort((a, b) => b.track?.popularity - a.track?.popularity)
       return
     }
     if (sortOptions[state.sortPosition] === 'top last') {
-      state.tracks.sort((a, b) => a.track.popularity - b.track.popularity)
+      state.tracks.sort((a, b) => a.track?.popularity - b.track?.popularity)
       return
     }
     if (sortOptions[state.sortPosition] === 'added first') {
@@ -380,7 +380,7 @@
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }    
-    getPlaylistTracks()
+    await getPlaylistTracks()
   })
 
 </script>
@@ -433,23 +433,23 @@
     <br>
     <div class="list-list">
       <ul class="list">
-        <li :id="track.track.id" v-for="track in state.tracks" class="list-item">
+        <li :id="track.track?.id" v-for="track in state.tracks" class="list-item">
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
-            <img :src="track.track.album.images[0].url" class="music-cover"/>
+            <img :src="track.track?.album.images[0].url" class="music-cover"/>
             <div class="list-item-content">                
               <div class="list-item-title">
-                {{track.track.name}}
+                {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ track.track.artists[0].name }}</div>
+                <div class="list-item-subtitle">{{ track.track?.artists[0].name }}</div>
                 <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;align-items: end;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
               </div>
             </div>
             <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.track.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.track.popularity}}%
+              <font-awesome-icon v-if="(track.track?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
+              <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
+              {{track.track?.popularity}}%
             </div>
           </div>
         </li>
