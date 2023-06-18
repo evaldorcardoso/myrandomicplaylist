@@ -85,7 +85,7 @@
             <font-awesome-icon v-if="router.name != 'Home'" icon="chevron-left" style="width:30px;height:30px;color:black;margin:auto"/>
           </div>
           <div v-if="$router.currentRoute.value.name == 'Home'">
-            <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" />
+            <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" alt="user-picture"/>
           </div>
         </div>
         <div class="center" style="text-align: center;">

@@ -4,7 +4,11 @@
   document.title = 'My Randomic Playlist'
 </script>
 <template>
-  <ReloadPWA />
+  <header>
+    <div class="wrapper">
+      <ReloadPWA />
+    </div>
+  </header>
   <div id="main">
     <router-view/>
   </div>
