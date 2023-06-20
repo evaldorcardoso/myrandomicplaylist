@@ -10,7 +10,8 @@ const emit = defineEmits([
     'refresh-playlist',
     'open-popularity',
     'open-likes',
-    'add-queue'
+    'add-queue',
+    'update-sort'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
@@ -194,6 +195,11 @@ const doQueue = (track) => {
     closeMenu()
 }
 
+const doUpdateSort = () => {
+    emit('update-sort')
+    closeMenu()
+}
+
 const listPlaylists = async() => {
     state.playlistsOriginal = playlistStore.playlists
     state.playlists = state.playlistsOriginal.filter(
@@ -280,6 +286,10 @@ const closeMenu = () => {
                     <div class="menu-item" @click="doLikes">
                         <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                         <h3 class="menu-item-option">Likes chart</h3>
+                    </div>
+                    <div class="menu-item" @click="doUpdateSort">
+                        <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                        <h3 class="menu-item-option">Save sort on Spotify</h3>
                     </div>
                 </div>
             </div>            

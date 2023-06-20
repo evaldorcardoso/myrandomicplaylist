@@ -1,6 +1,9 @@
 node_modules
 .DS_Store
+dev-dist/*
 dist
 dist-ssr
 *.local
 .env
+dev-dist/sw.js
+dev-dist/sw.js.map

@@ -13,7 +13,7 @@
 
   const route = useRoute();
   const playlistStore = usePlaylistStore()
-  const { getPlaylist, getPlaylists, getTracks } = useGeneral()
+  const { getPlaylist, getPlaylists, getTracks, updateTracksOfPlaylist } = useGeneral()
   const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
@@ -30,7 +30,7 @@
   }
 
   const MAX_STATISTICS_ITEMS_TO_RETAIN = 10
-  const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 7
+  const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 6
 
   const sortOptions = [
     'default',
@@ -46,6 +46,8 @@
     tracks: [],
     visible: false,
     sortPosition: 0,
+    isProcessing: false,
+    message: '',
     chartData: {
       labels: [],
       datasets: []
@@ -104,7 +106,7 @@
       state.tracks = await playlistStore.getTracks(playlistId.value)
     }
     state.tracks.forEach((track, index) => {
-      track.id = index + 1
+      track.id = index
     })
   }
 
@@ -369,6 +371,41 @@
     }
   }
 
+  const updateTracksOrder = async() => {
+    state.isProcessing = true
+    var i = 0
+    while(i < state.tracks.length) {
+      let id = state.tracks[i].id
+      if (id == i) {
+        i++
+        continue
+      }
+      const formData = {
+        'range_start': id,
+        'insert_before': i
+      }
+      await updateTracksOfPlaylist(playlistId.value, formData)
+      state.tracks.sort((a, b) => a.id - b.id)
+      let temp = state.tracks.splice(id, 1)
+      state.tracks.splice(i, 0, temp[0])
+      for(let j=0; j<state.tracks.length; j++) {
+        state.tracks[j].id = j
+      }
+      sortUserPlaylist(false)
+      i = 0
+    }
+
+    alert.value.showAlert(
+      'success',
+      'Playlist updated!',
+      'Alright',
+      ALERT_OPTIONS
+    )
+    state.sortPosition = 0
+    await onRefreshPage()
+    state.isProcessing = false
+  }
+
   onMounted(async () => {
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
@@ -381,6 +418,7 @@
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }    
     await getPlaylistTracks()
+    console.log(playlistId.value)
   })
 
 </script>
@@ -396,9 +434,11 @@
         @open-popularity="mountPopularityStatsChart"
         @open-likes="getLikesStats"
         @add-queue="addToQueue"
+        @update-sort="updateTracksOrder"
     />
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
+    <center v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></center>
     <img class="center img-album" :src="state.playlist?.images[0]?.url" />
     <div class="playlist-header">      
       <div class="playlist-description">
