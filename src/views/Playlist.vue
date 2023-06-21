@@ -166,6 +166,14 @@
         }
 
         if(data.length > 0) {
+          if (calcDiffDays(new Date(), new Date(data[data.length -1].created_at)) > 1) {
+            const parcialData = {
+              created_at: new Date(),
+              id: Date.now(),
+              likes_count: state.playlist.followers.total
+            }
+            data.push(parcialData)
+          }
           await mountLikeStatsChart(data)
           let diffDays = calcDiffDays(new Date(), new Date(data[data.length -1].created_at));
           if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
@@ -188,6 +196,11 @@
   const mountLikeStatsChart = async(data) => {
     let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
     let likes = data.map(row => row.likes_count)
+    var pointStyles = []
+    for(let i=0; i<data.length; i++) {
+      pointStyles.push('circle')
+    }
+    pointStyles[pointStyles.length-1] = 'crossRot'
     state.chartData = {
       labels,      
       datasets: [
@@ -196,6 +209,10 @@
           backgroundColor: '#1ed760',
           borderColor: '#fff',
           borderWidth: 1,
+          pointRadius: 7,
+          fill: false,
+          pointHoverRadius: 10,
+          pointStyle: pointStyles,
           data: likes
         }
       ]
@@ -418,7 +435,6 @@
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }    
     await getPlaylistTracks()
-    console.log(playlistId.value)
   })
 
 </script>
