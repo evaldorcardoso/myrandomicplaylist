@@ -8,26 +8,17 @@
   import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
   import { usePlaylistStore } from '@/stores/playlist'
   import FloatMenu from '@/components/FloatMenu.vue'
+  import Notification from '@/components/Notification.vue'
+  import { NOTIFICATIONS_TYPE } from '../support/helpers'
 
   ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
   const route = useRoute();
   const playlistStore = usePlaylistStore()
-  const { getPlaylist, getPlaylists, getTracks, updateTracksOfPlaylist } = useGeneral()
-  const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
+  const { getPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
+  const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
-  const emit = defineEmits([
-    'update-menu-opened',
-    'update-menu-data',
-    'force-refresh'
-  ])
-
-  const ALERT_OPTIONS = { 
-    iconSize: 35,
-    iconType: 'solid',
-    position: 'top right'
-  }
 
   const MAX_STATISTICS_ITEMS_TO_RETAIN = 10
   const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 6
@@ -61,7 +52,9 @@
     }
   })
   const isMenuOpened = ref(null)
+  const isNotificationOpened = ref(null)
   const menuDataReactive = ref(null)
+  const notificationDataReactive = ref(null)
   const alert = ref(null)
 
   const props = defineProps({
@@ -91,8 +84,16 @@
     return isMenuOpened.value;
   })
 
+  const notificationOpened = computed(() => {
+    return isNotificationOpened.value;
+  })
+
   const menuData = computed(() => {
     return menuDataReactive.value
+  })
+
+  const notificationData = computed(() => {
+    return notificationDataReactive.value
   })
 
   const openPlaylistApp = (playlistId) => {
@@ -120,22 +121,11 @@
       let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
-
-      alert.value.showAlert(
-        'success',
-        'Statistics registered!',
-        'Alright',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.success, 'Alright', 'Statistics registered!')
       getLikesStats()
     } catch (error) {
       console.log(error.message)
-      alert.value.showAlert(
-        'error',
-        error.message,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
   }
 
@@ -184,12 +174,7 @@
       await saveStatistics()
     } catch (error) {
       console.log(error.message)
-      alert.value.showAlert(
-        'error',
-        error.message,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
   }
 
@@ -272,12 +257,7 @@
       state.isPlaying = true  
     }catch(error){
       console.log(error.response)
-      alert.value.showAlert(
-        'error',
-        error.response.data.error.message,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response.data.error.message)
     }
   }
 
@@ -325,14 +305,12 @@
       id: state.playlist.id,
       owner: state.playlist.owner.display_name
     }
-    //emit('update-menu-data', track)
-    //emit('update-menu-opened', true)
+
     let menuData = {
       type: 'track',
       track
     }
     menuDataReactive.value = menuData
-    console.log(menuDataReactive.value)
     isMenuOpened.value = true
   }
 
@@ -371,32 +349,25 @@
   const addToQueue = async(track) => {
     try {
       const { status } = await addTrackToQueue(track)
-      alert.value.showAlert(
-        'success',
-        'Song added!',
-        'Alright',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.success, 'Alright', 'Song added to queue!')
     } catch (error) {
       console.log(error)
-      alert.value.showAlert(
-        'error',
-        error.message,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
   }
 
-  const updateTracksOrder = async() => {
+  const updateTracksOrder = async() => {    
     state.isProcessing = true
     var i = 0
-    while(i < state.tracks.length) {
+    var changes = 0
+    while(i < state.tracks.length - 1) {
       let id = state.tracks[i].id
       if (id == i) {
         i++
         continue
       }
+      changes++
+      showNotification(NOTIFICATIONS_TYPE.info, 'Aguarde', 'organizando músicas... (' + changes + '/' + state.tracks.length + ')')
       const formData = {
         'range_start': id,
         'insert_before': i
@@ -412,12 +383,7 @@
       i = 0
     }
 
-    alert.value.showAlert(
-      'success',
-      'Playlist updated!',
-      'Alright',
-      ALERT_OPTIONS
-    )
+    showNotification(NOTIFICATIONS_TYPE.success, 'Alright!', 'Playlist updated with ' + changes + ' changes!')
     state.sortPosition = 0
     await onRefreshPage()
     state.isProcessing = false
@@ -437,9 +403,30 @@
     await getPlaylistTracks()
   })
 
+  const showNotification = (type, title, message, action = false, auto = false) => {
+    let notificationData = {
+      type,
+      title,
+      message,
+      action,
+      auto
+    }
+    notificationDataReactive.value = notificationData
+    isNotificationOpened.value = true
+  }
+
+  const onNotificationAction = (value) => {
+    isNotificationOpened.value = false
+  }
+
 </script>
 
 <template>
+  <Notification 
+    :open="notificationOpened"
+    :data="notificationData"
+    @notification-action="onNotificationAction"
+  />
   <FloatMenu 
         :menu-opened="menuOpened"
         :menu-data="menuData"
@@ -468,7 +455,7 @@
       </button>
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p @click="showNotification(NOTIFICATIONS_TYPE.info, 'titulo', 'alguma coisa', false, true)" class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>

@@ -33,8 +33,12 @@ import {
     faSync,
     faChartBar,
     faChartPie,
-    faEllipsisV
+    faEllipsisV,
+    faCheck
 } from '@fortawesome/free-solid-svg-icons'
+import {
+    faXmarkCircle
+} from '@fortawesome/free-regular-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { createPinia } from 'pinia';
 
@@ -66,7 +70,9 @@ library.add(
     faSync,
     faChartBar,
     faChartPie,
-    faEllipsisV
+    faEllipsisV,
+    faXmarkCircle,
+    faCheck
 )
 
 const updateSW = registerSW({

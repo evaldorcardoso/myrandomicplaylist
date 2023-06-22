@@ -8,6 +8,13 @@ export const LOCALSTORAGE_KEYS = {
     filterLibrary: 'spotify_filter_library',
 }
 
+export const NOTIFICATIONS_TYPE = {
+    success: 'success',
+    danger: 'danger',
+    warning: 'warning',
+    info: 'info'
+}
+
 export default {
     getLocalStorage: () => {
         // Map to retrieve localStorage values

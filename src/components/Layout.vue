@@ -19,6 +19,7 @@
         return floatPlayerData.value;
     })
     const currentUser = computed(() => {
+        console.log(user.value)
         return user.value;
     })
 

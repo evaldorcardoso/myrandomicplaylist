@@ -287,7 +287,7 @@
         state.randomPlaylist = data
       })
       state.message = 'The songs were successfully added!'
-      emit('update-step-data', 0)
+      emit('update-step-data', 1)
       setTimeout(() => {
         router.push('/playlist/' + playlistId)
       }, 1000)
