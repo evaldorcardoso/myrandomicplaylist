@@ -34,7 +34,12 @@ import {
     faChartBar,
     faChartPie,
     faEllipsisV,
-    faCheck
+    faCheck,
+    faSmile,
+    faSadTear,
+    faMeh,
+    faLock,
+    faUnlockAlt
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -72,7 +77,12 @@ library.add(
     faChartPie,
     faEllipsisV,
     faXmarkCircle,
-    faCheck
+    faCheck,
+    faSmile,
+    faSadTear,
+    faMeh,
+    faLock,
+    faUnlockAlt
 )
 
 const updateSW = registerSW({

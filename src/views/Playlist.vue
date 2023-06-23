@@ -104,9 +104,11 @@
   const getPlaylistTracks = async(force = false) => {
     state.tracks = await playlistStore.getTracks(playlistId.value)
     if ((state.tracks.length === 0) || force) {
+      showNotification(NOTIFICATIONS_TYPE.info, 'Please, wait', 'Loading songs...')
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
       state.tracks = await playlistStore.getTracks(playlistId.value)
-    }
+      showNotification(NOTIFICATIONS_TYPE.success, 'Success', 'Songs loaded!', false, true)
+    }    
   }
 
   const saveStatistics = async() => {
@@ -137,7 +139,7 @@
       if (error && status !== 406) throw error
   }
 
-  const getLikesStats = async() => {
+  const getLikesStats = async(save = true) => {
     try {
       let { data, error, status } = await supabase
         .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
@@ -169,7 +171,9 @@
           }
         }
       }
-      await saveStatistics()
+      if (save) {
+        await saveStatistics()
+      }
     } catch (error) {
       console.log(error.message)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
@@ -335,7 +339,7 @@
     isMenuOpened.value = true
   }
 
-  const openMenuPlaylist = () => {
+  const openMenuPlaylist = async() => {
     let menuData = {
       type: 'playlist',
       playlist: state.playlist
@@ -346,6 +350,10 @@
     })
     menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
     menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)
+    if (! state.chartData.datasets[0]?.data) {
+      await getLikesStats(false)
+    }
+    menuData.playlist.likesStats = state.chartData.datasets[0]?.data
     menuDataReactive.value = menuData
     isMenuOpened.value = true
   }
@@ -388,7 +396,7 @@
         continue
       }
       changes++
-      showNotification(NOTIFICATIONS_TYPE.info, 'Aguarde', 'organizando músicas... (' + changes + '/' + state.tracks.length + ')')
+      showNotification(NOTIFICATIONS_TYPE.info, 'Please, wait', 'Sorting songs... (' + changes + '/' + state.tracks.length + ')')
       const formData = {
         'range_start': id,
         'insert_before': i
@@ -461,7 +469,6 @@
         @open-popularity="mountPopularityStatsChart"
         @open-likes="getLikesStats"
         @add-queue="addToQueue"
-        @update-sort="updateTracksOrder"
     />
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
