@@ -10,8 +10,7 @@ const emit = defineEmits([
     'refresh-playlist',
     'open-popularity',
     'open-likes',
-    'add-queue',
-    'update-sort'
+    'add-queue'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
@@ -27,6 +26,7 @@ const alert = ref(null)
 const state = reactive({
     playlistsOriginal:[],
     playlists: [],
+    likesAVG: 0
   })
 
 const props = defineProps({
@@ -61,6 +61,8 @@ const menuData = computed(() => {
         menuData.isOwner = props.menuData.playlist.owner.display_name == currentUser.value.display_name
         menuData.visibility = props.menuData.playlist.public ? 'Public' : 'Private'
         menuData.popularity = props.menuData.playlist.popularity
+        menuData.likesStats = props.menuData.playlist.likesStats
+        calcLikesStats()
         return menuData
     }
     if (menuData.type == 'track') {
@@ -81,6 +83,24 @@ const menuData = computed(() => {
 const currentUser = computed(() => {
     return props.userData;
 });
+
+const calcLikesStats = () => {
+    const likesStats = props.menuData.playlist.likesStats
+    if (likesStats && likesStats.length > 1) {
+        let last = likesStats[likesStats.length - 1]
+        state.likesAVG = parseInt(last)
+        state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
+        state.likesAVG = state.likesAVG + String(last)
+        return
+    }
+    if (likesStats && likesStats.length > 2) {
+        let beforeLast = likesStats[likesStats.length - 2]
+        let last = likesStats[likesStats.length - 1]
+        state.likesAVG = parseInt(last - beforeLast)
+        state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
+        state.likesAVG = state.likesAVG + String((last - beforeLast))
+    }
+}
 
 const selectPlaylist = async(playlistId) => {
     if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.id)) {
@@ -195,11 +215,6 @@ const doQueue = (track) => {
     closeMenu()
 }
 
-const doUpdateSort = () => {
-    emit('update-sort')
-    closeMenu()
-}
-
 const listPlaylists = async() => {
     state.playlistsOriginal = playlistStore.playlists
     state.playlists = state.playlistsOriginal.filter(
@@ -240,10 +255,38 @@ const closeMenu = () => {
                     Popularity: {{ menuData.popularity }}<br>
                 </div>
                 <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
-                    Followers: {{ menuData.followers }} <br>
-                    Created by: {{ menuData.owner }} <br>
-                    Visibility: {{ menuData.visibility }} <br>
-                    Popularity: {{ menuData.popularity }}<br>
+                    <div style="display: flex;justify-content:space-around">
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                            <font-awesome-icon icon="heart" style="vertical-align:middle;" />
+                            <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                            <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
+                            <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
+                            <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
+                            :class="{
+                                'icon-popularity-bad' : (menuData.popularity <= 40),
+                                'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
+                                'icon-popularity-good' : (menuData.popularity > 70)
+                            }">
+                            <font-awesome-icon icon="chart-line" />
+                            <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
+                        :class="{
+                            'icon-popularity-bad' : (state.likesAVG < 0),
+                            'icon-popularity-medium' : (state.likesAVG == 0),
+                            'icon-popularity-good' : (state.likesAVG > 0)
+                        }">
+                            <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
+                            <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
+                            <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
+                            <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                        </div>
+                    </div>
+                    Created by: {{ menuData.owner }}
                 </div>
                 <hr class="style-one">
                 <div v-if="menuData.type == 'track'">
@@ -286,10 +329,6 @@ const closeMenu = () => {
                     <div class="menu-item" @click="doLikes">
                         <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                         <h3 class="menu-item-option">Likes chart</h3>
-                    </div>
-                    <div class="menu-item" @click="doUpdateSort">
-                        <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Save sort on Spotify</h3>
                     </div>
                 </div>
             </div>            
@@ -430,5 +469,14 @@ const closeMenu = () => {
     .playlists {
         overflow: scroll;
         max-height: 500px;
+    }
+    .icon-popularity-bad{
+        color: rgb(255, 23, 23);
+    }
+    .icon-popularity-medium{
+        color: rgb(255, 240, 30);
+    }
+    .icon-popularity-good{
+        color: rgb(117, 255, 24);
     }
 </style>
