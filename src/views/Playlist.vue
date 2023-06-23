@@ -156,14 +156,12 @@
         }
 
         if(data.length > 0) {
-          if (calcDiffDays(new Date(), new Date(data[data.length -1].created_at)) > 1) {
-            const parcialData = {
-              created_at: new Date(),
-              id: Date.now(),
-              likes_count: state.playlist.followers.total
-            }
-            data.push(parcialData)
+          const parcialData = {
+            created_at: new Date(),
+            id: Date.now(),
+            likes_count: state.playlist.followers.total
           }
+          data.push(parcialData)
           await mountLikeStatsChart(data)
           let diffDays = calcDiffDays(new Date(), new Date(data[data.length -1].created_at));
           if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {

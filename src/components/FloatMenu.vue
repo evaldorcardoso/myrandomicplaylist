@@ -87,15 +87,15 @@ const currentUser = computed(() => {
 const calcLikesStats = () => {
     const likesStats = props.menuData.playlist.likesStats
     if (likesStats && likesStats.length > 2) {
-        let beforeLast = likesStats[likesStats.length - 2]
-        let last = likesStats[likesStats.length - 1]
+        let beforeLast = likesStats[likesStats.length - 3]
+        let last = likesStats[likesStats.length - 2]
         state.likesAVG = parseInt(last - beforeLast)
         state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
         state.likesAVG = state.likesAVG + String((last - beforeLast))
         return
     }
     if (likesStats && likesStats.length > 1) {
-        let last = likesStats[likesStats.length - 1]
+        let last = likesStats[likesStats.length - 2]
         state.likesAVG = parseInt(last)
         state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
         state.likesAVG = state.likesAVG + String(last)
