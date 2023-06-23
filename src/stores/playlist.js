@@ -30,6 +30,9 @@ export const usePlaylistStore = defineStore({
             }
 
             this.playlists[index].tracks = tracks
+            this.playlists[index].tracks.forEach((track, index) => {
+                track.id = index
+            })
         },
         removeTrack(playlistId, trackUri) {
             const index = this.playlists.findIndex(element => element.id === playlistId)

@@ -36,6 +36,7 @@
     playlist: null,
     tracks: [],
     visible: false,
+    differentSort: false,
     sortPosition: 0,
     isProcessing: false,
     message: '',
@@ -106,9 +107,6 @@
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
       state.tracks = await playlistStore.getTracks(playlistId.value)
     }
-    state.tracks.forEach((track, index) => {
-      track.id = index
-    })
   }
 
   const saveStatistics = async() => {
@@ -271,24 +269,47 @@
     
     if (sortOptions[state.sortPosition] === 'top first') {
       state.tracks.sort((a, b) => b.track?.popularity - a.track?.popularity)
+      checkDifferentSort()
       return
     }
     if (sortOptions[state.sortPosition] === 'top last') {
       state.tracks.sort((a, b) => a.track?.popularity - b.track?.popularity)
+      checkDifferentSort()
       return
     }
     if (sortOptions[state.sortPosition] === 'added first') {
       state.tracks.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
+      checkDifferentSort()
       return
     }
     if (sortOptions[state.sortPosition] === 'added last') {
       state.tracks.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
+      checkDifferentSort()
       return
     }
     if (sortOptions[state.sortPosition] === 'default') {
       state.tracks.sort((a, b) => a.id - b.id)
+      checkDifferentSort()
       return
     }
+  }
+
+  const checkDifferentSort = () => {
+    for (let i=0; i<state.tracks.length; i++) {
+      if (i != state.tracks[i].id) {
+        showNotification(
+          NOTIFICATIONS_TYPE.info,
+          'Info',
+          'Apply this sort on Spotify ?',
+          true,
+          false
+        )
+        state.differentSort = true
+        return;
+      }
+    }
+    state.differentSort = false
+    isNotificationOpened.value = false
   }
 
   const openLink = (url) => {
@@ -360,7 +381,7 @@
     state.isProcessing = true
     var i = 0
     var changes = 0
-    while(i < state.tracks.length - 1) {
+    while(i < state.tracks.length) {
       let id = state.tracks[i].id
       if (id == i) {
         i++
@@ -389,20 +410,6 @@
     state.isProcessing = false
   }
 
-  onMounted(async () => {
-    if (! playlistStore.isLoaded) {
-      const { data } = await getPlaylists()
-      playlistStore.loadAll(data.items)
-    }
-    state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
-      const { data } = await getPlaylist(playlistId.value)
-      playlistStore.load(data)
-      state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    }    
-    await getPlaylistTracks()
-  })
-
   const showNotification = (type, title, message, action = false, auto = false) => {
     let notificationData = {
       type,
@@ -417,7 +424,24 @@
 
   const onNotificationAction = (value) => {
     isNotificationOpened.value = false
+    if (value && state.differentSort) {
+      updateTracksOrder()
+    }
   }
+
+  onMounted(async () => {
+    if (! playlistStore.isLoaded) {
+      const { data } = await getPlaylists()
+      playlistStore.loadAll(data.items)
+    }
+    state.playlist = await playlistStore.getPlaylist(playlistId.value)
+    if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
+      const { data } = await getPlaylist(playlistId.value)
+      playlistStore.load(data)
+      state.playlist = await playlistStore.getPlaylist(playlistId.value)
+    }    
+    await getPlaylistTracks()
+  })
 
 </script>
 
@@ -455,8 +479,8 @@
       </button>
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p @click="showNotification(NOTIFICATIONS_TYPE.info, 'titulo', 'alguma coisa', false, true)" class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
+        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <p @click="teste" class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
     </div>
