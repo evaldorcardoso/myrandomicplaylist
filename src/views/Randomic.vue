@@ -5,6 +5,8 @@
   import { useProfile, useGeneral } from '@/support/spotifyApi'
   import { useUserStore } from '@/stores/user'
   import { usePlaylistStore } from '@/stores/playlist'
+  import Notification from '@/components/Notification.vue'
+  import { NOTIFICATIONS_TYPE } from '../support/helpers'
 
   const { 
     getPlaylists,  
@@ -18,12 +20,6 @@
     getTopItens
   } = useProfile()
   const { getTracks, addTracksToPlaylist, savePlaylist } = useGeneral()
-
-  const ALERT_OPTIONS = { 
-    iconSize: 35,
-    iconType: 'solid',
-    position: 'top right'
-  }
 
   const userStore = useUserStore()
   const playlistStore = usePlaylistStore()
@@ -46,9 +42,35 @@
     pickMode: 'random',
     orderMode: 'top'
   })
+  const isNotificationOpened = ref(null)
+  const notificationDataReactive = ref(null)
 
   const router = useRouter()
   const alert = ref(null)
+
+  const notificationOpened = computed(() => {
+    return isNotificationOpened.value;
+  })
+
+  const notificationData = computed(() => {
+    return notificationDataReactive.value
+  })
+
+  const showNotification = (type, title, message, action = false, auto = false) => {
+    let notificationData = {
+      type,
+      title,
+      message,
+      action,
+      auto
+    }
+    notificationDataReactive.value = notificationData
+    isNotificationOpened.value = true
+  }
+
+  const onNotificationAction = (value) => {
+    isNotificationOpened.value = false
+  }
   
   const getUserPlaylists = async() => {
     state.isProcessing = true
@@ -104,14 +126,7 @@
 
   const hasPlaylistSelected = () => {
     if (state.playlists.filter(item => item.checked).length == 0) {
-      let message = 'Select at least 1 playlist!'
-      state.message = message
-      alert.value.showAlert(
-        'warning',
-        message,
-        'Atenção',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.info, 'Ops', 'Select at least 1 playlist!', false, true)
       return false
     }
 
@@ -135,13 +150,14 @@
     const unresolved = playlists_selected.map(async(playlist) => {
       await getPlaylistTracks(playlist.id)
     })
-    const resolved = await Promise.all(unresolved)
+    await Promise.all(unresolved)
     await pickTracks(state.tracks)
-    alert.value.showAlert(
-      'success',
-      `Successful ${state.tracks.length} songs picked!`,
+    showNotification(
+      NOTIFICATIONS_TYPE.success,
       'Alright',
-      ALERT_OPTIONS
+      `Successful ${state.tracks.length} songs picked!`,
+      false,
+      true
     )
     state.message = ''
     state.isProcessing = false
@@ -198,12 +214,7 @@
     }
     catch(error){
       console.log(error)
-      alert.value.showAlert(
-        'error',
-        error.response,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
     }
   }
 
@@ -225,12 +236,7 @@
       }    
     }catch(error){
       console.log(error)
-      alert.value.showAlert(
-        'error',
-        error.response,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
     }
   }
 
@@ -256,12 +262,7 @@
     playlistStore.load(data)
     let message = 'Playlist created successfully!'
     state.message = message
-    alert.value.showAlert(
-      'success',
-      message,
-      'Alright',
-      ALERT_OPTIONS
-    )
+    showNotification(NOTIFICATIONS_TYPE.success, 'Awesome', message)
     addTracksToUserPlaylist(state.randomPlaylist.id)
     state.isProcessing = false
   }
@@ -293,12 +294,7 @@
       }, 1000)
     }catch(error){
       console.log(error)
-      alert.value.showAlert(
-        'error',
-        error.response,
-        'Ops',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
     } 
     state.isProcessing = false  
   }
@@ -309,12 +305,7 @@
     if(state.devices.length == 0){
       let message = 'No device connected!'
       state.message = message
-      alert.value.showAlert(
-        'info',
-        message,
-        'Info',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.warning, 'Ops', message, false, false)
       state.isProcessing = false
       return
     }
@@ -345,23 +336,13 @@
       }
       let message = "It's not possible to add song to the playlist! Try again."
       state.message = message
-      alert.value.showAlert(
-        'error',
-        message,
-        'Error',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', message)
       state.isProcessing = false
       return
     }
     let message = 'Songs added to playlist successfully!'
     state.message = message
-    alert.value.showAlert(
-      'success',
-      message,
-      'Alright',
-      ALERT_OPTIONS
-    )
+    showNotification(NOTIFICATIONS_TYPE.success, 'Alright', message, false, true)
     state.isProcessing = false
   }
 
@@ -386,12 +367,7 @@
     }catch(error){
       console.log(error)
       state.isProcessing = false
-      alert.value.showAlert(
-        'error',
-        error.response,
-        'Error',
-        ALERT_OPTIONS
-      )
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
     }
   }
 
@@ -493,6 +469,11 @@
 </script>
 
 <template>
+  <Notification 
+    :open="notificationOpened"
+    :data="notificationData"
+    @notification-action="onNotificationAction"
+  />
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div class="footer-fixed" v-if="currentStep == 99">

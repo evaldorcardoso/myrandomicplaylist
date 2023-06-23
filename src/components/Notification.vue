@@ -53,7 +53,7 @@ onMounted(() => {
                     <font-awesome-icon icon="fa-solid fa-check" />
                 </div>
                 <div class="icon" @click="action(false)">
-                    <font-awesome-icon icon="fa-regular fa-circle-xmark" />
+                    <font-awesome-icon icon="fa-regular fa-circle-xmark"/>
                 </div>
             </div>
         </div>

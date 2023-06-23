@@ -52,8 +52,8 @@
     }
   })
   const isMenuOpened = ref(null)
-  const isNotificationOpened = ref(null)
   const menuDataReactive = ref(null)
+  const isNotificationOpened = ref(null)
   const notificationDataReactive = ref(null)
   const alert = ref(null)
 
@@ -84,12 +84,12 @@
     return isMenuOpened.value;
   })
 
-  const notificationOpened = computed(() => {
-    return isNotificationOpened.value;
-  })
-
   const menuData = computed(() => {
     return menuDataReactive.value
+  })
+  
+  const notificationOpened = computed(() => {
+    return isNotificationOpened.value;
   })
 
   const notificationData = computed(() => {
