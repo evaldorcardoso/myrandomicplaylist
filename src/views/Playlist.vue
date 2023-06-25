@@ -294,6 +294,9 @@
   }
 
   const checkDifferentSort = () => {
+    if(state.playlist.owner.display_name != currentUser.value.display_name) {
+      return
+    }
     for (let i=0; i<state.tracks.length; i++) {
       if (i != state.tracks[i].id) {
         showNotification(
@@ -340,7 +343,8 @@
       type: 'playlist',
       playlist: state.playlist
     }
-    let popularities = state.tracks.map(track => { return track.track.popularity })
+    
+    let popularities = state.tracks.map(track => { return track.track?.popularity ?? 0 })
     let popularity = popularities.reduce(function(a, b) {
       return a + b
     })
