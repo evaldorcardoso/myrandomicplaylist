@@ -53,7 +53,7 @@ onMounted(() => {
                     <font-awesome-icon icon="fa-solid fa-check" />
                 </div>
                 <div class="icon" @click="action(false)">
-                    <font-awesome-icon icon="fa-regular fa-circle-xmark"/>
+                    <font-awesome-icon icon="fa-times"/>
                 </div>
             </div>
         </div>
@@ -69,7 +69,8 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        color: #fff
+        color: #fff;
+        position: absolute;
    }
    .actions {
         display: flex;
@@ -113,7 +114,7 @@ onMounted(() => {
     }
     .slide-fade-enter, .slide-fade-leave-to
     /* .slide-fade-leave-active below version 2.1.8 */ {
-        transform: translateX(10px);
+        transform: translateX(100px);
         opacity: 0;
     }
 </style>

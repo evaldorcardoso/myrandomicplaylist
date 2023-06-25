@@ -8,9 +8,8 @@ const emit = defineEmits([
     'update-menu-opened',
     'remove-track',
     'refresh-playlist',
-    'open-popularity',
-    'open-likes',
-    'add-queue'
+    'add-queue',
+    'open-statistics'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
@@ -201,13 +200,8 @@ const doRefresh = () => {
     closeMenu()
 }
 
-const doPopularity = () => {
-    emit('open-popularity')
-    closeMenu()
-}
-
-const doLikes = () => {
-    emit('open-likes')
+const openStatistics = () => {
+    emit('open-statistics')
     closeMenu()
 }
 
@@ -235,106 +229,104 @@ const closeMenu = () => {
 
 <template>
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <div id="backdrop" :class="{'displayed' : menuOpened, 'hidden' : !menuOpened}" @touchstart="closeMenu"></div>    
-    <div class="menu" v-if="menuOpened">
-        <div class="menu-content">
-            <hr class="menu-bar" @click="closeMenu">
-            <div>
-                <div class="menu-item-track">
-                    <img :src="menuData.image" class="music-cover"/>
-                    <div class="menu-item-track-content">                
-                      <div class="menu-item-track-title">
-                        {{menuData.title}}
-                      </div>
-                      <div class="menu-item-track-subtitle">{{menuData.subtitle}}</div>
+    <div id="backdrop" :class="{'displayed' : menuOpened, 'hidden' : !menuOpened}" @touchstart="closeMenu"></div>
+    <transition name="slide-fade" mode="in-out">
+        <div class="menu" v-if="menuOpened">
+            <div class="menu-content">
+                <hr class="menu-bar" @click="closeMenu">
+                <div>
+                    <div class="menu-item-track">
+                        <img :src="menuData.image" class="music-cover"/>
+                        <div class="menu-item-track-content">                
+                        <div class="menu-item-track-title">
+                            {{menuData.title}}
+                        </div>
+                        <div class="menu-item-track-subtitle">{{menuData.subtitle}}</div>
+                        </div>
                     </div>
-                </div>
-                <div class="menu-item-track-details" v-if="menuData.type == 'track'">
-                    Added: {{ menuData.addedAt }} <br>
-                    Released: {{ menuData.releasedAt }} <br>
-                    Duration: {{ menuData.duration }} <br>
-                    Popularity: {{ menuData.popularity }}<br>
-                </div>
-                <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
-                    <div style="display: flex;justify-content:space-around">
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                            <font-awesome-icon icon="heart" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
-                        </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                            <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
-                            <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
-                        </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
+                    <div class="menu-item-track-details" v-if="menuData.type == 'track'">
+                        Added: {{ menuData.addedAt }} <br>
+                        Released: {{ menuData.releasedAt }} <br>
+                        Duration: {{ menuData.duration }} <br>
+                        Popularity: {{ menuData.popularity }}<br>
+                    </div>
+                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
+                        <div style="display: flex;justify-content:space-around">
+                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                                <font-awesome-icon icon="heart" style="vertical-align:middle;" />
+                                <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
+                            </div>
+                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                                <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
+                                <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
+                                <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
+                            </div>
+                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
+                                :class="{
+                                    'icon-popularity-bad' : (menuData.popularity <= 40),
+                                    'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
+                                    'icon-popularity-good' : (menuData.popularity > 70)
+                                }">
+                                <font-awesome-icon icon="chart-line" />
+                                <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
+                            </div>
+                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
                             :class="{
-                                'icon-popularity-bad' : (menuData.popularity <= 40),
-                                'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
-                                'icon-popularity-good' : (menuData.popularity > 70)
+                                'icon-popularity-bad' : (state.likesAVG < 0),
+                                'icon-popularity-medium' : (state.likesAVG == 0),
+                                'icon-popularity-good' : (state.likesAVG > 0)
                             }">
-                            <font-awesome-icon icon="chart-line" />
-                            <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
+                                <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
+                                <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
+                                <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
+                                <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                            </div>
                         </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
-                        :class="{
-                            'icon-popularity-bad' : (state.likesAVG < 0),
-                            'icon-popularity-medium' : (state.likesAVG == 0),
-                            'icon-popularity-good' : (state.likesAVG > 0)
-                        }">
-                            <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
-                            <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
-                            <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
-                            <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                        Created by: {{ menuData.owner }}
+                    </div>
+                    <hr class="style-one">
+                    <div v-if="menuData.type == 'track'">
+                        <div class="menu-item" @click="executeTrack(menuData.id)">
+                            <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Play</h3>
                         </div>
-                    </div>
-                    Created by: {{ menuData.owner }}
-                </div>
-                <hr class="style-one">
-                <div v-if="menuData.type == 'track'">
-                    <div class="menu-item" @click="executeTrack(menuData.id)">
-                        <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Play</h3>
-                    </div>
-                    <div class="menu-item" @click="doQueue(menuData.id)">
-                        <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Add to queue</h3>
-                    </div>
-                    <div class="menu-item" @click="listPlaylists">
-                        <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Add to another playlist</h3>
-                    </div>
-                    <div class="menu-item" v-if="menuData.isOwner" @click="removeTrack">
-                        <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Remove from this playlist</h3>
-                    </div>
-                    <div class="playlists" v-if="state.playlists">
-                        <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
-                            <img :src="playlist.images[0]?.url" class="playlist-cover"/>
-                            <div class="menu-item-track-content">                
-                              <div class="menu-item-track-title">
-                                {{playlist.name}}
-                              </div>
+                        <div class="menu-item" @click="doQueue(menuData.id)">
+                            <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Add to queue</h3>
+                        </div>
+                        <div class="menu-item" @click="listPlaylists">
+                            <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Add to another playlist</h3>
+                        </div>
+                        <div class="menu-item" v-if="menuData.isOwner" @click="removeTrack">
+                            <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Remove from this playlist</h3>
+                        </div>
+                        <div class="playlists" v-if="state.playlists">
+                            <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
+                                <img :src="playlist.images[0]?.url" class="playlist-cover"/>
+                                <div class="menu-item-track-content">                
+                                <div class="menu-item-track-title">
+                                    {{playlist.name}}
+                                </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div v-if="menuData.type == 'playlist'">
-                    <div class="menu-item" @click="doRefresh">
-                        <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Refresh</h3>
+                    <div v-if="menuData.type == 'playlist'">
+                        <div class="menu-item" @click="doRefresh">
+                            <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Refresh</h3>
+                        </div>
+                        <div class="menu-item" @click="openStatistics">
+                            <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Show statistics</h3>
+                        </div>
                     </div>
-                    <div class="menu-item" @click="doPopularity">
-                        <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Popularity chart</h3>
-                    </div>
-                    <div class="menu-item" @click="doLikes">
-                        <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                        <h3 class="menu-item-option">Likes chart</h3>
-                    </div>
-                </div>
-            </div>            
+                </div>            
+            </div>
         </div>
-    </div>   
+    </transition> 
 </template>
 
 <style lang="scss" scoped>
@@ -479,5 +471,17 @@ const closeMenu = () => {
     }
     .icon-popularity-good{
         color: rgb(117, 255, 24);
+    }
+
+    .slide-fade-enter-active {
+        transition: all .28s cubic-bezier(1.0, 2.5, 0.8, 1.0);
+    }
+    .slide-fade-leave-active {
+        transition: all .8s cubic-bezier(1.0, 2.5, 0.8, 1.0);
+    }
+    .slide-fade-enter, .slide-fade-leave-to
+    /* .slide-fade-leave-active below version 2.1.8 */ {
+        transform: translateY(100px);
+        opacity: 0;
     }
 </style>

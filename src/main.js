@@ -39,7 +39,8 @@ import {
     faSadTear,
     faMeh,
     faLock,
-    faUnlockAlt
+    faUnlockAlt,
+    faTimes
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -82,7 +83,8 @@ library.add(
     faSadTear,
     faMeh,
     faLock,
-    faUnlockAlt
+    faUnlockAlt,
+    faTimes
 )
 
 const updateSW = registerSW({

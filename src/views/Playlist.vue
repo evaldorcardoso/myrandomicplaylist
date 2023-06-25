@@ -31,15 +31,22 @@
     'added last'
   ]
 
+  const NOTIFICATION_ACTIONS = {
+    UPDATE_SORT: 'update_sort',
+    SAVE_LIKES_STATISTICS: 'save_likes_statistics'
+  }
+
   const state = reactive({
     isPlaying: false,
     playlist: null,
     tracks: [],
     visible: false,
-    differentSort: false,
+    notificationAction: '',
     sortPosition: 0,
     isProcessing: false,
     message: '',
+    statisticsOpen: false,
+    dataLikes: [],
     chartData: {
       labels: [],
       datasets: []
@@ -139,7 +146,7 @@
       if (error && status !== 406) throw error
   }
 
-  const getLikesStats = async(save = true) => {
+  const getLikesStats = async() => {
     try {
       let { data, error, status } = await supabase
         .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
@@ -153,25 +160,15 @@
         if (data.length > MAX_STATISTICS_ITEMS_TO_RETAIN) {
           let row = data.shift()
           await deleteStatistic(row.id)
-        }
-
-        if(data.length > 0) {
-          const parcialData = {
-            created_at: new Date(),
-            id: Date.now(),
-            likes_count: state.playlist.followers.total
-          }
-          data.push(parcialData)
-          await mountLikeStatsChart(data)
-          let diffDays = calcDiffDays(new Date(), new Date(data[data.length -1].created_at));
-          if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
-            return
-          }
-        }
+        }        
       }
-      if (save) {
-        await saveStatistics()
+      const parcialData = {
+        created_at: new Date(),
+        id: Date.now(),
+        likes_count: state.playlist.followers.total
       }
+      data.push(parcialData)          
+      state.dataLikes = data          
     } catch (error) {
       console.log(error.message)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
@@ -307,10 +304,11 @@
           false
         )
         state.differentSort = true
+        state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_SORT
         return;
       }
     }
-    state.differentSort = false
+    state.notificationAction = ''
     isNotificationOpened.value = false
   }
 
@@ -347,10 +345,7 @@
       return a + b
     })
     menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
-    menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)
-    if (! state.chartData.datasets[0]?.data) {
-      await getLikesStats(false)
-    }
+    menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)    
     menuData.playlist.likesStats = state.chartData.datasets[0]?.data
     menuDataReactive.value = menuData
     isMenuOpened.value = true
@@ -371,6 +366,36 @@
     state.playlist = data
     await getPlaylistTracks(true)
     sortUserPlaylist(false)
+  }
+
+  const onOpenStatistics = () => {
+    state.statisticsOpen = !state.statisticsOpen
+    if (! state.statisticsOpen) {
+      isNotificationOpened.value = false
+      state.notificationAction = ''
+      return
+    }
+    mountLikeStatsChart(state.dataLikes)
+    mountPopularityStatsChart()
+    checkToSaveNewStatistics()
+  }
+
+  const checkToSaveNewStatistics = () => {
+    if (state.dataLikes.length > 1) {
+      let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -2].created_at));
+      console.log(diffDays)
+      if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
+        return
+      }
+    }
+    showNotification(
+      NOTIFICATIONS_TYPE.info,
+      'Hey',
+      'Save new likes statistics for this playlist today ?',
+      true,
+      false
+    )
+    state.notificationAction = NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS
   }
 
   const addToQueue = async(track) => {
@@ -413,6 +438,7 @@
     showNotification(NOTIFICATIONS_TYPE.success, 'Alright!', 'Playlist updated with ' + changes + ' changes!')
     state.sortPosition = 0
     await onRefreshPage()
+    state.differentSort = false
     state.isProcessing = false
   }
 
@@ -430,9 +456,26 @@
 
   const onNotificationAction = (value) => {
     isNotificationOpened.value = false
-    if (value && state.differentSort) {
-      updateTracksOrder()
+    if (value) {
+      if (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_SORT) {
+        updateTracksOrder()
+      }
+      if (state.notificationAction == NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS) {
+        if (state.dataLikes.length > 0) {
+          let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -1].created_at));
+          if (diffDays == 0) {
+            showNotification(
+              NOTIFICATIONS_TYPE.warning,
+              'Ops',
+              'Looks like you already have a statistics for today!'
+            )
+            return
+          }
+          saveStatistics()
+        }
+      }
     }
+    state.notificationAction = ''
   }
 
   onMounted(async () => {
@@ -446,7 +489,10 @@
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }    
-    await getPlaylistTracks()
+    getPlaylistTracks()
+    if (! state.chartData.datasets[0]?.data) {
+      getLikesStats(false)
+    }
   })
 
 </script>
@@ -458,15 +504,14 @@
     @notification-action="onNotificationAction"
   />
   <FloatMenu 
-        :menu-opened="menuOpened"
-        :menu-data="menuData"
-        :user-data="currentUser"
-        @update-menu-opened="onUpdateMenuOpened" 
-        @remove-track="onRemoveTrack"
-        @refresh-playlist="onRefreshPage"
-        @open-popularity="mountPopularityStatsChart"
-        @open-likes="getLikesStats"
-        @add-queue="addToQueue"
+    :menu-opened="menuOpened"
+    :menu-data="menuData"
+    :user-data="currentUser"
+    @update-menu-opened="onUpdateMenuOpened" 
+    @remove-track="onRemoveTrack"
+    @refresh-playlist="onRefreshPage"
+    @add-queue="addToQueue"
+    @openStatistics="onOpenStatistics"
     />
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
@@ -489,21 +534,26 @@
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
     </div>
-    <br>
-    <Line
-      id="chart-likes"
-      v-if="state.chartData.datasets.length > 0"
-      :options="state.chartOptions"
-      :data="state.chartData"
-    />
-    <Pie
-      id="chart-popularity"
-      v-if="state.chartDataPopularity.datasets.length > 0"
-      :options="state.chartOptions"
-      :data="state.chartDataPopularity"
-    />
-    <br>
-    <div class="list-list">
+    <div class="statistics" v-if="state.statisticsOpen">
+      <p style="font-size: 20px;text-align:end;" @click="onOpenStatistics">
+        <font-awesome-icon icon="times" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+      </p>
+      <h3 style="color: #fff;text-align:center">Likes statistics:</h3>
+      <Line
+        id="chart-likes"
+        v-if="state.chartData.datasets.length > 0"
+        :options="state.chartOptions"
+        :data="state.chartData"
+      />
+      <h3 style="color: #fff;text-align:center">Popularity statistics:</h3>
+      <Pie
+        id="chart-popularity"
+        v-if="state.chartDataPopularity.datasets.length > 0"
+        :options="state.chartOptions"
+        :data="state.chartDataPopularity"
+      />
+    </div>
+    <div class="list-list" v-if="! state.statisticsOpen">
       <ul class="list">
         <li :id="track.track?.id" v-for="track in state.tracks" class="list-item">
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
@@ -606,6 +656,19 @@
   justify-content: space-evenly;
   min-width: 300px;
   margin-top: 10px;
+}
+.statistics {
+  height: auto;
+  padding: 15px;
+  border-style: solid;
+  border-width: thin;
+  margin-top: 10px;
+}
+#chart-likes {
+  margin-bottom: 50px;
+}
+#chart-popularity {
+  margin-bottom: 100px;
 }
 .music-cover {
   width: 40px; 
