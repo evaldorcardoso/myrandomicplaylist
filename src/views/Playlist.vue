@@ -350,7 +350,7 @@
     })
     menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
     menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)    
-    menuData.playlist.likesStats = state.chartData.datasets[0]?.data
+    menuData.playlist.likesStats = state.dataLikes
     menuDataReactive.value = menuData
     isMenuOpened.value = true
   }
