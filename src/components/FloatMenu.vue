@@ -205,6 +205,11 @@ const openStatistics = () => {
     closeMenu()
 }
 
+const openExternalAnalysis = () => {
+    console.log(menuData)
+    window.open('https://www.chosic.com/spotify-playlist-analyzer/?plid=' + menuData.value.id)
+}
+
 const doQueue = (track) => {
     emit('add-queue', track)
     closeMenu()
@@ -321,6 +326,10 @@ const closeMenu = () => {
                         <div class="menu-item" @click="openStatistics">
                             <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Show statistics</h3>
+                        </div>
+                        <div class="menu-item" @click="openExternalAnalysis">
+                            <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Open External Analytics</h3>
                         </div>
                     </div>
                 </div>            
