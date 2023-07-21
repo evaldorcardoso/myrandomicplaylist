@@ -129,7 +129,9 @@
 
       if (error) throw error
       showNotification(NOTIFICATIONS_TYPE.success, 'Alright', 'Statistics registered!')
-      getLikesStats()
+      await getLikesStats()
+      mountLikeStatsChart(state.dataLikes)
+      mountPopularityStatsChart()
     } catch (error) {
       console.log(error.message)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
