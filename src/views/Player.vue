@@ -28,6 +28,7 @@
       time_total: "",
       display_time_total: '',
       progress: 0,
+      release: ""
     },
   })
 
@@ -47,6 +48,8 @@
     state.track.display_time_total = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
     state.track.progress = (data.progress_ms / state.track.duration_ms) * 100
     state.progressMs = data.progress_ms
+    date = new Date(data.item?.album.release_date)
+    state.track.release = ((date.getDate() )) + "/" + ((date.getMonth() + 1)) + "/" + date.getFullYear();
   }
 
   const resumeUserPlayback = async() => {
@@ -151,6 +154,10 @@
         <button v-if="state.isPlaying" class="btn-play" @click="pauseUserPlayback()"><font-awesome-icon icon="pause"/></button>
         <button class="btn-next" @click="skipToUserNext()"><font-awesome-icon icon="step-forward"/></button>
       </div>
+      <div class="info">
+        <h4>Popularity: {{ state.item?.popularity }}</h4>
+        <h4>Released: {{ state.track?.release }}</h4>
+      </div>
     </div>         
     <div class="devices" v-if="state.devices.length > 0">
       <h3>Dispositivos disponíveis:</h3>
@@ -190,7 +197,7 @@
   align-items: center;
   justify-content: center;
   width: 300px;
-  height: 400px;
+  height: 450px;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0px 0px 10px #000;
@@ -350,5 +357,16 @@
   max-width: 300px;
   overflow: hidden;
 }
-
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 300px;
+  height: 70px;
+  color: #999;
+}
+.info h4 {
+  margin: 5px;
+}
 </style>

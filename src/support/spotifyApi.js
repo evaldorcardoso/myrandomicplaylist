@@ -93,6 +93,11 @@ export function useGeneral() {
             .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}`)
     }
     
+    const getTrack = async (trackId) => {
+        return await $axios
+            .get(`${import.meta.env.VITE_API_URL}/tracks/${trackId}`)            
+    }
+
     const getTracks = async (playlistId) => {
         var offset = 0
         var total = 0
@@ -130,6 +135,7 @@ export function useGeneral() {
 
     return {
         getPlaylist,
+        getTrack,
         getTracks,
         addTracksToPlaylist,
         updateTracksOfPlaylist,
