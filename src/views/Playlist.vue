@@ -81,6 +81,10 @@
     stepData: {
       type: Number,
       default: 1
+    },
+    currentData: {
+        type: Object,
+        default: () => { },
     }
   });
 
@@ -103,6 +107,10 @@
   const notificationData = computed(() => {
     return notificationDataReactive.value
   })
+
+  const currentPlaying = computed(() => {
+    return props.currentData;
+  });
 
   const openPlaylistApp = (playlistId) => {
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
@@ -231,13 +239,12 @@
 
   const executeUserPlaylist = async() => {
     try{
-      if (state.isPlaying) {
+      if (currentPlaying.value.is_playing) {
         const { status } = await pausePlayback()
         if (status != 204){
           openPlaylistApp(state.playlist.id)
           return
         }
-        state.isPlaying = false
 
         return
       }
@@ -253,7 +260,6 @@
         openPlaylistApp(state.playlist.id)
         return
       }
-      state.isPlaying = true  
     }catch(error){
       console.log(error.response)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response.data.error.message)
@@ -531,7 +537,7 @@
     </div>
     <div class="playlist-sub">
       <button class="button-spotify">
-        <font-awesome-icon :icon="state.isPlaying ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
+        <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
       </button>
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
@@ -565,7 +571,7 @@
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
             <img :src="track.track?.album.images[0]?.url" class="music-cover"/>
             <div class="list-item-content">                
-              <div class="list-item-title">
+              <div :class="track.track.uri === currentPlaying.item.uri ? 'list-item-title-playing' : 'list-item-title'">
                 {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
@@ -726,6 +732,14 @@
     justify-content: flex-start;
     color: #fff;
     width: 100%;
+}
+.list-item-title-playing {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  color: rgb(30, 215, 96);
+  width: 100%;
 }
 .list-item-popularity{
     display: flex;

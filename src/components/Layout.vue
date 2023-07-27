@@ -98,6 +98,7 @@
         :user-data="user" 
         :step-data="step" 
         :remove-track="removeTrack"
+        :current-data="currentData"
         @update-step-data="onUpdateStepData" 
         @update-menu-data="onUpdateMenuData"
     />
