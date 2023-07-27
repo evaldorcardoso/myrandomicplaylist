@@ -569,7 +569,7 @@
                 {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ track.track?.artists[0]?.name }}</div>
+                <div class="list-item-subtitle">{{ track.track?.artists.map(artist => artist.name).join(' ,') }}</div>
                 <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;align-items: end;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
               </div>
             </div>
