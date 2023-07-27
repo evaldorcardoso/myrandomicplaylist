@@ -68,7 +68,7 @@ const menuData = computed(() => {
         menuData.id = props.menuData.track.track.uri
         menuData.image = props.menuData.track.track.album.images[0].url
         menuData.title = props.menuData.track.track.name
-        menuData.subtitle = props.menuData.track.track.artists[0].name
+        menuData.subtitle = props.menuData.track.track.artists.map(artist => artist.name).join(' ,')
         menuData.addedAt = new Date(props.menuData.track.added_at).toLocaleDateString()
         menuData.releasedAt = new Date(props.menuData.track.track.album.release_date).toLocaleDateString()
         menuData.duration = new Date(props.menuData.track.track.duration_ms).toISOString().slice(14, 19)
