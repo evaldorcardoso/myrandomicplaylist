@@ -63,8 +63,6 @@
         step.value = value
     }
 
-    
-
     const onUpdateMenuData = (value) => {
         menuData.value = value
     }
@@ -76,7 +74,7 @@
         } catch(error) {
             console.log('error on get playback state')
         }
-    }, 30000)
+    }, 15000)
 
     onMounted(async () => {
         const { data } = await getPlaybackState()
