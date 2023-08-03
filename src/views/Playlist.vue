@@ -571,7 +571,7 @@
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
             <img :src="track.track?.album.images[0]?.url" class="music-cover"/>
             <div class="list-item-content">                
-              <div :class="track.track.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
+              <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
                 {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
