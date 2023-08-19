@@ -114,7 +114,15 @@
         let date = new Date(state.prog);          
         state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
     }, interval)
-};
+  };
+
+  setInterval(async () => {
+    try{
+      await getPlaybackUserState()
+    } catch(error) {
+      console.log('error on get playback state')
+    }
+  }, 5000)
 
   onMounted(async () => {
     progress()

@@ -74,8 +74,9 @@
         } catch(error) {
             console.log('error on get playback state')
         }
-    }, 15000)
+    }, 5000)
 
+    
     onMounted(async () => {
         const { data } = await getPlaybackState()
         floatPlayerData.value = data
