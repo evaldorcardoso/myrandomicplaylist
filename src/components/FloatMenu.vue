@@ -3,6 +3,7 @@ import { onMounted, computed, reactive, ref } from "vue";
 import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 import { usePlaylistStore } from '@/stores/playlist'
+import { notify } from "@kyvg/vue3-notification";
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -104,12 +105,11 @@ const calcLikesStats = () => {
 
 const selectPlaylist = async(playlistId) => {
     if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.id)) {
-        alert.value.showAlert(
-            'error',
-            'This track is already on this playlist!',
-            'Ops',
-            ALERT_OPTIONS
-        )
+        notify({
+            title: 'Ops',
+            text: 'This track is already on this playlist!',
+            type: 'warn'
+        })
         return
     }
 
@@ -121,12 +121,11 @@ const selectPlaylist = async(playlistId) => {
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
         if (status === 201) {
-            alert.value.showAlert(
-                'success',
-                'Song added!',
-                'Alright',
-                ALERT_OPTIONS
-            )
+            notify({
+                title: 'Alright',
+                text: 'Song added!',
+                type: 'success'
+            })
             playlistStore.loadTracks(playlistId, await getTracks(playlistId))
             closeMenu()
         }
@@ -181,12 +180,11 @@ const removeTrack = async() => {
         }
         const { status } = await removeTracksOfPlaylist(menuData.value.playlist, formData)
         if (status === 200) {
-            alert.value.showAlert(
-                'success',
-                'Song removed!',
-                'Alright',
-                ALERT_OPTIONS
-            )
+            notify({
+                title: 'Alright',
+                text: 'Song removed!',
+                type: 'success'
+            })
             emit('remove-track', menuData.value.id)
             closeMenu()
         }

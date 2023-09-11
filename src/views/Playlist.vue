@@ -10,6 +10,7 @@
   import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
   import { NOTIFICATIONS_TYPE } from '../support/helpers'
+  import { notify } from "@kyvg/vue3-notification";
 
   ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
@@ -119,10 +120,18 @@
   const getPlaylistTracks = async(force = false) => {
     state.tracks = await playlistStore.getTracks(playlistId.value)
     if ((state.tracks.length === 0) || force) {
-      showNotification(NOTIFICATIONS_TYPE.info, 'Please, wait', 'Loading songs...')
+      notify({
+        title: 'Please, wait',
+        text: 'Loading songs...',
+        type: 'info'
+      })
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
       state.tracks = await playlistStore.getTracks(playlistId.value)
-      showNotification(NOTIFICATIONS_TYPE.success, 'Success', 'Songs loaded!', false, true)
+      notify({
+        title: 'Alright',
+        text: 'Songs loaded!',
+        type: 'success'
+      })
     }    
   }
 
@@ -136,7 +145,11 @@
       let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
-      showNotification(NOTIFICATIONS_TYPE.success, 'Alright', 'Statistics registered!')
+      notify({
+        title: 'Alright',
+        text: 'Statistics registered!',
+        type: 'success'
+      })
       await getLikesStats()
       mountLikeStatsChart(state.dataLikes)
       mountPopularityStatsChart()
@@ -413,7 +426,11 @@
   const addToQueue = async(track) => {
     try {
       const { status } = await addTrackToQueue(track)
-      showNotification(NOTIFICATIONS_TYPE.success, 'Alright', 'Song added to queue!')
+      notify({
+        title: 'Alright',
+        text: 'Songs added to queue!',
+        type: 'success'
+      })
     } catch (error) {
       console.log(error)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)

@@ -126,7 +126,11 @@
 
   const hasPlaylistSelected = () => {
     if (state.playlists.filter(item => item.checked).length == 0) {
-      showNotification(NOTIFICATIONS_TYPE.info, 'Ops', 'Select at least 1 playlist!', false, true)
+      notify({
+        title: 'Ops',
+        text: 'Select at least one playlist',
+        type: 'info'
+      })
       return false
     }
 
@@ -152,13 +156,11 @@
     })
     await Promise.all(unresolved)
     await pickTracks(state.tracks)
-    showNotification(
-      NOTIFICATIONS_TYPE.success,
-      'Alright',
-      `Successful ${state.tracks.length} songs picked!`,
-      false,
-      true
-    )
+    notify({
+      title: 'Alright',
+      text: `Successful ${state.tracks.length} songs picked!`,
+      type: 'success'
+    })
     state.message = ''
     state.isProcessing = false
     emit('update-step-data', 99)
@@ -262,7 +264,11 @@
     playlistStore.load(data)
     let message = 'Playlist created successfully!'
     state.message = message
-    showNotification(NOTIFICATIONS_TYPE.success, 'Awesome', message)
+    notify({
+      title: 'Awesome',
+      text: message,
+      type: 'success'
+    })
     addTracksToUserPlaylist(state.randomPlaylist.id)
     state.isProcessing = false
   }
@@ -342,7 +348,11 @@
     }
     let message = 'Songs added to playlist successfully!'
     state.message = message
-    showNotification(NOTIFICATIONS_TYPE.success, 'Alright', message, false, true)
+    notify({
+      title: 'Alright',
+      text: message,
+      type: 'success'
+    })
     state.isProcessing = false
   }
 

@@ -9,8 +9,9 @@
       <ReloadPWA />
     </div>
   </header>
-  <div id="main">
-    <router-view/>
+  <div id="main">    
+    <notifications position="top center" width="100%"/>
+    <router-view />
   </div>
 </template>
 

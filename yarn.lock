@@ -1392,6 +1392,11 @@
   resolved "https://registry.yarnpkg.com/@kurkle/color/-/color-0.3.2.tgz#5acd38242e8bde4f9986e7913c8fdf49d3aa199f"
   integrity sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==
 
+"@kyvg/vue3-notification@^3.0.1":
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/@kyvg/vue3-notification/-/vue3-notification-3.0.1.tgz#138447f4629ba0867b89fead5f2c03f84ca55d95"
+  integrity sha512-6g4Sm03PM1Cc0atHHqQk5+ZtekXaxEXf9YVhfTv9FnUiNYKdquwVMuysj0cJabobsNSQSOASjqMg3+ndV2SqWw==
+
 "@node-ipc/js-queue@2.0.3":
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@node-ipc/js-queue/-/js-queue-2.0.3.tgz#ac7fe33d766fa53e233ef8fedaf3443a01c5a4cd"

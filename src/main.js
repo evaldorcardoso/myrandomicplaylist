@@ -47,6 +47,7 @@ import {
 } from '@fortawesome/free-regular-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { createPinia } from 'pinia';
+import Notifications from '@kyvg/vue3-notification'
 
 library.add(
     faSignOutAlt, 
@@ -99,4 +100,5 @@ app.use(axiosPlugin)
 app.use(Vue3TouchEvents)
 app.component("font-awesome-icon", FontAwesomeIcon)
 app.use(pinia)
+app.use(Notifications)
 app.mount('#app')

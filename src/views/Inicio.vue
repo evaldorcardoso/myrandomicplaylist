@@ -2,14 +2,14 @@
   import { onMounted, ref } from 'vue'
   import VueBasicAlert from 'vue-basic-alert'
 
-
   const alert = ref(null)
 
   const openLink = (url) => {
     window.open(url, '_blank')
   }
 
-  onMounted(async () => {})
+  onMounted(async () => {
+  })
 
 </script>
 
