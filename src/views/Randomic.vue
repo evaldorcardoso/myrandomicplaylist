@@ -7,6 +7,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import Notification from '@/components/Notification.vue'
   import { NOTIFICATIONS_TYPE } from '../support/helpers'
+  import { notify } from "@kyvg/vue3-notification";
 
   const { 
     getPlaylists,  
