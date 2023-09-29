@@ -236,7 +236,9 @@ const closeMenu = () => {
     <transition name="slide-fade" mode="in-out">
         <div class="menu" v-if="menuOpened">
             <div class="menu-content">
-                <hr class="menu-bar" @click="closeMenu">
+                <div style="display: flex; flex-direction:column" @click="closeMenu">
+                    <p class="close-button">X</p>
+                </div>
                 <div>
                     <div class="menu-item-track">
                         <img :src="menuData.image" class="music-cover"/>
@@ -288,7 +290,7 @@ const closeMenu = () => {
                         Created by: {{ menuData.owner }}
                     </div>
                     <hr class="style-one">
-                    <div v-if="menuData.type == 'track'">
+                    <div v-if="menuData.type == 'track'" style="max-height: 500px;">
                         <div class="menu-item" @click="executeTrack(menuData.id)">
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Play</h3>
@@ -359,13 +361,12 @@ const closeMenu = () => {
         width: 100%;
         z-index: 9999;
     }
-    .menu-bar {
-        width: 50px;
-        height: 3px;
-        background-color: #b3b3b3;
-        margin: 10px auto 10px auto;
-        border-radius: 10px;
+    .close-button {
+        display: flex;
+        justify-content:end;
+        color:#b3b3b3;
         cursor: pointer;
+        padding: 0px 20px;
     }
     .menu-content{
         display: flex;
