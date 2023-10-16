@@ -82,6 +82,9 @@
   onMounted(async () => {
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
+      data.items.forEach((item) => {
+        item.isOwner = item.owner.display_name === currentUser.value.display_name
+      })
       playlistStore.loadAll(data.items)
     }
     state.playlistsOriginal = playlistStore.playlists

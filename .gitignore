@@ -7,3 +7,4 @@ dist-ssr
 .env
 dev-dist/sw.js
 dev-dist/sw.js.map
+db.json

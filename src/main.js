@@ -7,6 +7,7 @@ import Vue3TouchEvents from 'vue3-touch-events';
 import { registerSW } from 'virtual:pwa-register'
 import { 
     faArrowDown,
+    faArrowUp,
     faArrowRight,
     faBars,
     faBook,
@@ -65,6 +66,7 @@ library.add(
     faHourglass,
     faArrowRight,
     faArrowDown,
+    faArrowUp,
     faSave,
     faBook,
     faChartLine,

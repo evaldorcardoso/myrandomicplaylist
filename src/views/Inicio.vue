@@ -39,7 +39,7 @@
     </div>
 
     <div class="footer">
-      <img class="center" alt="evaldorc" width="100px" height="64px" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
+      <img class="center" alt="evaldorc" width="100px" height="64px" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')"/>
     </div>    
   </div>
 </template>

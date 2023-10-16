@@ -44,7 +44,7 @@
     </div>
     <div class="footer">
       <p class="center span-login">{{ state.version }}</p>
-      <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
+      <img class="center" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')"/>
     </div>
   </p>
   <br/>

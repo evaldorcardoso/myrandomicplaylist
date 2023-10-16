@@ -125,7 +125,7 @@
         text: 'Loading songs...',
         type: 'info'
       })
-      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value), force)
       state.tracks = await playlistStore.getTracks(playlistId.value)
       notify({
         title: 'Alright',
@@ -510,6 +510,11 @@
   onMounted(async () => {
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
+
+      data.items.forEach((item) => {
+        item.isOwner = item.owner.display_name === currentUser.value.display_name
+      })
+
       playlistStore.loadAll(data.items)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
@@ -517,7 +522,7 @@
       const { data } = await getPlaylist(playlistId.value)
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    }    
+    }
     getPlaylistTracks()
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
@@ -601,13 +606,15 @@
               <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
               <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
               {{track.track?.popularity}}%
+              <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
+              <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
             </div>
           </div>
         </li>
       </ul>
     </div>
     <div class="footer">
-      <img class="center" alt="evaldorc" src="https://www.evaldorc.com.br/assets/images/marca_w.png" @click="openLink('https://evaldorc.com.br')"/>
+      <img class="center" style="width: 45px;" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')"/>
     </div>
     <div style="color:#1c1c1c">
       {{ removeTrack }}
@@ -771,14 +778,15 @@
 .icon-popularity-bad{
     color: rgb(255, 23, 23);
     margin-right: 3px;
+    margin: 0px 3px;
 }
 .icon-popularity-medium{
     color: rgb(255, 240, 30);
-    margin-right: 3px;
+    margin: 0px 3px;
 }
 .icon-popularity-good{
     color: rgb(117, 255, 24);
-    margin-right: 3px;
+    margin: 0px 3px;
 }
 .list-item-subtitle {
     display: flex;
