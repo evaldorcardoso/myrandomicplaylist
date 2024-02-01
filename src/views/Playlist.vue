@@ -837,7 +837,7 @@
   justify-content: center;
   margin: auto;
   width: 100%;
-  height: 60px;
+  height: 65px;
 }
 .list-item-content {
     display: flex;
@@ -846,6 +846,7 @@
     justify-content: space-between;
     margin: auto;
     flex: 90%;
+    overflow: hidden;
 }
 .list-item-title {
     display: flex;
@@ -854,6 +855,7 @@
     justify-content: flex-start;
     color: #fff;
     width: 100%;
+    white-space: nowrap;
 }
 .list-item-title-playing {
   display: flex;
