@@ -589,16 +589,17 @@
     </div>
     <div class="list-list" v-if="! state.statisticsOpen">
       <ul class="list">
-        <li :id="track.track?.id" v-for="track in state.tracks" class="list-item">
+        <li :id="track.track?.id" v-for="(track, index) in state.tracks" class="list-item">
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
+            <div class="list-item-position">{{index + 1}}</div>
             <img :src="track.track?.album.images[0]?.url" class="music-cover"/>
             <div class="list-item-content">                
               <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
                 {{track.track?.name}}
               </div>
-              <div style="display:flex;flex-direction:row;width:100%;justify-content: space-between;">
+              <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
                 <div class="list-item-subtitle">{{ track.track?.artists.map(artist => artist.name).join(' ,') }}</div>
-                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;align-items: end;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
+                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
               </div>
             </div>
             <div class="list-item-popularity">
@@ -707,9 +708,9 @@
   margin-bottom: 100px;
 }
 .music-cover {
-  width: 40px; 
-  height: 40px;
-  margin-right: 20px;
+  width: 50px; 
+  height: 50px;
+  margin-right: 7px;
 }
 .list-list {
   margin-bottom: 80px;
@@ -739,7 +740,7 @@
   justify-content: center;
   margin: auto;
   width: 100%;
-  height: 50px;
+  height: 60px;
 }
 .list-item-content {
     display: flex;
@@ -774,6 +775,15 @@
     width: 10%;
     font-size: 11px;
     margin-left: 5px;
+}
+.list-item-position{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  color: #616161;
+  width: 15%;
+  font-size: 24px;
 }
 .icon-popularity-bad{
     color: rgb(255, 23, 23);
