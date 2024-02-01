@@ -41,6 +41,7 @@
     isPlaying: false,
     playlist: null,
     tracks: [],
+    databaseTracks: [],
     visible: false,
     notificationAction: '',
     sortPosition: 0,
@@ -135,13 +136,94 @@
     }    
   }
 
+  const getTracksStatistics = async() => {
+    var data = [];
+    state.tracks.forEach(track => {
+      data.push(track.track.id)
+    });
+
+    const { data: databaseTracks } = await supabase
+      .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+      .select("*")
+      .in('track_id', data)
+    
+    state.databaseTracks = databaseTracks
+
+    for (const track of state.tracks) {
+      const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.popularity
+      if (trackFound) {
+        track.track.popularity_old = trackFound
+      }
+    }
+  }
+
+  const saveTracksStatistics = async() => {
+    try {
+      notify({
+        title: 'Please, wait',
+        text: 'Saving statistics...',
+        type: 'info'
+      })
+
+      for (const track of state.tracks) {
+        var trackToSave = {
+          track_id: track.track.id,
+          popularity: track.track.popularity,
+          playlist_id: state.playlist.id
+        }
+
+        const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.id
+
+        if (trackFound) {
+          trackToSave.id = trackFound
+          const { error: trackUpdatedError } = await supabase
+            .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+            .upsert(trackToSave)
+            .select()
+
+          if (trackUpdatedError) {
+            showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
+          }
+          continue
+        }
+
+        const { error: trackInsertedError } = await supabase
+            .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+            .insert(trackToSave)
+            .select()
+
+        if (trackInsertedError) {
+          showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
+          return
+        }        
+      };
+
+      notify({
+        title: 'Alright',
+        text: 'Statistics saved!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.log(error)
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
+    }
+  }
+
+  const removeTrackStatistics = async(trackToRemove) => {
+    const trackFound = state.databaseTracks.find(e => e.track_id === trackToRemove)?.id
+    console.log(trackFound)
+    if (trackFound) {
+      const { error } = await supabase
+        .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+        .delete()
+        .eq('id', trackFound)
+
+      if (error) throw error
+    }
+  }
+
   const saveStatistics = async() => {
     try {
-      const data = {
-        likes_count: state.playlist?.followers.total,
-        playlist_id: state.playlist?.id
-      }
-
       let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
@@ -154,6 +236,7 @@
       mountLikeStatsChart(state.dataLikes)
       mountPopularityStatsChart()
     } catch (error) {
+      console.log(error)
       console.log(error.message)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
@@ -378,6 +461,10 @@
 
   const onRemoveTrack = async (value) => {
     playlistStore.removeTrack(playlistId.value, value)
+    const trackFound = state.tracks.find(e => e.track.uri === value)?.track?.id
+    if (trackFound) {
+      removeTrackStatistics(trackFound)
+    }    
     await getPlaylistTracks()
     sortUserPlaylist(false)
   }
@@ -391,6 +478,7 @@
     state.playlist = data
     await getPlaylistTracks(true)
     sortUserPlaylist(false)
+    await getTracksStatistics()
   }
 
   const onOpenStatistics = () => {
@@ -501,6 +589,7 @@
             return
           }
           saveStatistics()
+          saveTracksStatistics()
         }
       }
     }
@@ -523,10 +612,11 @@
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }
-    getPlaylistTracks()
+    await getPlaylistTracks()
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
     }
+    getTracksStatistics()
   })
 
 </script>
@@ -602,13 +692,20 @@
                 <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
               </div>
             </div>
-            <div class="list-item-popularity">
-              <font-awesome-icon v-if="(track.track?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
-              <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
-              {{track.track?.popularity}}%
-              <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
-              <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
+            <div style="display: flex;flex-direction: column;justify-content: space-between;">
+              <div class="list-item-popularity">
+                <font-awesome-icon v-if="(track.track?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
+                {{track.track?.popularity}}%
+                <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
+                <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
+              </div>
+
+              <div v-if="track.track?.popularity_old" class="list-item-popularity" style="margin-top: 2px;">
+                <p v-if="((track.track?.popularity - track.track?.popularity_old) < 0)" class="icon-popularity-bad">-{{(track.track?.popularity - track.track?.popularity_old)}}</p>
+                <p v-if="((track.track?.popularity - track.track?.popularity_old) > 0)" class="icon-popularity-good">+{{(track.track?.popularity - track.track?.popularity_old)}}</p>
+              </div>
             </div>
           </div>
         </li>
@@ -772,7 +869,6 @@
     align-items: flex-end;
     justify-content: flex-end;
     color: #fff;
-    width: 10%;
     font-size: 11px;
     margin-left: 5px;
 }
@@ -807,6 +903,7 @@
     font-size: 11px;
     text-align: left;
     width: 100%;
+    margin-top: 4px;
 }
 .footer {
   display: flex;
