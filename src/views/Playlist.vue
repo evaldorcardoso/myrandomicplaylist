@@ -211,12 +211,12 @@
 
   const removeTrackStatistics = async(trackToRemove) => {
     const trackFound = state.databaseTracks.find(e => e.track_id === trackToRemove)?.id
-    console.log(trackFound)
     if (trackFound) {
       const { error } = await supabase
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .delete()
         .eq('id', trackFound)
+        .eq('playlist_id', state.playlist.id)
 
       if (error) throw error
     }

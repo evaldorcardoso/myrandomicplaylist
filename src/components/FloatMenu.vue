@@ -4,6 +4,7 @@ import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 import { usePlaylistStore } from '@/stores/playlist'
 import { notify } from "@kyvg/vue3-notification";
+import { supabase } from '@/support/supabaseClient'
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -67,6 +68,7 @@ const menuData = computed(() => {
     }
     if (menuData.type == 'track') {
         menuData.id = props.menuData.track.track.uri
+        menuData.trackId = props.menuData.track.track.id
         menuData.image = props.menuData.track.track.album.images[0].url
         menuData.title = props.menuData.track.track.name
         menuData.subtitle = props.menuData.track.track.artists.map(artist => artist.name).join(' ,')
@@ -112,7 +114,11 @@ const selectPlaylist = async(playlistId) => {
         })
         return
     }
-
+    notify({
+        title: 'Please, wait',
+        text: 'Moving track...',
+        type: 'info'
+    })
     try {
         const formData = {
             'uris': [
@@ -121,6 +127,7 @@ const selectPlaylist = async(playlistId) => {
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
         if (status === 201) {
+            await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
             notify({
                 title: 'Alright',
                 text: 'Song added!',
@@ -130,7 +137,58 @@ const selectPlaylist = async(playlistId) => {
             closeMenu()
         }
     }catch(error){
-      console.log(error)
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
+    }
+}
+
+const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
+    var trackToSave = {
+        track_id: trackId,
+        popularity: trackPopularity,
+        playlist_id: playlistId
+    }
+
+    const { data: databaseTrack } = await supabase
+      .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+      .select("*")
+      .eq('track_id', trackId)
+
+    if (databaseTrack.length > 0) {
+        trackToSave.id = databaseTrack[0].id
+
+        const { error: trackUpdatedError } = await supabase
+            .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+            .upsert(trackToSave)
+            .select()
+
+        if (trackUpdatedError) {
+            console.error(trackUpdatedError.message)
+            notify({
+                title: 'Ops',
+                text: trackUpdatedError.message,
+                type: 'error'
+            })
+        }
+        return
+    }
+
+    const { error: trackInsertedError } = await supabase
+        .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+        .insert(trackToSave)
+        .select()
+
+    if (trackInsertedError) {
+        console.error(trackInsertedError.message)
+        notify({
+            title: 'Ops',
+            text: trackInsertedError.message,
+            type: 'error'
+        })
     }
 }
 
