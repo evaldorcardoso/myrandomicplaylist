@@ -653,7 +653,20 @@
       </button>
       <div class="playlist-details">
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <p class="playlist-subtitle" style="margin-top:10px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+        <div style="display: flex;flex-direction: column;justify-content: center;">
+          <p class="playlist-subtitle" style="margin:0px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+          <p style="margin:0px" v-if="((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) != 0)"
+            :class="{
+              'playlist-subtitle' : true,
+              'icon-popularity-bad' : ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) < 0), 
+              'icon-popularity-good' : ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) > 0)
+            }"
+          >
+            <font-awesome-icon v-if="(state.playlist?.followers?.total < state.dataLikes[state.dataLikes?.length - 2]?.likes_count)" class="icon-popularity-bad" icon="arrow-down"/>
+            <font-awesome-icon v-if="(state.playlist?.followers?.total > state.dataLikes[state.dataLikes?.length - 2]?.likes_count)" class="icon-popularity-good" icon="arrow-up"/>
+            {{(state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count)}}
+          </p>
+        </div>
         <p @click="teste" class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
@@ -697,14 +710,18 @@
                 <font-awesome-icon v-if="(track.track?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
                 <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
                 <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
-                {{track.track?.popularity}}%
-                <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
-                <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
+                {{track.track?.popularity}}%                
               </div>
 
-              <div v-if="track.track?.popularity_old" class="list-item-popularity" style="margin-top: 2px;">
-                <p v-if="((track.track?.popularity - track.track?.popularity_old) < 0)" class="icon-popularity-bad">-{{(track.track?.popularity - track.track?.popularity_old)}}</p>
-                <p v-if="((track.track?.popularity - track.track?.popularity_old) > 0)" class="icon-popularity-good">+{{(track.track?.popularity - track.track?.popularity_old)}}</p>
+              <div v-if=" ((track.track?.popularity - track.track?.popularity_old) != 0)" style="margin-top: 2px;" 
+                :class="{
+                  'list-item-popularity' : true, 
+                  'icon-popularity-bad' : ((track.track?.popularity - track.track?.popularity_old) < 0), 
+                  'icon-popularity-good' : ((track.track?.popularity - track.track?.popularity_old) > 0)
+                }">
+                <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
+                <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
+                {{(track.track?.popularity - track.track?.popularity_old)}}
               </div>
             </div>
           </div>
