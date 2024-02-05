@@ -161,7 +161,7 @@
     try {
       notify({
         title: 'Please, wait',
-        text: 'Saving statistics...',
+        text: 'Saving tracks statistics...',
         type: 'info'
       })
 
@@ -200,7 +200,7 @@
 
       notify({
         title: 'Alright',
-        text: 'Statistics saved!',
+        text: 'Tracks statistics saved!',
         type: 'success'
       })
     } catch (error) {
@@ -223,7 +223,18 @@
   }
 
   const saveStatistics = async() => {
+    notify({
+        title: 'Please, wait',
+        text: 'Saving statistics...',
+        type: 'info'
+      })
+
     try {
+      const data = {
+        likes_count: state.playlist?.followers.total,
+        playlist_id: state.playlist?.id
+      }
+
       let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
