@@ -21,9 +21,15 @@ export const useUserStore = defineStore({
             this.tracks = tracks
         },
         loadTrack(track) {
-            const index = this.tracks.findIndex(element => element.id === track.id)
+            try {
+                const index = this.tracks.findIndex(element => element.id === track.id)
+                
+                (index >= 0) ? this.playlist[index] = track : this.tracks.push(track)            
+            } catch (e) {
+                console.log(e)
+                console.log(track)
+            }
 
-            (index >= 0) ? this.playlist[index] = track : this.tracks.push(track)            
         },
         removeTrack(track) {
             const index = this.tracks.findIndex(element => element.id === track.id)

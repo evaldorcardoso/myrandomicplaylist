@@ -14,7 +14,6 @@
       const { data: databaseTracks, error } = await supabase
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .select("*")
-
       userStore.loadAllTracks(databaseTracks)
       console.log('Tracks statistics loaded!')
       progress.finish()

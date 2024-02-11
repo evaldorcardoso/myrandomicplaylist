@@ -134,46 +134,61 @@
     for (const track of state.tracks) {
       track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
-      if (! track.track.popularity_old) {
+      if (! track.track.tracked) {
+        const databaseTrack = await saveTrackStatistics(track)
+        userStore.loadTrack(databaseTrack)
         track.track.popularity_old = track.track.popularity
+        track.track.tracked = userStore.getTrack(track.track.id)
       }
     }
   }
 
   const saveTracksStatistics = async() => {
+    progress.start()
     try {
       for (const track of state.tracks) {
-        var trackToSave = {
-          track_id: track.track.id,
-          popularity: track.track.popularity,
-          playlist_id: state.playlist.id
-        }
-
-        const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.id
-
-        if (trackFound) {
-          trackToSave.id = trackFound
-          const { error: trackUpdatedError } = await supabase
-            .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-            .upsert(trackToSave)
-            .select()
-
-          if (trackUpdatedError) {
-            showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
-          }
-          continue
-        }
-
-        const { error: trackInsertedError } = await supabase
-            .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-            .insert(trackToSave)
-            .select()
-
-        if (trackInsertedError) {
-          showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
-          return
-        }        
+        await saveTrackStatistics(track)
       };
+    } catch (error) {
+      console.log(error)
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
+    }
+    progress.finish()
+  }
+
+  const saveTrackStatistics = async(track) => {
+    try {
+      var trackToSave = {
+        track_id: track.track.id,
+        popularity: track.track.popularity,
+        playlist_id: state.playlist.id
+      }
+
+      const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.id
+
+      if (trackFound) {
+        trackToSave.id = trackFound
+        const { data: databaseTrack, error: trackUpdatedError } = await supabase
+          .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+          .upsert(trackToSave)
+          .select()
+
+        if (trackUpdatedError) {
+          showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
+        }
+        return databaseTrack
+      }
+
+      const { data: databaseTrack, error: trackInsertedError } = await supabase
+          .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+          .insert(trackToSave)
+          .select()
+
+      if (trackInsertedError) {
+        showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
+      }
+
+      return databaseTrack
     } catch (error) {
       console.log(error)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
