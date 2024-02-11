@@ -1098,6 +1098,11 @@
     "@babel/helper-validator-identifier" "^7.19.1"
     to-fast-properties "^2.0.0"
 
+"@ctechhindi/vue3-progress-bar@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/@ctechhindi/vue3-progress-bar/-/vue3-progress-bar-1.0.5.tgz#9a206f10aa92ceb0e11fff8c81f6a14209fa195d"
+  integrity sha512-Siur4/zaqWetRo6fYJWk23slqdyGU+zQAzlXWJlxgo7WbaAAPdhU7GpBjj05ZyDrftIfFzLEt/mOJYZYV893Pw==
+
 "@esbuild/android-arm64@0.17.19":
   version "0.17.19"
   resolved "https://registry.yarnpkg.com/@esbuild/android-arm64/-/android-arm64-0.17.19.tgz#bafb75234a5d3d1b690e7c2956a599345e84a2fd"

@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, computed, reactive, ref } from 'vue'
+  import { onMounted, computed, reactive, ref, inject } from 'vue'
   import { useRoute } from 'vue-router'
   import VueBasicAlert from 'vue-basic-alert'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
@@ -7,6 +7,7 @@
   import { Line, Pie } from 'vue-chartjs'
   import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
   import { usePlaylistStore } from '@/stores/playlist'
+  import { useUserStore } from '@/stores/user'
   import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
   import { NOTIFICATIONS_TYPE } from '../support/helpers'
@@ -16,6 +17,8 @@
 
   const route = useRoute();
   const playlistStore = usePlaylistStore()
+  const userStore = useUserStore()
+  const progress = inject("progress");
   const { getPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
   const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
@@ -121,50 +124,24 @@
   const getPlaylistTracks = async(force = false) => {
     state.tracks = await playlistStore.getTracks(playlistId.value)
     if ((state.tracks.length === 0) || force) {
-      notify({
-        title: 'Please, wait',
-        text: 'Loading songs...',
-        type: 'info'
-      })
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value), force)
       state.tracks = await playlistStore.getTracks(playlistId.value)
-      notify({
-        title: 'Alright',
-        text: 'Songs loaded!',
-        type: 'success'
-      })
-    }    
+    }
   }
 
   const getTracksStatistics = async() => {
-    var data = [];
-    state.tracks.forEach(track => {
-      data.push(track.track.id)
-    });
-
-    const { data: databaseTracks } = await supabase
-      .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-      .select("*")
-      .in('track_id', data)
-    
-    state.databaseTracks = databaseTracks
-
+    state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
-      const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.popularity
-      if (trackFound) {
-        track.track.popularity_old = trackFound
+      track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity
+      track.track.tracked = userStore.getTrack(track.track.id)
+      if (! track.track.popularity_old) {
+        track.track.popularity_old = track.track.popularity
       }
     }
   }
 
   const saveTracksStatistics = async() => {
     try {
-      notify({
-        title: 'Please, wait',
-        text: 'Saving tracks statistics...',
-        type: 'info'
-      })
-
       for (const track of state.tracks) {
         var trackToSave = {
           track_id: track.track.id,
@@ -197,12 +174,6 @@
           return
         }        
       };
-
-      notify({
-        title: 'Alright',
-        text: 'Tracks statistics saved!',
-        type: 'success'
-      })
     } catch (error) {
       console.log(error)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
@@ -223,12 +194,6 @@
   }
 
   const saveStatistics = async() => {
-    notify({
-        title: 'Please, wait',
-        text: 'Saving statistics...',
-        type: 'info'
-      })
-
     try {
       const data = {
         likes_count: state.playlist?.followers.total,
@@ -238,11 +203,7 @@
       let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
 
       if (error) throw error
-      notify({
-        title: 'Alright',
-        text: 'Statistics registered!',
-        type: 'success'
-      })
+      
       await getLikesStats()
       mountLikeStatsChart(state.dataLikes)
       mountPopularityStatsChart()
@@ -599,8 +560,18 @@
             )
             return
           }
+          notify({
+            title: 'Please, wait',
+            text: 'Saving statistics...',
+            type: 'info'
+          })
           saveStatistics()
           saveTracksStatistics()
+          notify({
+            title: 'Alright',
+            text: 'Statistics saved!',
+            type: 'success'
+          })
         }
       }
     }
@@ -608,6 +579,7 @@
   }
 
   onMounted(async () => {
+    progress.start()
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
 
@@ -628,6 +600,7 @@
       getLikesStats(false)
     }
     getTracksStatistics()
+    progress.finish()
   })
 
 </script>
@@ -709,6 +682,7 @@
             <img :src="track.track?.album.images[0]?.url" class="music-cover"/>
             <div class="list-item-content">                
               <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
+                <font-awesome-icon v-if="track.track?.tracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);;" />
                 {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">

@@ -1,7 +1,25 @@
 <script setup>
   import ReloadPWA from "@/components/ReloadPWA.vue"
+  import { useUserStore } from '@/stores/user'
+  import { inject, onMounted } from "vue";
+  import { supabase } from '@/support/supabaseClient'
 
+  const userStore = useUserStore()
+  const progress = inject("progress");
   document.title = 'My Randomic Playlist'
+
+  onMounted(async () => {
+    if(! userStore.isTracksLoaded) {
+      progress.start()
+      const { data: databaseTracks, error } = await supabase
+        .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
+        .select("*")
+
+      userStore.loadAllTracks(databaseTracks)
+      console.log('Tracks statistics loaded!')
+      progress.finish()
+    }
+  })
 </script>
 <template>
   <header>
@@ -11,6 +29,7 @@
   </header>
   <div id="main">    
     <notifications position="top center" width="100%"/>
+    <Vue3ProgressBar></Vue3ProgressBar>
     <router-view />
   </div>
 </template>

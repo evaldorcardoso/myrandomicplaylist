@@ -1,15 +1,17 @@
 <script setup>
-  import { onMounted, computed, reactive, ref } from 'vue'
+  import { onMounted, computed, reactive, ref, inject } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
   import { useRouter } from 'vue-router'
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
+  
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
   const msg = ref('Your library')
+  const progress = inject("progress");
 
   const props = defineProps({
     userData: {
@@ -80,6 +82,7 @@
   }
 
   onMounted(async () => {
+    progress.start()
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
       data.items.forEach((item) => {
@@ -87,9 +90,11 @@
       })
       playlistStore.loadAll(data.items)
     }
+
     state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
+    progress.finish()
   })
 
 </script>
