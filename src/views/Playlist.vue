@@ -676,10 +676,10 @@
     </div>
     <div class="list-list" v-if="! state.statisticsOpen">
       <ul class="list">
-        <li :id="track.track?.id" v-for="(track, index) in state.tracks" class="list-item">
+        <li :id="track.track?.id" v-for="track in state.tracks" class="list-item">
           <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
-            <div class="list-item-position">{{index + 1}}</div>
-            <img :src="track.track?.album.images[0]?.url" class="music-cover"/>
+            <div class="list-item-position">{{track.id + 1}}</div>
+            <img :src="track.track?.album.images[track.track?.album.images.length - 1]?.url" class="music-cover"/>
             <div class="list-item-content">                
               <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
                 <font-awesome-icon v-if="track.track?.tracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);;" />
