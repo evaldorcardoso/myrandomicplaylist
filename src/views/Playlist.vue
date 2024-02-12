@@ -558,7 +558,7 @@
     isNotificationOpened.value = true
   }
 
-  const onNotificationAction = (value) => {
+  const onNotificationAction = async(value) => {
     isNotificationOpened.value = false
     if (value) {
       if (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_SORT) {
@@ -575,13 +575,8 @@
             )
             return
           }
-          notify({
-            title: 'Please, wait',
-            text: 'Saving statistics...',
-            type: 'info'
-          })
-          saveStatistics()
-          saveTracksStatistics()
+          await saveStatistics()
+          await saveTracksStatistics()
           notify({
             title: 'Alright',
             text: 'Statistics saved!',
