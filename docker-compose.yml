@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  myrandomicplaylist:
+    container_name: myrandomicplaylist
+    image: node:lts
+    working_dir: /var/www/html/app
+    entrypoint: /bin/bash
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/var/www/html/app
+    tty: true

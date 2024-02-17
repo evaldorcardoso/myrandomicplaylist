@@ -33,7 +33,7 @@
 </script>
 
 <template>
-  <h2 class="center" style="margin-top: 50px;color:#fff">{{ msg }}</h2>
+  <h2 class="center" style="margin-top: 50px;color:#fff;text-align:center;">{{ msg }}</h2>
   <p>
     <div class="login">      
       <img alt="Vue logo" src="../assets/Spotify_Logo_RGB_White.png" />
@@ -43,8 +43,8 @@
       </a>      
     </div>
     <div class="footer">
+      <img class="center" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')" style="width: 50px;"/>
       <p class="center span-login">{{ state.version }}</p>
-      <img class="center" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')"/>
     </div>
   </p>
   <br/>
