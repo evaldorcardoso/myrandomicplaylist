@@ -134,7 +134,7 @@
     for (const track of state.tracks) {
       track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
-      if (! track.track.tracked) {
+      if ((! track.track.tracked) && (state.playlist.owner.display_name == currentUser.value.display_name)) {
         const databaseTrack = await saveTrackStatistics(track)
         userStore.loadTrack(databaseTrack)
         track.track.popularity_old = track.track.popularity
@@ -611,6 +611,7 @@
     }
     getTracksStatistics()
     progress.finish()
+    console.log(state.playlist.id)
   })
 
 </script>
@@ -649,7 +650,7 @@
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         <div style="display: flex;flex-direction: column;justify-content: center;">
           <p class="playlist-subtitle" style="margin:0px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-          <p style="margin:0px" v-if="((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) != 0)"
+          <p style="margin:0px" v-if="state.dataLikes[state.dataLikes?.length - 2] && ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) != 0)"
             :class="{
               'playlist-subtitle' : true,
               'icon-popularity-bad' : ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) < 0), 
