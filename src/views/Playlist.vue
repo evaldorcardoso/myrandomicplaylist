@@ -458,6 +458,9 @@
 
   const onUpdateMenuOpened = (value) => {
     isMenuOpened.value = value
+    if (! value) {
+      getTracksStatistics()
+    }
   }
 
   const onRefreshPage = async() => {
@@ -611,7 +614,6 @@
     }
     getTracksStatistics()
     progress.finish()
-    console.log(state.playlist.id)
   })
 
 </script>
