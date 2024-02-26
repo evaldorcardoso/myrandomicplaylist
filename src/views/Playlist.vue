@@ -151,7 +151,7 @@
       };
     } catch (error) {
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
+      //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
     }
     progress.finish()
   }
@@ -174,7 +174,8 @@
           .select()
 
         if (trackUpdatedError) {
-          showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
+          //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
+          console.log(trackUpdatedError.message)
         }
         return databaseTrack
       }
@@ -185,13 +186,14 @@
           .select()
 
       if (trackInsertedError) {
-        showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
+        //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
+        console.log(trackInsertedError.message)
       }
 
       return databaseTrack
     } catch (error) {
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
+      //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
     }
   }
 
