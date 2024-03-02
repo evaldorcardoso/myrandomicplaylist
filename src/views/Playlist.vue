@@ -132,12 +132,11 @@
   const getTracksStatistics = async() => {
     state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
-      track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity
+      track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
       if ((! track.track.tracked) && (state.playlist.owner.display_name == currentUser.value.display_name)) {
         const databaseTrack = await saveTrackStatistics(track)
         userStore.loadTrack(databaseTrack)
-        track.track.popularity_old = track.track.popularity
         track.track.tracked = userStore.getTrack(track.track.id)
       }
     }

@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted, computed, reactive, ref } from "vue";
+import { onMounted, computed, reactive, ref } from "vue"
 import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 import { usePlaylistStore } from '@/stores/playlist'
-import { notify } from "@kyvg/vue3-notification";
+import { notify } from "@kyvg/vue3-notification"
 import { supabase } from '@/support/supabaseClient'
+import { useUserStore } from '@/stores/user'
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -16,6 +17,7 @@ const emit = defineEmits([
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
+const userStore = useUserStore()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -173,11 +175,13 @@ const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
                 text: trackUpdatedError.message,
                 type: 'error'
             })
+            return
         }
+        userStore.loadTrack(databaseTrack[0])
         return
     }
 
-    const { error: trackInsertedError } = await supabase
+    const { error: trackInsertedError, data: databaseTrackInserted } = await supabase
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .insert(trackToSave)
         .select()
@@ -189,7 +193,9 @@ const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
             text: trackInsertedError.message,
             type: 'error'
         })
+        return
     }
+    userStore.loadTrack(databaseTrackInserted[0])
 }
 
 const verifyDuplicateTrackInPlaylist = async(playlistId, trackUri) => {
