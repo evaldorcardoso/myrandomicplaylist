@@ -128,7 +128,7 @@ const selectPlaylist = async(playlistId) => {
             ]
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
-        if (status === 201) {
+        if (status === 200) {
             await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
             notify({
                 title: 'Alright',
@@ -137,7 +137,13 @@ const selectPlaylist = async(playlistId) => {
             })
             playlistStore.loadTracks(playlistId, await getTracks(playlistId))
             closeMenu()
+            return
         }
+        notify({
+            title: 'Ops',
+            text: 'Status: ' + status + ' not expected!',
+            type: 'info'
+        })
     }catch(error){
         console.log(error)
         notify({
