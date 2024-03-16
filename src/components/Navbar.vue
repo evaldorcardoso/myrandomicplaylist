@@ -2,8 +2,10 @@
   import { computed, onMounted, reactive } from 'vue'
   import { useRouter } from 'vue-router'
   import helpers from '../support/helpers';
+import { useUserStore } from '../stores/user';
 
   const router = useRouter()
+  const userStore = useUserStore()
 
   const state = reactive({
     menuOpen : false,
@@ -11,10 +13,6 @@
   })
 
   const props = defineProps({
-    userData: {
-        type: Object,
-        default: () => { },
-    },
     stepData: {
       type: Number,
       default: 1
@@ -22,7 +20,7 @@
   });
 
   const currentUser = computed(() => {
-      return props.userData;
+      return userStore.getUser
   });
 
   const currentStep = computed(() => {

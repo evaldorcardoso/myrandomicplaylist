@@ -6,6 +6,7 @@ export const LOCALSTORAGE_KEYS = {
     expireTime: 'spotify_token_expire_time',
     //timestamp: 'spotify_token_timestamp',
     filterLibrary: 'spotify_filter_library',
+    user: 'user'
 }
 
 export const NOTIFICATIONS_TYPE = {
@@ -26,6 +27,7 @@ export default {
           //timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
           filterLibrary: window.localStorage.getItem(LOCALSTORAGE_KEYS.filterLibrary)
         };
+
         return LOCALSTORAGE_VALUES
     },
     setLocalStorage: (key, value) => {

@@ -71,10 +71,6 @@
   const alert = ref(null)
 
   const props = defineProps({
-    userData: {
-        type: Object,
-        default: () => { },
-    },
     forceRefresh: {
         type: Boolean,
         default: false,
@@ -94,7 +90,7 @@
   });
 
   const currentUser = computed(() => {
-    return props.userData;
+    return userStore.getUser
   });
 
   const menuOpened = computed(() => {
@@ -593,6 +589,7 @@
   }
 
   onMounted(async () => {
+    // console.log(userStore.getUser)
     progress.start()
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()

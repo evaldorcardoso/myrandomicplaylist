@@ -86,7 +86,6 @@
 
 <template>
     <Navbar 
-        :user-data="user" 
         :step-data="step" 
         @update-step-data="onUpdateStepData"
     />
@@ -94,7 +93,6 @@
         :current-data="currentData"
     />
     <router-view 
-        :user-data="user" 
         :step-data="step" 
         :remove-track="removeTrack"
         :current-data="currentData"

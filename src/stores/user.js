@@ -1,4 +1,5 @@
 import { defineStore } from "pinia"
+import helpers, { LOCALSTORAGE_KEYS } from "../support/helpers"
 
 export const useUserStore = defineStore({
     id: 'user',
@@ -8,14 +9,23 @@ export const useUserStore = defineStore({
     }),
     getters: {
         isLogged: (state) => state.user !== null,
-        isTracksLoaded: (state) => state.tracks.length > 0
+        isTracksLoaded: (state) => state.tracks.length > 0,
+        getUser: (state) => {
+            const storedState = localStorage.getItem(LOCALSTORAGE_KEYS.user)
+            if (storedState) {
+                state.user = JSON.parse(storedState)
+            }
+            return state.user
+        }
     },
     actions: {
         setUser(user) {
             this.user = user
+            helpers.setLocalStorage(LOCALSTORAGE_KEYS.user, JSON.stringify(user))
         },
         clearUser() {
             this.user = null
+            helpers.setLocalStorage(LOCALSTORAGE_KEYS.user, null)
         },
         loadAllTracks(tracks) {
             this.tracks = tracks

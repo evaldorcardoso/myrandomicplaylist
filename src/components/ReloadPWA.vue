@@ -16,9 +16,16 @@
   </template>
   <script>
   import { useRegisterSW } from "virtual:pwa-register/vue";
-  const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW();
-  async function close() {
-    offlineReady.value = false;
-    needRefresh.value = false;
+  export default {
+    setup() {
+      const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW();
+
+      async function close() {
+        offlineReady.value = false;
+        needRefresh.value = false;
+      }
+
+      return { offlineReady, needRefresh, updateServiceWorker, close };
+    }
   }
   </script>

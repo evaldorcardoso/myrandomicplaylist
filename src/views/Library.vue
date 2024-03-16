@@ -5,23 +5,18 @@
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
+import { useUserStore } from '../stores/user'
   
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
+  const userStore = useUserStore()
   const msg = ref('Your library')
   const progress = inject("progress");
 
-  const props = defineProps({
-    userData: {
-        type: Object,
-        default: () => { },
-    },
-  });
-
   const currentUser = computed(() => {
-    return props.userData;
+    return userStore.getUser
   });
 
   const state = reactive({

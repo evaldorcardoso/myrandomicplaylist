@@ -13,11 +13,7 @@ const props = defineProps({
     data: {
         type: Object,
         default: () => { }
-    },
-    userData: {
-        type: Object,
-        default: () => { }
-    },
+    }
 });
 
 const opened = computed(() => {    
