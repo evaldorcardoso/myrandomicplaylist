@@ -624,7 +624,7 @@
         ...track,
         opened: track === currentTrack
       }));  
-    }, 200);
+    }, 100);
   }
 
   const moveTrackUp = (track, pos) => {
@@ -743,7 +743,7 @@
           class="list-item"          
           :key="track"
         >
-          <div class="list-item-div" style="cursor: pointer;" @touchstart="handleTouchStart(track)" :class="{'opened' : track.opened}">
+          <div class="list-item-div" style="cursor: pointer;" :class="{'opened' : track.opened}">
             <div class="list-item-position">
               {{track.id + 1}}
               <p v-if="state.differentSort && track.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
@@ -778,6 +778,7 @@
                 {{(track.track?.popularity - track.track?.popularity_old)}}
               </div>
             </div>
+            <p @touchstart="handleTouchStart(track)" class="playlist-subtitle" style="margin-top:10px;cursor: pointer;"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin:0px 5px;color: #b3b3b3;" /></p>
           </div>
           <div v-if="track.opened" class="list-item-div opened bordered-down">
             <button class="button-options" @click="executeTrack(track)">
@@ -1040,17 +1041,5 @@
   position: relative;
   width: 100%;
   opacity: 0.3;
-}
-
-.over {
-  opacity: .6;
-  background-color: #2a2a2a;
-}
-.flip-list-move {
-  transition: transform .2s;
-}
-.list > div {
-  display: flex;
-  flex-direction: column; 
 }
 </style>
