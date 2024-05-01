@@ -29,8 +29,9 @@ const alert = ref(null)
 const state = reactive({
     playlistsOriginal:[],
     playlists: [],
-    likesAVG: 0
-  })
+    likesAVG: 0,
+    playlistsOpened: false
+})
 
 const props = defineProps({
     menuOpened: {
@@ -52,6 +53,7 @@ const menuOpened = computed(() => {
 });
 
 const menuData = computed(() => {
+    state.playlistsOpened = false
     let menuData = {};
     menuData.type = props.menuData.type
     if (menuData.type == 'playlist') {
@@ -78,8 +80,12 @@ const menuData = computed(() => {
         menuData.releasedAt = new Date(props.menuData.track.track.album.release_date).toLocaleDateString()
         menuData.duration = new Date(props.menuData.track.track.duration_ms).toISOString().slice(14, 19)
         menuData.popularity = props.menuData.track.track.popularity
+        menuData.popularity_old = props.menuData.track.track.popularity_old
         menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
         menuData.playlist = props.menuData.track.playlist.id
+        if (props.menuData.listPlaylists) {
+            listPlaylists()
+        }
         return menuData
     }
 });
@@ -288,9 +294,10 @@ const listPlaylists = async() => {
     state.playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == currentUser.value.display_name          
     )
+    state.playlistsOpened = true
 }
 
-onMounted(async () => {    
+onMounted(async () => {
     
 })
 
@@ -319,71 +326,96 @@ const closeMenu = () => {
                         <div class="menu-item-track-subtitle">{{menuData.subtitle}}</div>
                         </div>
                     </div>
-                    <div class="menu-item-track-details" v-if="menuData.type == 'track'">
-                        Added: {{ menuData.addedAt }} <br>
-                        Released: {{ menuData.releasedAt }} <br>
-                        Duration: {{ menuData.duration }} <br>
-                        Popularity: {{ menuData.popularity }}<br>
-                    </div>
-                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
-                        <div style="display: flex;justify-content:space-around">
-                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                                <font-awesome-icon icon="heart" style="vertical-align:middle;" />
-                                <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
-                            </div>
-                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                                <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
-                                <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
-                                <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
-                            </div>
-                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
-                                :class="{
-                                    'icon-popularity-bad' : (menuData.popularity <= 40),
-                                    'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
-                                    'icon-popularity-good' : (menuData.popularity > 70)
-                                }">
-                                <font-awesome-icon icon="chart-line" />
-                                <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
-                            </div>
-                            <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
-                            :class="{
-                                'icon-popularity-bad' : (state.likesAVG < 0),
-                                'icon-popularity-medium' : (state.likesAVG == 0),
-                                'icon-popularity-good' : (state.likesAVG > 0)
-                            }">
-                                <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
-                                <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
-                                <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
-                                <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                    <div class="menu-item-track-details" v-if="menuData.type == 'track' && !state.playlistsOpened">
+                        <div style="display: flex;flex-direction:column;">
+                            <p>Added:</p>
+                            {{menuData?.addedAt}}
+                        </div>
+                        <div style="display: flex;flex-direction:column;">
+                            <p>Released:</p>
+                            {{menuData?.releasedAt}}
+                        </div>
+                        <div style="display: flex;flex-direction:column;">
+                            <p>Duration:</p>
+                            {{menuData?.duration}}
+                        </div>
+                        <div style="display: flex;flex-direction:column;">
+                            <p>Popularity:</p>
+                            <div style="display: flex;flex-direction:row;">
+                                <div class="list-item-popularity">
+                                    <font-awesome-icon v-if="(menuData?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
+                                    <font-awesome-icon v-else-if="(menuData?.popularity > 40 && menuData?.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
+                                    <font-awesome-icon v-else-if="(menuData?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
+                                    {{menuData?.popularity}}%                
+                                </div>
+                                <div v-if=" ((menuData?.popularity - menuData?.popularity_old) != 0)" style="margin-left: 3px;" 
+                                    :class="{
+                                    'list-item-popularity' : true, 
+                                    'icon-popularity-bad' : ((menuData?.popularity - menuData?.popularity_old) < 0), 
+                                    'icon-popularity-good' : ((menuData?.popularity - menuData?.popularity_old) > 0)
+                                    }">
+                                    <font-awesome-icon v-if="(menuData?.popularity < menuData?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
+                                    <font-awesome-icon v-if="(menuData?.popularity > menuData?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
+                                    {{(menuData?.popularity - menuData?.popularity_old)}}
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
                         Created by: {{ menuData.owner }}
+                    </div>
+                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                            <font-awesome-icon icon="heart" style="vertical-align:middle;" />
+                            <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
+                            <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
+                            <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
+                            <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
+                            :class="{
+                                'icon-popularity-bad' : (menuData.popularity <= 40),
+                                'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
+                                'icon-popularity-good' : (menuData.popularity > 70)
+                            }">
+                            <font-awesome-icon icon="chart-line" />
+                            <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
+                        </div>
+                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
+                        :class="{
+                            'icon-popularity-bad' : (state.likesAVG < 0),
+                            'icon-popularity-medium' : (state.likesAVG == 0),
+                            'icon-popularity-good' : (state.likesAVG > 0)
+                        }">
+                            <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
+                            <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
+                            <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
+                            <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                        </div>                       
                     </div>
                     <hr class="style-one">
                     <div v-if="menuData.type == 'track'" style="max-height: 500px;">
-                        <div class="menu-item" @click="executeTrack(menuData.id)">
+                        <div class="menu-item" v-if="!state.playlistsOpened" @click="executeTrack(menuData.id)">
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Play</h3>
                         </div>
-                        <div class="menu-item" @click="doQueue(menuData.id)">
+                        <div class="menu-item" v-if="!state.playlistsOpened" @click="doQueue(menuData.id)">
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Add to queue</h3>
                         </div>
-                        <div class="menu-item" @click="listPlaylists">
-                            <font-awesome-icon icon="music" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Add to another playlist</h3>
-                        </div>
-                        <div class="menu-item" v-if="menuData.isOwner" @click="removeTrack">
+                        <div class="menu-item" v-if="menuData.isOwner && !state.playlistsOpened" @click="removeTrack">
                             <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Remove from this playlist</h3>
                         </div>
                         <div class="playlists" v-if="state.playlists">
                             <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
                                 <img :src="playlist.images[0]?.url" class="playlist-cover"/>
-                                <div class="menu-item-track-content">                
-                                <div class="menu-item-track-title">
-                                    {{playlist.name}}
-                                </div>
+                                <div class="menu-item-playlist-content">                
+                                    <div class="menu-item-playlist-title">
+                                        {{playlist.name}}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -430,6 +462,7 @@ const closeMenu = () => {
         position: absolute;
         width: 100%;
         z-index: 9999;
+        max-height: 85%;
     }
     .close-button {
         display: flex;
@@ -474,14 +507,14 @@ const closeMenu = () => {
         height: 20px;
     }
     .music-cover {
-        width: 60px;
-        height: 60px;
-        margin: 10px 10px 20px 10px;
+        width: auto;
+        height: 15rem;
+        margin: 0px 10px 10px 10px;
     }
     .playlist-cover {
         width: 40px;
         height: 40px;
-        border-radius: 30px;
+        border-radius: 3px;
         margin: 0px 10px 0px 10px;
     }
     .menu-item-track-content {
@@ -496,15 +529,17 @@ const closeMenu = () => {
         display: flex;
         flex-direction: row;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: center;
         color: #fff;
         width: 100%;
+        font-size: 1.2rem;
+        text-align: center;
     }
     .menu-item-track-subtitle {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: baseline;
-        justify-content: flex-start;
+        justify-content: center;
         color: #999;
         font-size: 11px;
         text-align: left;
@@ -515,15 +550,18 @@ const closeMenu = () => {
         font-size: 12px;
         text-align: center;
         margin-bottom: 20px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
     }
     .menu-item-track {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         margin: auto;
         width: 100%;
-        height: 50px;
+        height: auto;
         margin-bottom: 20px;
     }
     .menu-item-playlist {
@@ -536,6 +574,23 @@ const closeMenu = () => {
         height: 40px;
         margin-bottom: 10px;
         cursor: pointer;
+    }
+    .menu-item-playlist-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        margin: auto;
+        flex: 90%;
+    }
+    .menu-item-playlist-title {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: #999;
+        width: 100%;
+        font-size: 0.8rem;
+        text-align: center;
     }
     .playlists {
         overflow: scroll;

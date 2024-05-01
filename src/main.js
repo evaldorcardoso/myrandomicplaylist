@@ -12,6 +12,8 @@ import {
     faBars,
     faBook,
     faChartLine,
+    faChevronUp,
+    faChevronDown,
     faChevronLeft,
     faChevronRight,
     faHome,
@@ -41,7 +43,9 @@ import {
     faMeh,
     faLock,
     faUnlockAlt,
-    faTimes
+    faTimes,
+    faInfo,
+    faPlus
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -71,6 +75,8 @@ library.add(
     faSave,
     faBook,
     faChartLine,
+    faChevronUp,
+    faChevronDown,
     faChevronLeft,
     faChevronRight,
     faSort,
@@ -88,7 +94,9 @@ library.add(
     faMeh,
     faLock,
     faUnlockAlt,
-    faTimes
+    faTimes,
+    faInfo,
+    faPlus
 )
 
 const updateSW = registerSW({

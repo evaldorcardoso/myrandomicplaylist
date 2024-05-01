@@ -62,7 +62,7 @@
     },
     chartOptions: {
       responsive: true
-    }
+    },
   })
   const isMenuOpened = ref(null)
   const menuDataReactive = ref(null)
@@ -346,6 +346,33 @@
     }
   }
 
+  const executeTrack = async(track) => {
+    if (!track.opened) return
+
+    try{
+      const formData = {
+        "uris": [ track.track.uri ]
+      }
+      const { status } = await executePlaylist(formData)
+      if (status != 204){
+        showNotification(
+          NOTIFICATIONS_TYPE.danger,
+          'Ops',
+          error.response.data.error.message
+        )
+        return
+      }
+      state.isPlaying = true  
+    }catch(error){
+      console.log(error.response)
+      showNotification(
+        NOTIFICATIONS_TYPE.danger,
+        'Ops',
+        error.response.data.error.message
+      )
+    }
+  }
+
   const sortUserPlaylist = (increment = true) => {
     if(increment) {
       state.sortPosition++
@@ -399,6 +426,7 @@
         return;
       }
     }
+    state.differentSort = false
     state.notificationAction = ''
     isNotificationOpened.value = false
   }
@@ -407,12 +435,9 @@
     window.open(url, '_blank')
   }
 
-  const holdItem = (event) => {
-    let element = event.target
-    while (element.tagName !== 'LI') {
-      element = element.parentNode
-    }
-    let track = state.tracks.find(track => track.track.id === element.id)
+  const trackInfo = (track, addToAnotherPlaylist = false) => {
+    if (!track.opened) return
+
     track['playlist'] = {
       id: state.playlist.id,
       owner: state.playlist.owner.display_name
@@ -420,7 +445,8 @@
 
     let menuData = {
       type: 'track',
-      track
+      track,
+      listPlaylists: addToAnotherPlaylist
     }
     menuDataReactive.value = menuData
     isMenuOpened.value = true
@@ -588,8 +614,33 @@
     state.notificationAction = ''
   }
 
+  const handleTouchStart = (currentTrack) => {
+    setTimeout(() => {
+      if (currentTrack.opened) {
+        currentTrack.opened = false
+        return
+      }
+      state.tracks = state.tracks.map(track => ({
+        ...track,
+        opened: track === currentTrack
+      }));  
+    }, 200);
+  }
+
+  const moveTrackUp = (track, pos) => {
+    state.tracks.splice(pos, 1)
+    state.tracks.splice(pos - 1, 0, track)
+    checkDifferentSort()
+  }
+
+  const moveTrackDown = (track, pos) => {
+    state.tracks.splice(pos, 1)
+    state.tracks.splice(pos + 1, 0, track)
+    checkDifferentSort()
+    console.log(state.tracks)
+  }
+
   onMounted(async () => {
-    // console.log(userStore.getUser)
     progress.start()
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
@@ -610,7 +661,7 @@
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
     }
-    getTracksStatistics()
+    getTracksStatistics()    
     progress.finish()
   })
 
@@ -687,9 +738,16 @@
     </div>
     <div class="list-list" v-if="! state.statisticsOpen">
       <ul class="list">
-        <li :id="track.track?.id" v-for="track in state.tracks" class="list-item">
-          <div class="list-item-div" @click="holdItem($event)" style="cursor: pointer;">
-            <div class="list-item-position">{{track.id + 1}}</div>
+        <li :id="track.track?.id" 
+          v-for="(track, i) in state.tracks" 
+          class="list-item"          
+          :key="track"
+        >
+          <div class="list-item-div" style="cursor: pointer;" @touchstart="handleTouchStart(track)" :class="{'opened' : track.opened}">
+            <div class="list-item-position">
+              {{track.id + 1}}
+              <p v-if="state.differentSort && track.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
+            </div>
             <img :src="track.track?.album.images[track.track?.album.images.length - 1]?.url" class="music-cover"/>
             <div class="list-item-content">                
               <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
@@ -720,6 +778,28 @@
                 {{(track.track?.popularity - track.track?.popularity_old)}}
               </div>
             </div>
+          </div>
+          <div v-if="track.opened" class="list-item-div opened bordered-down">
+            <button class="button-options" @click="executeTrack(track)">
+              <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
+              <p>Play</p>
+            </button>
+            <button class="button-options" @click="moveTrackUp(track, i)" v-if="track.id > 0 && state.playlist.owner.display_name == currentUser.display_name">
+              <font-awesome-icon icon="chevron-up" style="vertical-align:middle;margin-left:3px;" />
+              <p>Up</p>
+            </button>
+            <button class="button-options" @click="moveTrackDown(track, i)" v-if="track.id < state.tracks.length - 1 && state.playlist.owner.display_name == currentUser.display_name">
+              <font-awesome-icon icon="chevron-down" style="vertical-align:middle;margin-left:3px;" />
+              <p>Down</p>
+            </button>
+            <button class="button-options" @click="trackInfo(track)">
+              <font-awesome-icon icon="info" style="vertical-align:middle;margin-left:3px;" />
+              <p>Info</p>
+            </button>
+            <button class="button-options" @click="trackInfo(track, true)">
+              <font-awesome-icon icon="plus" style="vertical-align:middle;margin-left:3px;" />
+              <p>Add</p>
+            </button>
           </div>
         </li>
       </ul>
@@ -767,6 +847,29 @@
   border: none;
   height: 50px;
   width: 50px;
+}
+.button-options {
+  border-radius: 3px;
+  padding: 0px 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 19px;
+  outline: none;
+  cursor: pointer;
+  background: #232424;
+  color: #999797;
+  border: 0px solid #999797;
+  height: 50px;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.button-options > p {
+  font-size: 0.7rem;
+  margin-top: 5px;
+  margin-bottom: 0;
 }
 .img-album {
   width: 200px;
@@ -824,24 +927,26 @@
 }
 .list-list {
   margin-bottom: 80px;
-  padding: 10px;
+  padding: 5px;
 }
 .list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    padding: 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  padding: 0px;
 }
 .list-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    width: 100%;
-    height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  width: 100%;
+  height: auto;
+  cursor: grab;
+  user-select: none;
 }
 .list-item-div {
   display: flex;
@@ -852,23 +957,29 @@
   width: 100%;
   height: 65px;
 }
+.opened {
+  background-color: #232424;
+}
+.bordered-down {
+  border-radius: 0px 0px 15px 15px;
+}
 .list-item-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    margin: auto;
-    flex: 90%;
-    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin: auto;
+  flex: 90%;
+  overflow: hidden;
 }
 .list-item-title {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    color: #fff;
-    width: 100%;
-    white-space: nowrap;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  color: #fff;
+  width: 100%;
+  white-space: nowrap;
 }
 .list-item-title-playing {
   display: flex;
@@ -879,17 +990,17 @@
   width: 100%;
 }
 .list-item-popularity{
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: flex-end;
-    color: #fff;
-    font-size: 11px;
-    margin-left: 5px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
+  color: #fff;
+  font-size: 11px;
+  margin-left: 5px;
 }
 .list-item-position{
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   color: #616161;
@@ -897,28 +1008,28 @@
   font-size: 24px;
 }
 .icon-popularity-bad{
-    color: rgb(255, 23, 23);
-    margin-right: 3px;
-    margin: 0px 3px;
+  color: rgb(255, 23, 23);
+  margin-right: 3px;
+  margin: 0px 3px;
 }
 .icon-popularity-medium{
-    color: rgb(255, 240, 30);
-    margin: 0px 3px;
+  color: rgb(255, 240, 30);
+  margin: 0px 3px;
 }
 .icon-popularity-good{
-    color: rgb(117, 255, 24);
-    margin: 0px 3px;
+  color: rgb(117, 255, 24);
+  margin: 0px 3px;
 }
 .list-item-subtitle {
-    display: flex;
-    flex-direction: column;
-    align-items: baseline;
-    justify-content: flex-start;
-    color: #999;
-    font-size: 11px;
-    text-align: left;
-    width: 100%;
-    margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: baseline;
+  justify-content: flex-start;
+  color: #999;
+  font-size: 11px;
+  text-align: left;
+  width: 100%;
+  margin-top: 4px;
 }
 .footer {
   display: flex;
@@ -929,5 +1040,17 @@
   position: relative;
   width: 100%;
   opacity: 0.3;
+}
+
+.over {
+  opacity: .6;
+  background-color: #2a2a2a;
+}
+.flip-list-move {
+  transition: transform .2s;
+}
+.list > div {
+  display: flex;
+  flex-direction: column; 
 }
 </style>
