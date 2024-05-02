@@ -778,7 +778,7 @@
                 {{(track.track?.popularity - track.track?.popularity_old)}}
               </div>
             </div>
-            <p @touchstart="handleTouchStart(track)" class="playlist-subtitle" style="margin-top:10px;cursor: pointer;"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin:0px 5px;color: #b3b3b3;" /></p>
+            <p @click="handleTouchStart(track)" class="playlist-subtitle" style="margin-top:10px;cursor: pointer;"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin:0px 5px;color: #b3b3b3;" /></p>
           </div>
           <div v-if="track.opened" class="list-item-div opened bordered-down">
             <button class="button-options" @click="executeTrack(track)">
