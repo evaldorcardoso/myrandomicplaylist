@@ -134,7 +134,7 @@ const selectPlaylist = async(playlistId) => {
             ]
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
-        if (status === 200) {
+        if ((status === 200)||(status === 201)) {
             await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
             notify({
                 title: 'Alright',
