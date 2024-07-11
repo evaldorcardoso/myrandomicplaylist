@@ -782,7 +782,7 @@
           </div>
           <div v-if="track.opened" class="list-item-div opened bordered-down">
             <button class="button-options" @click="executeTrack(track)">
-              <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
+              <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" />
               <p>Play</p>
             </button>
             <button class="button-options" @click="moveTrackUp(track, i)" v-if="track.id > 0 && state.playlist.owner.display_name == currentUser.display_name">
