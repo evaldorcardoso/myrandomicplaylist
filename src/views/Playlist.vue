@@ -52,6 +52,7 @@
     isProcessing: false,
     message: '',
     statisticsOpen: false,
+    artistsOpen: false,
     dataLikes: [],
     chartData: {
       labels: [],
@@ -504,8 +505,14 @@
     }
     mountLikeStatsChart(state.dataLikes)
     mountPopularityStatsChart()
-    checkToSaveNewStatistics()
-    getArtistsSortedBySongCount()
+    checkToSaveNewStatistics()    
+  }
+
+  const onOpenArtists = () => {
+    state.artistsOpen = !state.artistsOpen
+    if (state.artistsOpen) {
+      getArtistsSortedBySongCount()
+    }
   }
 
   const checkToSaveNewStatistics = () => {
@@ -725,6 +732,7 @@
     @refresh-playlist="onRefreshPage"
     @add-queue="addToQueue"
     @openStatistics="onOpenStatistics"
+    @openArtists="onOpenArtists"
     />
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
@@ -770,7 +778,19 @@
         v-if="state.chartData.datasets.length > 0"
         :options="state.chartOptions"
         :data="state.chartData"
-      />
+      />      
+      <h3 style="color: #fff;text-align:center">Popularity statistics:</h3>
+      <Pie
+        id="chart-popularity"
+        v-if="state.chartDataPopularity.datasets.length > 0"
+        :options="state.chartOptions"
+        :data="state.chartDataPopularity"
+      />      
+    </div>
+    <div class="statistics" v-if="state.artistsOpen">
+      <p style="font-size: 20px;text-align:end;" @click="onOpenArtists">
+        <font-awesome-icon icon="times" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+      </p>
       <h3 style="color: #fff;text-align:center">Top artists:</h3>
       <ul class="list">
         <li :id="artist?.id" 
@@ -783,7 +803,9 @@
               {{i + 1}}
               <p v-if="state.differentSort && artist.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
             </div>
-            <img :src="artist.images[artist.images.length - 1]?.url" class="music-cover" style="height:79px;width:79px;border-radius: 40px"/>
+            <div class="circle-container">
+              <img :src="artist.images[artist.images.length - 1]?.url" class="music-cover"/>
+            </div>
             <div class="list-item-content">                
               <div class="list-item-title" style="font-size:large">
                 {{artist.name}}
@@ -804,15 +826,8 @@
           </div>
         </li>
       </ul>
-      <h3 style="color: #fff;text-align:center">Popularity statistics:</h3>
-      <Pie
-        id="chart-popularity"
-        v-if="state.chartDataPopularity.datasets.length > 0"
-        :options="state.chartOptions"
-        :data="state.chartDataPopularity"
-      />      
     </div>
-    <div class="list-list" v-if="! state.statisticsOpen">
+    <div class="list-list" v-if="(!state.statisticsOpen) && (!state.artistsOpen)">
       <ul class="list">
         <li :id="track.track?.id" 
           v-for="(track, i) in state.tracks" 
@@ -986,9 +1001,7 @@
 }
 .statistics {
   height: auto;
-  padding: 15px;
-  border-style: solid;
-  border-width: thin;
+  padding: 5px 15px;
   margin-top: 10px;
 }
 #chart-likes {
@@ -1117,5 +1130,19 @@
   position: relative;
   width: 100%;
   opacity: 0.3;
+}
+
+.circle-container {
+  width: 90px; /* Defina a largura desejada */
+  height: 70px; /* A altura deve ser igual à largura para que a imagem seja quadrada */
+  overflow: hidden; /* Esconde as partes da imagem que excedem o contêiner */
+  border-radius: 50%; /* Aplica o efeito de círculo */
+  margin-right: 15px;
+}
+
+.circle-container img {
+  width: 100%; /* Faz com que a imagem ocupe toda a largura do contêiner */
+  height: 100%; /* Faz com que a imagem ocupe toda a altura do contêiner */
+  object-fit: cover; /* Corta a imagem para cobrir o contêiner sem distorção */
 }
 </style>

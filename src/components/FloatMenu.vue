@@ -12,7 +12,8 @@ const emit = defineEmits([
     'remove-track',
     'refresh-playlist',
     'add-queue',
-    'open-statistics'
+    'open-statistics',
+    'open-artists'
 ])
 const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
@@ -279,6 +280,11 @@ const openStatistics = () => {
     closeMenu()
 }
 
+const openArtists = () => {
+    emit('open-artists')
+    closeMenu()
+}
+
 const openExternalAnalysis = () => {
     console.log(menuData)
     window.open('https://www.chosic.com/spotify-playlist-analyzer/?plid=' + menuData.value.id)
@@ -424,6 +430,10 @@ const closeMenu = () => {
                         <div class="menu-item" @click="doRefresh">
                             <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Refresh</h3>
+                        </div>
+                        <div class="menu-item" @click="openArtists">
+                            <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 class="menu-item-option">Show top artists</h3>
                         </div>
                         <div class="menu-item" @click="openStatistics">
                             <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
