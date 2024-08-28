@@ -19,7 +19,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress");
-  const { getPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
+  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists } = useGeneral()
   const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
@@ -44,6 +44,7 @@
     isPlaying: false,
     playlist: null,
     tracks: [],
+    topArtists: [],
     databaseTracks: [],
     visible: false,
     notificationAction: '',
@@ -122,7 +123,7 @@
     if ((state.tracks.length === 0) || force) {
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value), force)
       state.tracks = await playlistStore.getTracks(playlistId.value)
-    }
+    }    
   }
 
   const getTracksStatistics = async() => {
@@ -504,6 +505,7 @@
     mountLikeStatsChart(state.dataLikes)
     mountPopularityStatsChart()
     checkToSaveNewStatistics()
+    getArtistsSortedBySongCount()
   }
 
   const checkToSaveNewStatistics = () => {
@@ -640,6 +642,46 @@
     console.log(state.tracks)
   }
 
+  const getArtistsSortedBySongCount = async() => {
+    const artistCount = {};
+
+    state.tracks.forEach(track => {
+        track.track.artists.forEach(artist => {
+            const artistId = artist.id;
+            const artistName = artist.name;
+
+            if (artistCount[artistId]) {
+                artistCount[artistId].count++;
+            } else {
+                artistCount[artistId] = { name: artistName, count: 1 };
+            }
+        });
+    });
+
+    const sortedArtists = Object.entries(artistCount)
+        .map(([id, data]) => ({
+            id,
+            name: data.name,
+            count: data.count
+        }))
+        .sort((a, b) => b.count - a.count) // Ordena de forma decrescente pela quantidade de músicas
+        .slice(0, 20); // Pega os 20 primeiros
+
+    const top10ArtistIds = sortedArtists.map(artist => artist.id).join(',');
+    state.topArtists = await getArtists(top10ArtistIds);
+
+    const artistCountMap = sortedArtists.reduce((map, artist) => {
+        map[artist.id] = artist.count;
+        return map;
+    }, {});
+
+    state.topArtists.forEach(artist => {
+        if (artistCountMap[artist.id] !== undefined) {
+            artist.count = artistCountMap[artist.id];
+        }
+    });
+  }
+
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
@@ -652,6 +694,7 @@
       playlistStore.loadAll(data.items)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
+
     if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
       const { data } = await getPlaylist(playlistId.value)
       playlistStore.load(data)
@@ -661,7 +704,7 @@
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
     }
-    getTracksStatistics()    
+    getTracksStatistics() 
     progress.finish()
   })
 
@@ -716,7 +759,7 @@
         <p @click="teste" class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
         <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
       </div>
-    </div>
+    </div>    
     <div class="statistics" v-if="state.statisticsOpen">
       <p style="font-size: 20px;text-align:end;" @click="onOpenStatistics">
         <font-awesome-icon icon="times" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
@@ -728,13 +771,46 @@
         :options="state.chartOptions"
         :data="state.chartData"
       />
+      <h3 style="color: #fff;text-align:center">Top artists:</h3>
+      <ul class="list">
+        <li :id="artist?.id" 
+          v-for="(artist, i) in state.topArtists" 
+          class="list-item"
+          :key="artist"
+        >
+          <div class="list-item-div" style="height: 80px">
+            <div class="list-item-position">
+              {{i + 1}}
+              <p v-if="state.differentSort && artist.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
+            </div>
+            <img :src="artist.images[artist.images.length - 1]?.url" class="music-cover" style="height:79px;width:79px;border-radius: 40px"/>
+            <div class="list-item-content">                
+              <div class="list-item-title" style="font-size:large">
+                {{artist.name}}
+              </div>
+              <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
+                <div class="list-item-subtitle">{{ artist.genres.map(genre => genre).join(' ,') }}</div>
+                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >{{ artist.count }} tracks on this playlist</div>
+              </div>
+            </div>
+            <div style="display: flex;flex-direction: column;justify-content: space-between;">
+              <div class="list-item-popularity">
+                <font-awesome-icon v-if="(artist?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(artist?.popularity > 40 && artist.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
+                <font-awesome-icon v-else-if="(artist?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
+                {{artist?.popularity}}%                
+              </div>
+            </div>
+          </div>
+        </li>
+      </ul>
       <h3 style="color: #fff;text-align:center">Popularity statistics:</h3>
       <Pie
         id="chart-popularity"
         v-if="state.chartDataPopularity.datasets.length > 0"
         :options="state.chartOptions"
         :data="state.chartDataPopularity"
-      />
+      />      
     </div>
     <div class="list-list" v-if="! state.statisticsOpen">
       <ul class="list">

@@ -66,7 +66,7 @@ export function useProfile() {
     const addTrackToQueue = async(track) => {        
         return $axios
             .post(`${import.meta.env.VITE_API_URL}/me/player/queue?uri=${track}`, null)
-    }
+    }    
     
     return { 
         getProfile, 
@@ -133,6 +133,13 @@ export function useGeneral() {
             .post(`${import.meta.env.VITE_API_URL}/users/${userId}/playlists`, JSON.stringify(formData))
     }
 
+    const getArtists = async(ids) => {
+        let { data } = await $axios
+            .get(`${import.meta.env.VITE_API_URL}/artists?ids=${ids}`)
+        
+        return data.artists
+    }
+
     return {
         getPlaylist,
         getTrack,
@@ -140,6 +147,7 @@ export function useGeneral() {
         addTracksToPlaylist,
         updateTracksOfPlaylist,
         removeTracksOfPlaylist,
-        savePlaylist
+        savePlaylist,
+        getArtists
     }
 }
