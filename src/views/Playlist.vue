@@ -1133,8 +1133,8 @@
 }
 
 .circle-container {
-  width: 90px; /* Defina a largura desejada */
-  height: 70px; /* A altura deve ser igual à largura para que a imagem seja quadrada */
+  width: 100px; /* Defina a largura desejada */
+  height: 65px; /* A altura deve ser igual à largura para que a imagem seja quadrada */
   overflow: hidden; /* Esconde as partes da imagem que excedem o contêiner */
   border-radius: 50%; /* Aplica o efeito de círculo */
   margin-right: 15px;
