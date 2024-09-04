@@ -510,9 +510,6 @@
 
   const onOpenArtists = () => {
     state.artistsOpen = !state.artistsOpen
-    if (state.artistsOpen) {
-      getArtistsSortedBySongCount()
-    }
   }
 
   const checkToSaveNewStatistics = () => {
@@ -689,6 +686,12 @@
     });
   }
 
+  const circleStyle = (index) => {
+    return {
+      right: `${10 + index * 10}%`,
+    };
+  };
+
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
@@ -711,7 +714,8 @@
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
     }
-    getTracksStatistics() 
+    getTracksStatistics()
+    getArtistsSortedBySongCount()
     progress.finish()
   })
 
@@ -737,11 +741,19 @@
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <center v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></center>
-    <img class="center img-album" :src="state.playlist?.images[0]?.url" />
+    <div class="cover">
+      <img class="img-album" :src="state.playlist?.images[0]?.url" />
+      <div class="top-3-artists">
+        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
+        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(1)"><img :src="state.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
+        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(2)"><img :src="state.topArtists[2]?.images[0]?.url" class="music-cover"/></div>
+      </div>
+    </div>
     <div class="playlist-header">      
       <div class="playlist-description">
         <h3 class="playlist-title">{{state.playlist?.name}}</h3>
         <p class="playlist-subtitle">{{state.playlist?.description}} </p>
+        <p class="playlist-subtitle">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
       </div>
     </div>
     <div class="playlist-sub">
@@ -1133,16 +1145,32 @@
 }
 
 .circle-container {
-  width: 100px; /* Defina a largura desejada */
-  height: 65px; /* A altura deve ser igual à largura para que a imagem seja quadrada */
-  overflow: hidden; /* Esconde as partes da imagem que excedem o contêiner */
-  border-radius: 50%; /* Aplica o efeito de círculo */
+  width: 100px;
+  height: 65px;
+  overflow: hidden;
+  border-radius: 50%;
   margin-right: 15px;
 }
 
 .circle-container img {
-  width: 100%; /* Faz com que a imagem ocupe toda a largura do contêiner */
-  height: 100%; /* Faz com que a imagem ocupe toda a altura do contêiner */
-  object-fit: cover; /* Corta a imagem para cobrir o contêiner sem distorção */
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover {
+  height: 30%;
+  display: flex;
+  flex-direction: row;
+}
+.cover .circle-container {
+  width: 60px;
+  height: 60px;
+  overflow: hidden;
+  border-radius: 50%;
+  top: 70%;
+  position: relative;
+}
+.top-3-artists {
+  display: flex;
 }
 </style>
