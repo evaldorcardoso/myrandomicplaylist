@@ -80,10 +80,11 @@ import { useUserStore } from '../stores/user'
     progress.start()
     if (! playlistStore.isLoaded) {
       const { data } = await getPlaylists()
-      data.items.forEach((item) => {
-        item.isOwner = item.owner.display_name === currentUser.value.display_name
+      const filteredItems = data.items.filter(Boolean)
+      filteredItems.forEach((item) => {
+      item.isOwner = item.owner.display_name === currentUser.value.display_name
       })
-      playlistStore.loadAll(data.items)
+      playlistStore.loadAll(filteredItems)
     }
 
     state.playlistsOriginal = playlistStore.playlists
