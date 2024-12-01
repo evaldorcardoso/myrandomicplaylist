@@ -604,7 +604,7 @@ const closeMenu = () => {
     }
     .playlists {
         overflow: scroll;
-        max-height: 500px;
+        max-height: 300px;
     }
     .icon-popularity-bad{
         color: rgb(255, 23, 23);

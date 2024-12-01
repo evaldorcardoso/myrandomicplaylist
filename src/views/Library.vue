@@ -70,7 +70,8 @@ import { useUserStore } from '../stores/user'
 
   const doRefresh = async() => {
     const { data } = await getPlaylists()
-    playlistStore.loadAll(data.items)
+    const filteredItems = data.items.filtered(Boolean)
+    playlistStore.loadAll(filteredItems)
     state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
