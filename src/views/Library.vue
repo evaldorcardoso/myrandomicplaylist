@@ -80,8 +80,8 @@ import { useUserStore } from '../stores/user'
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
-      const { data } = await getPlaylists()
-      const filteredItems = data.items.filter(Boolean)
+      const data = await getPlaylists()
+      const filteredItems = data.filter(Boolean)
       filteredItems.forEach((item) => {
       item.isOwner = item.owner.display_name === currentUser.value.display_name
       })

@@ -19,8 +19,18 @@ export function useProfile() {
     }
 
     const getPlaylists = async() => {
-        return $axios
-            .get(`${import.meta.env.VITE_API_URL}/me/playlists?limit=50`)
+        var offset = 0
+        var total = 0
+        var playlists = []
+        while (playlists.length < total || offset == 0) {
+            let { data } = await $axios
+                .get(`${import.meta.env.VITE_API_URL}/me/playlists?limit=50&offset=${offset}`)
+            total = data.total
+            playlists = playlists.concat(data.items)
+            offset += 50
+        }
+
+        return playlists
     }
 
     const executePlaylist = async(formData) => {
