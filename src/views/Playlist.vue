@@ -823,7 +823,7 @@
                 {{artist.name}}
               </div>
               <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ artist.genres.map(genre => genre).join(' ,') }}</div>
+                <div class="list-item-subtitle">{{ artist.genres.map(genre => genre).join(', ') }}</div>
                 <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >{{ artist.count }} tracks on this playlist</div>
               </div>
             </div>
@@ -858,7 +858,7 @@
                 {{track.track?.name}}
               </div>
               <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ track.track?.artists.map(artist => artist.name).join(' ,') }}</div>
+                <div class="list-item-subtitle">{{ track.track?.artists.map(artist => artist.name).join(', ') }}</div>
                 <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
               </div>
             </div>
