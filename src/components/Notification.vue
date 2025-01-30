@@ -57,7 +57,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-   .notification {        
+   .notification {
+        z-index: 999 !important; 
         padding-top: 5px;
         min-height: 50px;
         width: 100%;
