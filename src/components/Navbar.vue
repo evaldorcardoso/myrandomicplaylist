@@ -153,7 +153,7 @@ import { useUserStore } from '../stores/user';
   top: 0;
   left: 0;
   right: 200px;
-  z-index: 9;
+  z-index: 200;
   background: rgba(0,0,0,0.5);
   height: 100vh;
 }
@@ -166,7 +166,7 @@ import { useUserStore } from '../stores/user';
   /*background: #0c8d39;*/
   background-image: linear-gradient(60deg, #e0eb98, #62faf5);
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  z-index: 1;
+  z-index: 999 !important;
 }
 .navbar-right-inner{
   padding: 10px;

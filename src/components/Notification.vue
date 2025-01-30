@@ -58,7 +58,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
    .notification {
-        z-index: 999 !important; 
+        z-index: 99 !important;
         padding-top: 5px;
         min-height: 50px;
         width: 100%;
