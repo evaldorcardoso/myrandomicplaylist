@@ -438,7 +438,7 @@
   align-items: center;
   justify-content: center;
   width: 300px;
-  height: 70px;
+  height: auto;
   color: #999;
 }
 .info h4 {
@@ -450,7 +450,7 @@
   color: black;
   border: none;
   padding: 10px 20px;
-  font-size: 20px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   border-radius: 20px;
