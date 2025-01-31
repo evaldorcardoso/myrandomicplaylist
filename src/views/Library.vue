@@ -5,7 +5,7 @@
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
-import { useUserStore } from '../stores/user'
+  import { useUserStore } from '../stores/user'
   
 
   const { getPlaylists } = useProfile()

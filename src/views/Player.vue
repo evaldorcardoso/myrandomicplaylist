@@ -1,6 +1,9 @@
 <script setup>
-  import { onMounted, onBeforeMount, reactive } from 'vue'
+  import { onMounted, onBeforeMount, ref, computed, reactive } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
+  import FloatMenu from '@/components/FloatMenu.vue'
+  import { useUserStore } from '@/stores/user'
+  import { usePlaylistStore } from '@/stores/playlist'
 
   var intervalProgress;
   const { 
@@ -19,6 +22,7 @@
     progOrig: 0,
     devices: [],
     isPlaying: false,
+    databaseTracks: [],
     message: '',
     progressMs: 0,
     item: null,
@@ -31,6 +35,51 @@
       release: ""
     },
   })
+
+  const isMenuOpened = ref(null)
+  const menuDataReactive = ref(null)
+  const userStore = useUserStore()
+  const playlistStore = usePlaylistStore()
+  const { getPlaylists } = useProfile()
+
+  const currentUser = computed(() => {
+    return userStore.getUser
+  });
+
+  const menuOpened = computed(() => {
+    return isMenuOpened.value;
+  })
+
+  const menuData = computed(() => {
+    return menuDataReactive.value
+  })
+
+  const onUpdateMenuOpened = (value) => {
+    isMenuOpened.value = value
+  }
+
+  const getTrackStatistics = async() => {
+    if (state.databaseTracks.length == 0) {
+      state.databaseTracks = await userStore.getTracks()
+    }
+    state.item.popularity_old = userStore.getTrack(state.item.id)?.popularity ?? state.item.popularity
+    state.track.tracked = userStore.getTrack(state.item.id)
+  }
+
+  const trackInfo = (track, addToAnotherPlaylist = false) => {
+    track['playlist'] = {
+      id: state.item.id,
+      owner: 'player'
+    }
+
+    let menuData = {
+      type: 'track',
+      track,
+      listPlaylists: addToAnotherPlaylist
+    }
+    menuDataReactive.value = menuData
+    isMenuOpened.value = true
+  }
 
   const getUserDevices = async() => {
     const { data } = await getDevices()
@@ -113,6 +162,7 @@
         state.progPerc = (state.prog / state.item.duration_ms) * 100
         let date = new Date(state.prog);          
         state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
+        getTrackStatistics()
     }, interval)
   };
 
@@ -126,6 +176,14 @@
 
   onMounted(async () => {
     progress()
+    if (! playlistStore.isLoaded) {
+      const data = await getPlaylists()
+      const filteredItems = data.filter(Boolean)
+      filteredItems.forEach((item) => {
+      item.isOwner = item.owner.display_name === currentUser.value.display_name
+      })
+      playlistStore.loadAll(filteredItems)
+    }
   })
   
   onBeforeMount(async () => {
@@ -135,7 +193,13 @@
 
 </script>
 
-<template> 
+<template>
+  <FloatMenu 
+    :menu-opened="menuOpened"
+    :menu-data="menuData"
+    :user-data="currentUser"
+    @update-menu-opened="onUpdateMenuOpened" 
+    /> 
   <div class="page"> 
     <p class="message">{{state.message}}</p>     
     <div class="player" v-if="state.devices.length > 0">
@@ -143,6 +207,7 @@
         <img v-bind:src="state.item?.album.images[0].url" style="width: 100%; height: 100%;" />
       </div>
       <div class="track-name">
+        <font-awesome-icon v-if="state.track?.tracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);;" />
         <h3>{{ state.item?.name }}</h3>
       </div>
       <div class="track-artists">
@@ -165,6 +230,7 @@
       <div class="info">
         <h4>Popularity: {{ state.item?.popularity }}</h4>
         <h4>Released: {{ state.track?.release }}</h4>
+        <h4 @click="trackInfo(state.item, true)">Add to playlist</h4>
       </div>
     </div>         
     <div class="devices" v-if="state.devices.length > 0">
@@ -226,6 +292,7 @@
   height: 30px;  
   margin-top: 10px;
   color: #fff;
+  display: flex;
 }
 .track-name h3{
   margin: 0;
