@@ -230,7 +230,7 @@
       <div class="info">
         <h4>Popularity: {{ state.item?.popularity }}</h4>
         <h4>Released: {{ state.track?.release }}</h4>
-        <h4 @click="trackInfo(state.item, true)">Add to playlist</h4>
+        <button class="btn-generate" @click="trackInfo(state.item, true)">Add to playlist</button>
       </div>
     </div>         
     <div class="devices" v-if="state.devices.length > 0">
@@ -271,7 +271,7 @@
   align-items: center;
   justify-content: center;
   width: 300px;
-  height: 450px;
+  height: auto;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0px 0px 10px #000;
@@ -442,6 +442,18 @@
   color: #999;
 }
 .info h4 {
-  margin: 5px;
+  margin: 10px 5px;
+}
+.btn-generate {
+  margin: 25px auto auto auto;
+  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
+  color: black;
+  border: none;
+  padding: 10px 20px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  border-radius: 20px;
+  border: none;
 }
 </style>
