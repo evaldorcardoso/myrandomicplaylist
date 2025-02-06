@@ -144,7 +144,7 @@
   }
 
   const progress = async() => {
-    const interval = 500
+    const interval = 10000
     intervalProgress = setInterval(function() {
         if (!state.isPlaying){
             return
@@ -172,7 +172,7 @@
     } catch(error) {
       console.log('error on get playback state')
     }
-  }, 5000)
+  }, 10000)
 
   onMounted(async () => {
     progress()
