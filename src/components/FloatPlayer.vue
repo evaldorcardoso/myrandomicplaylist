@@ -42,7 +42,7 @@ const pauseUserPlayback = async() => {
 }
 
 const progress = async() => {
-    const interval = 500
+    const interval = 10000
     intervalProgress = setInterval(function() {
         if (!currentPlaying){
             return
