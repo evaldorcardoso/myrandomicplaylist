@@ -153,8 +153,8 @@
         state.prog = state.prog + interval
         if (state.prog >= state.track.time_total) {
             state.prog = 0
-            await getPlaybackUserState()
-            await getTrackStatistics()
+            getPlaybackUserState()
+            getTrackStatistics()
             return
         }
         if (state.progOrig != state.progressMs) {
