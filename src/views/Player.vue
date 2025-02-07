@@ -144,9 +144,10 @@
   }
 
   const progress = async() => {
-    const interval = 10000
+    const interval = 500
     intervalProgress = setInterval(function() {
         if (!state.isPlaying){
+            state.prog = 0
             return
         }
         state.prog = state.prog + interval
@@ -161,14 +162,14 @@
         }
         state.progPerc = (state.prog / state.item.duration_ms) * 100
         let date = new Date(state.prog);          
-        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
-        getTrackStatistics()
+        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)        
     }, interval)
   };
 
   setInterval(async () => {
     try{
       await getPlaybackUserState()
+      getTrackStatistics()
     } catch(error) {
       console.log('error on get playback state')
     }
