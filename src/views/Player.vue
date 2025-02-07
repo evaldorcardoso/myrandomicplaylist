@@ -55,8 +55,7 @@
   })
 
   const onUpdateMenuOpened = (value) => {
-    isMenuOpened.value = value
-    getTrackStatistics()
+    isMenuOpened.value = value    
   }
 
   const getTrackStatistics = async() => {
@@ -154,8 +153,7 @@
         state.prog = state.prog + interval
         if (state.prog >= state.track.time_total) {
             state.prog = 0
-            getPlaybackUserState()
-            getTrackStatistics()
+            getPlaybackUserState()            
             return
         }
         if (state.progOrig != state.progressMs) {
@@ -164,7 +162,8 @@
         }
         state.progPerc = (state.prog / state.item.duration_ms) * 100
         let date = new Date(state.prog);          
-        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)        
+        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
+        getTrackStatistics()
     }, interval)
   };
 
