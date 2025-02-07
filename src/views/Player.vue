@@ -153,7 +153,8 @@
         state.prog = state.prog + interval
         if (state.prog >= state.track.time_total) {
             state.prog = 0
-            getPlaybackUserState()
+            await getPlaybackUserState()
+            await getTrackStatistics()
             return
         }
         if (state.progOrig != state.progressMs) {
@@ -169,7 +170,6 @@
   setInterval(async () => {
     try{
       await getPlaybackUserState()
-      getTrackStatistics()
     } catch(error) {
       console.log('error on get playback state')
     }
@@ -185,6 +185,7 @@
       })
       playlistStore.loadAll(filteredItems)
     }
+    getTrackStatistics()
   })
   
   onBeforeMount(async () => {
