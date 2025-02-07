@@ -19,11 +19,8 @@
         return floatPlayerData.value;
     })
     const currentUser = computed(() => {
-        console.log(user.value)
         return user.value;
     })
-
-    
 
     const forceRefresh = computed(() => {
         return refresh.value;
@@ -74,7 +71,7 @@
         } catch(error) {
             console.log('error on get playback state')
         }
-    }, 5000)
+    }, 10000)
 
     
     onMounted(async () => {
