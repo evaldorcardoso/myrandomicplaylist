@@ -45,6 +45,7 @@ const progress = async() => {
     const interval = 500
     intervalProgress = setInterval(function() {
         if (!currentPlaying){
+            state.prog = 0
             return
         }
         state.prog = state.prog + interval
