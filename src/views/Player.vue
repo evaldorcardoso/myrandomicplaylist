@@ -56,6 +56,7 @@
 
   const onUpdateMenuOpened = (value) => {
     isMenuOpened.value = value
+    getTrackStatistics()
   }
 
   const getTrackStatistics = async() => {
