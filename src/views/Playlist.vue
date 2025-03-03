@@ -815,9 +815,9 @@
     <div class="playlist-header">      
       <div class="playlist-description">
         <h3 class="playlist-title">{{state.playlist?.name}}</h3>
-        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description}} </p>
-        <textarea class="input-playlist-description" type="text" @click="openEditPlaylistDescription(true)" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
-        <p class="playlist-subtitle">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
+        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description ?? 'Edit description...'}} </p>
+        <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
+        <p class="playlist-subtitle" @click="openEditPlaylistDescription(true)">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
       </div>
     </div>
     <div class="playlist-sub">
