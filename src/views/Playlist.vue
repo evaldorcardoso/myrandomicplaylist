@@ -19,7 +19,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress");
-  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists } = useGeneral()
+  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist } = useGeneral()
   const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
@@ -37,12 +37,14 @@
 
   const NOTIFICATION_ACTIONS = {
     UPDATE_SORT: 'update_sort',
-    SAVE_LIKES_STATISTICS: 'save_likes_statistics'
+    SAVE_LIKES_STATISTICS: 'save_likes_statistics',
+    UPDATE_DESCRIPTION: 'update_description'
   }
 
   const state = reactive({
     isPlaying: false,
     playlist: null,
+    playlistDescription: "",
     tracks: [],
     topArtists: [],
     databaseTracks: [],
@@ -70,6 +72,7 @@
   const menuDataReactive = ref(null)
   const isNotificationOpened = ref(null)
   const notificationDataReactive = ref(null)
+  const editPlaylistDescription = ref(false)
   const alert = ref(null)
 
   const props = defineProps({
@@ -317,6 +320,40 @@
   const calcDiffDays = (data1, data2) => {
     let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
     return Math.abs((data1.getTime() - data2.getTime()) / (oneDay));
+  }
+
+  const updatePlaylistDescription = async() => {
+    state.isProcessing = true
+    const formData = {
+      'description': state.playlistDescription
+    }
+    try {
+      await updatePlaylist(state.playlist.id, formData)
+      let message = 'Playlist description updated successfully!'
+      state.message = message
+      notify({
+        title: 'Awesome',
+        text: message,
+        type: 'success'
+      })
+      editPlaylistDescription.value = false
+    } catch (error) {
+      console.log(error)
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
+    }
+    await onRefreshPage()
+    state.isProcessing = false
+  }
+
+  const removePartFromText = (text) => {
+    const part = "Top artistas:";
+    const indice = text.indexOf(part);
+  
+    if (indice !== -1) {
+      text = text.substring(0, indice);
+     }
+  
+    return text.trimEnd();
   }
 
   const executeUserPlaylist = async() => {
@@ -593,28 +630,33 @@
   const onNotificationAction = async(value) => {
     isNotificationOpened.value = false
     if (value) {
-      if (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_SORT) {
-        updateTracksOrder()
-      }
-      if (state.notificationAction == NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS) {
-        if (state.dataLikes.length > 0) {
-          let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -1].created_at));
-          if (diffDays == 0) {
-            showNotification(
-              NOTIFICATIONS_TYPE.warning,
-              'Ops',
-              'Looks like you already have a statistics for today!'
-            )
-            return
+      switch(state.notificationAction) {
+        case NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS:
+          if (state.dataLikes.length > 0) {
+            let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -1].created_at));
+            if (diffDays == 0) {
+              showNotification(
+                NOTIFICATIONS_TYPE.warning,
+                'Ops',
+                'Looks like you already have a statistics for today!'
+              )
+              return
+            }
+            await saveStatistics()
+            await saveTracksStatistics()
+            notify({
+              title: 'Alright',
+              text: 'Statistics saved!',
+              type: 'success'
+            })
           }
-          await saveStatistics()
-          await saveTracksStatistics()
-          notify({
-            title: 'Alright',
-            text: 'Statistics saved!',
-            type: 'success'
-          })
-        }
+          break
+        case NOTIFICATION_ACTIONS.UPDATE_SORT:
+          updateTracksOrder()
+          break
+        case NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION:
+          updatePlaylistDescription()
+          break
       }
     }
     state.notificationAction = ''
@@ -692,16 +734,31 @@
     };
   };
 
+  const openEditPlaylistDescription = () => {
+    const description = removePartFromText(state.playlist.description)
+      + ' Top artistas: ' 
+      + state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
+    state.playlistDescription = description
+    editPlaylistDescription.value = !editPlaylistDescription.value
+    showNotification(
+      NOTIFICATIONS_TYPE.info,
+      'Info',
+      'Save this description on Spotify ?',
+      true,
+      false
+    )
+    state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
+  }
+
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
-      const { data } = await getPlaylists()
-
-      data.items.forEach((item) => {
+      const data = await getPlaylists()
+      data.forEach((item) => {
         item.isOwner = item.owner.display_name === currentUser.value.display_name
       })
 
-      playlistStore.loadAll(data.items)
+      playlistStore.loadAll(data)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
 
@@ -752,7 +809,8 @@
     <div class="playlist-header">      
       <div class="playlist-description">
         <h3 class="playlist-title">{{state.playlist?.name}}</h3>
-        <p class="playlist-subtitle">{{state.playlist?.description}} </p>
+        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description}} </p>
+        <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
         <p class="playlist-subtitle">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
       </div>
     </div>
@@ -985,9 +1043,22 @@
   margin-top: 10px;
 }
 .playlist-description {
+  width: 100%;
   display:flex;
   flex-direction:column;
   margin-left:5px
+}
+.input-playlist-description {
+  width: 95%;
+  height: 80px;
+  background-color: #232424;
+  border: 0px;
+  border-radius: 5px;
+  padding: 10px;
+  color: #fff;
+  resize: none;
+  font-size: 150%;
+  vertical-align: top;
 }
 .playlist-title {
   color:#fff;

@@ -143,6 +143,11 @@ export function useGeneral() {
             .post(`${import.meta.env.VITE_API_URL}/users/${userId}/playlists`, JSON.stringify(formData))
     }
 
+    const updatePlaylist = async(playlistId, formData) => {
+        return $axios
+            .put(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}`, JSON.stringify(formData))
+    }
+
     const getArtists = async(ids) => {
         let { data } = await $axios
             .get(`${import.meta.env.VITE_API_URL}/artists?ids=${ids}`)
@@ -158,6 +163,7 @@ export function useGeneral() {
         updateTracksOfPlaylist,
         removeTracksOfPlaylist,
         savePlaylist,
+        updatePlaylist,
         getArtists
     }
 }
