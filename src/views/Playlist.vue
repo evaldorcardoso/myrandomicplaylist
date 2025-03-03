@@ -659,6 +659,9 @@
           break
       }
     }
+    if ((!value) && (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION)) {
+      editPlaylistDescription.value = false
+    }
     state.notificationAction = ''
   }
 
@@ -734,10 +737,13 @@
     };
   };
 
-  const openEditPlaylistDescription = () => {
-    const description = removePartFromText(state.playlist.description)
-      + ' Top artistas: ' 
-      + state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
+  const openEditPlaylistDescription = (includeTopArtists=false) => {
+    var description = state.playlist.description
+    if (includeTopArtists) {
+      description = removePartFromText(state.playlist.description)
+        + ' Top artistas: ' 
+        + state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
+    }
     state.playlistDescription = description
     editPlaylistDescription.value = !editPlaylistDescription.value
     showNotification(
@@ -810,7 +816,7 @@
       <div class="playlist-description">
         <h3 class="playlist-title">{{state.playlist?.name}}</h3>
         <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description}} </p>
-        <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
+        <textarea class="input-playlist-description" type="text" @click="openEditPlaylistDescription(true)" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
         <p class="playlist-subtitle">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
       </div>
     </div>
