@@ -31,7 +31,8 @@ const state = reactive({
     playlistsOriginal:[],
     playlists: [],
     likesAVG: 0,
-    playlistsOpened: false
+    playlistsOpened: false,
+    playlistSavedId: null
 })
 
 const props = defineProps({
@@ -69,6 +70,7 @@ const menuData = computed(() => {
         menuData.popularity = props.menuData.playlist.popularity
         menuData.likesStats = props.menuData.playlist.likesStats
         calcLikesStats()
+        checkPlaylistSaved()
         return menuData
     }
     if (menuData.type == 'track') {
@@ -246,7 +248,7 @@ const executeTrack = async(track) => {
         ALERT_OPTIONS
       )
     }
-  }
+}
 
 const removeTrack = async() => {
     try {
@@ -267,6 +269,83 @@ const removeTrack = async() => {
         }
     }catch(error){
       console.log(error)
+    }
+}
+
+const checkPlaylistSaved = async() => {
+    // console.log(props.menuData.playlist.id)
+    let { data } = await supabase
+        .from('playlists')
+        .select(`*`)
+        .eq('id', props.menuData.playlist.id)
+        .order('created_at')
+    if (data)
+        state.playlistSavedId = data.length > 0 ? data[0].id : null
+    console.log('Playlist saved: ' + state.playlistSavedId)
+}
+
+const savePlaylist = async() => {
+    // console.log(props.menuData.playlist)
+    var payload = {
+        name: props.menuData.playlist.name,
+        image: props.menuData.playlist.images[0].url,
+        items: props.menuData.playlist.tracks.length,
+    }
+    console.log(payload)
+    notify({
+        title: 'Please, wait',
+        text: 'Saving playlist...',
+        type: 'info'
+    })
+    try {
+        if (! state.playlistSavedId) {
+            payload.id = props.menuData.playlist.id
+            const { data, error } = await supabase
+                .from('playlists')
+                .insert([
+                    payload
+                ])
+                .select()
+            if (error) {
+                console.error(error.message)
+                notify({
+                    title: 'Ops',
+                    text: error.message,
+                    type: 'error'
+                })
+                return
+            }
+            state.playlistSavedId = data[0].id
+        }
+        if (state.playlistSavedId) {
+            const { data, error } = await supabase
+                .from('playlists')
+                .update(payload)
+                .eq('id', state.playlistSavedId)
+                .select()
+            if (error) {
+                console.error(error.message)
+                notify({
+                    title: 'Ops',
+                    text: error.message,
+                    type: 'error'
+                })
+                return
+            }
+            state.playlistSavedId = data[0].id
+        }        
+        notify({
+            title: 'Alright',
+            text: 'Playlist saved!',
+            type: 'success'
+        })        
+    }catch(error){
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
     }
 }
 
@@ -367,7 +446,7 @@ const closeMenu = () => {
                             </div>
                         </div>
                     </div>
-                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
+                    <div class="menu-item-track-details" style="margin-bottom: 10px;" v-if="menuData.type == 'playlist'">
                         Created by: {{ menuData.owner }}
                     </div>
                     <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
@@ -430,6 +509,11 @@ const closeMenu = () => {
                         <div class="menu-item" @click="doRefresh">
                             <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Refresh</h3>
+                        </div>
+                        <div class="menu-item" @click="savePlaylist">
+                            <font-awesome-icon icon="save" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
+                            <h3 v-if="!state.playlistSavedId" class="menu-item-option">Save</h3>
+                            <h3 v-else class="menu-item-option">Update</h3>
                         </div>
                         <div class="menu-item" @click="openArtists">
                             <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
@@ -518,7 +602,7 @@ const closeMenu = () => {
     }
     .music-cover {
         width: auto;
-        height: 15rem;
+        height: 12rem;
         margin: 0px 10px 10px 10px;
     }
     .playlist-cover {
@@ -559,7 +643,7 @@ const closeMenu = () => {
         color: #999;
         font-size: 12px;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 0px;
         display: flex;
         flex-direction: row;
         justify-content: space-around;

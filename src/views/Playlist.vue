@@ -19,7 +19,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress");
-  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist } = useGeneral()
+  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist, getAlbum } = useGeneral()
   const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
 
   const playlistId = computed(() => route.params.id);
@@ -45,6 +45,7 @@
     isPlaying: false,
     playlist: null,
     playlistDescription: "",
+    savedPlaylists: [],
     tracks: [],
     topArtists: [],
     databaseTracks: [],
@@ -678,6 +679,13 @@
     }, 100);
   }
 
+  const handleMouseOver = (currentTrack) => {
+    state.tracks = state.tracks.map(track => ({
+      ...track,
+      opened: track === currentTrack
+    }));  
+  }
+
   const moveTrackUp = (track, pos) => {
     state.tracks.splice(pos, 1)
     state.tracks.splice(pos - 1, 0, track)
@@ -756,15 +764,30 @@
     state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
   }
 
+  const loadSavedPlaylists = async() => {
+    const { data, error } = await supabase
+      .from('playlists')
+      .select('*')
+    state.savedPlaylists = data
+  }
+
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
-      const data = await getPlaylists()
-      data.forEach((item) => {
-        item.isOwner = item.owner.display_name === currentUser.value.display_name
+      await loadSavedPlaylists()
+      const filteredItems = state.savedPlaylists
+      filteredItems.forEach((item) => {
+        item.isOwner = true
+        item.owner = { display_name: currentUser.value.display_name }
       })
+      playlistStore.loadAll(filteredItems)
 
-      playlistStore.loadAll(data)
+      // const data = await getPlaylists()
+      // data.forEach((item) => {
+      //   item.isOwner = item.owner.display_name === currentUser.value.display_name
+      // })
+
+      // playlistStore.loadAll(data)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
 
@@ -780,6 +803,17 @@
     getTracksStatistics()
     getArtistsSortedBySongCount()
     progress.finish()
+
+    // state.tracks.forEach(track => {
+    //   track.opened = true
+    // });
+
+    // const tempid = state.playlist.tracks[0].track
+    // console.log(tempid)
+    // const { data } = await getAlbum(tempid)
+    // console.log(data)
+
+    
   })
 
 </script>
@@ -805,7 +839,7 @@
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
     <center v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></center>
     <div class="cover">
-      <img class="img-album" :src="state.playlist?.images[0]?.url" />
+      <img class="img-album" :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image" />
       <div class="top-3-artists">
         <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
         <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(1)"><img :src="state.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
@@ -910,7 +944,7 @@
           class="list-item"          
           :key="track"
         >
-          <div class="list-item-div" style="cursor: pointer;" :class="{'opened' : track.opened}">
+          <div class="list-item-div" :class="{'opened' : track.opened}" style="cursor: pointer;" @mouseover="handleMouseOver(track)"><!---->
             <div class="list-item-position">
               {{track.id + 1}}
               <p v-if="state.differentSort && track.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
@@ -947,7 +981,7 @@
             </div>
             <p @click="handleTouchStart(track)" class="playlist-subtitle" style="margin-top:10px;cursor: pointer;"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin:0px 5px;color: #b3b3b3;" /></p>
           </div>
-          <div v-if="track.opened" class="list-item-div opened bordered-down">
+          <div v-if="track.opened" class="list-item-div opened bordered-down"><!---->
             <button class="button-options" @click="executeTrack(track)">
               <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" />
               <p>Play</p>
@@ -1040,7 +1074,7 @@
   margin-bottom: 0;
 }
 .img-album {
-  width: 200px;
+  /*width: 200px;*/
   padding: 10px
 }
 .playlist-header {

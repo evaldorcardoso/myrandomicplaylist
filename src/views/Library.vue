@@ -6,6 +6,7 @@
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '../stores/user'
+  import { supabase } from '@/support/supabaseClient'
   
 
   const { getPlaylists } = useProfile()
@@ -22,6 +23,7 @@
   const state = reactive({
     playlistsOriginal:[],
     playlists: [],
+    savedPlaylists: [],
     filters: ['all'],
     devices: [],
     tracks: [],
@@ -69,28 +71,44 @@
   }
 
   const doRefresh = async() => {
-    const { data } = await getPlaylists()
-    const filteredItems = data.items.filtered(Boolean)
+    const data = await getPlaylists()
+    const filteredItems = data.filter(Boolean)
     playlistStore.loadAll(filteredItems)
     state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
   }
 
+  const loadSavedPlaylists = async() => {
+    const { data, error } = await supabase
+      .from('playlists')
+      .select('*')
+    state.savedPlaylists = data
+  }
+
   onMounted(async () => {
     progress.start()
+    await loadSavedPlaylists()
     if (! playlistStore.isLoaded) {
-      const data = await getPlaylists()
-      const filteredItems = data.filter(Boolean)
+      const filteredItems = state.savedPlaylists
       filteredItems.forEach((item) => {
-      item.isOwner = item.owner.display_name === currentUser.value.display_name
+        item.isOwner = true//item.owner.display_name === currentUser.value.display_name
+        item.owner = { display_name: currentUser.value.display_name }
       })
+      console.log(filteredItems)
       playlistStore.loadAll(filteredItems)
+
+      // const data = await getPlaylists()
+      // const filteredItems = data.filter(Boolean)
+      // filteredItems.forEach((item) => {
+      //   item.isOwner = item.owner.display_name === currentUser.value.display_name
+      // })
+      // playlistStore.loadAll(filteredItems)
     }
 
     state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
-    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
+    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
     progress.finish()
   })
 
@@ -136,11 +154,12 @@
     <div class="playlists">
       <ul>
         <li v-for="playlist in state.playlists" :key="playlist.id" @click="openPlaylist(playlist.id)">
-            <img :src="playlist.images[0]?.url" />
-            <h4>{{ playlist.name }}</h4>
+            <img :src="playlist.images?.length > 0 ? playlist.images[0]?.url : playlist.image" />
+            <h4 :class="{'title-new': state.savedPlaylists.filter(item => item.id == playlist.id).length == 0 }">
+              {{ playlist.name }}</h4>
             <h5>By: {{ playlist.owner.display_name }}</h5>
-            <h5>{{ playlist.tracks.total || playlist.tracks.length }} itens</h5>
-            <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p>
+            <h5>{{ playlist.tracks ? (playlist.tracks.total || playlist.tracks.length) : playlist.items }} itens</h5>
+            <!-- <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p> -->
         </li>
       </ul>
     </div>
@@ -195,6 +214,9 @@
   background: none;
   color: rgb(200, 200, 200);
   border: 1px solid rgb(200, 200, 200);
+}
+.title-new {
+  color: lime !important;
 }
 .playlists ul{
     list-style-type: none;
