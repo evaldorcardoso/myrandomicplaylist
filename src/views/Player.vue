@@ -88,6 +88,9 @@
 
   const getPlaybackUserState = async() => {
     const { data } = await getPlaybackState()
+    if (!data) {
+      return
+    }
     state.isPlaying = data.is_playing
     let date = new Date(data.progress_ms);          
     state.item = data.item
@@ -172,6 +175,7 @@
       await getPlaybackUserState()
     } catch(error) {
       console.log('error on get playback state')
+      console.error(error)
     }
   }, 10000)
 

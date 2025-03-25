@@ -20,7 +20,7 @@ export const usePlaylistStore = defineStore({
                 return
             }
 
-            this.playlists[index] = playlist
+            this.playlists[index] = { ...this.playlists[index], ...playlist }
         },
         async loadTracks(playlistId, tracks) {
             const index = this.playlists.findIndex(element => element.id === playlistId)
@@ -33,6 +33,50 @@ export const usePlaylistStore = defineStore({
             this.playlists[index].tracks.forEach((track, index) => {
                 track.id = index
             })
+        },
+        async loadTopArtists(playlistId, topArtists) {
+            const index = this.playlists.findIndex(element => element.id === playlistId)
+
+            if (index === -1) {
+                return
+            }
+
+            this.playlists[index].topArtists = topArtists
+        },
+        async getTopArtists(playlistId) {
+            const playlist = this.playlists.find(element => element.id === playlistId)
+
+            if (! playlist) { return null }
+
+            if (! playlist.topArtists) { return null }
+
+            if ((!Array.isArray(playlist.topArtists)) || playlist.topArtists?.length === 0) {
+                return []
+            }
+
+            return playlist.topArtists
+        },
+        async loadTopGenres(playlistId, topGenres) {
+            const index = this.playlists.findIndex(element => element.id === playlistId)
+
+            if (index === -1) {
+                return
+            }
+
+            this.playlists[index].topGenres = topGenres
+        },
+        async getTopGenres(playlistId) {
+            const playlist = this.playlists.find(element => element.id === playlistId)
+
+            if (! playlist) { return null }
+
+            if (! playlist.topGenres) { return null }
+
+            if ((!Array.isArray(playlist.topGenres)) || playlist.topGenres?.length === 0) {
+                return []
+            }
+
+            return playlist.topGenres
         },
         removeTrack(playlistId, trackUri) {
             const index = this.playlists.findIndex(element => element.id === playlistId)

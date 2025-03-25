@@ -89,7 +89,7 @@ import { useUserStore } from '../stores/user';
         <div class="center" style="text-align: center;">
           <div v-if="$router.currentRoute.value.name != 'Home'">
             <!-- <img :src="currentUser.images[0]?.url" style="width: 44px; height: 44px;border-radius: 50%;" /> -->
-            <p>@{{ currentUser?.display_name }}</p>
+            <p style="user-select: none;">@{{ currentUser?.display_name }}</p>
           </div>
         </div>
         <div class="right" style="margin:auto;cursor:pointer" v-if="currentStep == 0">

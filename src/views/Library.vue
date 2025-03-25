@@ -6,13 +6,14 @@
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '../stores/user'
-  import { supabase } from '@/support/supabaseClient'
+  import { PlaylistService } from '../services/PlaylistService'
   
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
+  const { loadAllFromDatabase } = PlaylistService()
   const msg = ref('Your library')
   const progress = inject("progress");
 
@@ -79,34 +80,24 @@
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
   }
 
-  const loadSavedPlaylists = async() => {
-    const { data, error } = await supabase
-      .from('playlists')
-      .select('*')
-    state.savedPlaylists = data
-  }
-
   onMounted(async () => {
     progress.start()
-    await loadSavedPlaylists()
     if (! playlistStore.isLoaded) {
-      const filteredItems = state.savedPlaylists
-      filteredItems.forEach((item) => {
-        item.isOwner = true//item.owner.display_name === currentUser.value.display_name
-        item.owner = { display_name: currentUser.value.display_name }
-      })
-      console.log(filteredItems)
-      playlistStore.loadAll(filteredItems)
-
-      // const data = await getPlaylists()
-      // const filteredItems = data.filter(Boolean)
-      // filteredItems.forEach((item) => {
-      //   item.isOwner = item.owner.display_name === currentUser.value.display_name
-      // })
-      // playlistStore.loadAll(filteredItems)
+      const playlists = await loadAllFromDatabase()
+      state.savedPlaylists = playlists
+      playlistStore.loadAll(playlists)
     }
-
+    state.savedPlaylists = playlistStore.playlists
     state.playlistsOriginal = playlistStore.playlists
+    state.playlistsOriginal.sort((a, b) => {
+      // Se algum dos valores for null, coloca-o por último
+      if (a.order === null) return 1;
+      if (b.order === null) return -1;
+      
+      // Ordenação crescente normal
+      return a.order - b.order;
+    });
+    console.log(state.playlistsOriginal)
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
     progress.finish()
@@ -156,7 +147,8 @@
         <li v-for="playlist in state.playlists" :key="playlist.id" @click="openPlaylist(playlist.id)">
             <img :src="playlist.images?.length > 0 ? playlist.images[0]?.url : playlist.image" />
             <h4 :class="{'title-new': state.savedPlaylists.filter(item => item.id == playlist.id).length == 0 }">
-              {{ playlist.name }}</h4>
+              {{ playlist.name }}
+            </h4>
             <h5>By: {{ playlist.owner.display_name }}</h5>
             <h5>{{ playlist.tracks ? (playlist.tracks.total || playlist.tracks.length) : playlist.items }} itens</h5>
             <!-- <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p> -->

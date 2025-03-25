@@ -51,7 +51,8 @@
   background-color: #1c1c1c;
   height: 90%;
   padding-bottom: 65px;
-  overflow-y: scroll;   
+  overflow-y: scroll;
+  overflow-x: hidden;
   padding: 5px;
 }
 </style>

@@ -6,6 +6,7 @@ import { usePlaylistStore } from '@/stores/playlist'
 import { notify } from "@kyvg/vue3-notification"
 import { supabase } from '@/support/supabaseClient'
 import { useUserStore } from '@/stores/user'
+import { PlaylistService } from "../services/PlaylistService"
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -19,6 +20,7 @@ const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
+const { savePlaylist } = PlaylistService()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -32,7 +34,6 @@ const state = reactive({
     playlists: [],
     likesAVG: 0,
     playlistsOpened: false,
-    playlistSavedId: null
 })
 
 const props = defineProps({
@@ -70,7 +71,6 @@ const menuData = computed(() => {
         menuData.popularity = props.menuData.playlist.popularity
         menuData.likesStats = props.menuData.playlist.likesStats
         calcLikesStats()
-        checkPlaylistSaved()
         return menuData
     }
     if (menuData.type == 'track') {
@@ -96,6 +96,10 @@ const menuData = computed(() => {
 const currentUser = computed(() => {
     return props.userData;
 });
+
+const playlistSaved = computed(async() => {
+    return await playlistStore.getPlaylist(menuData.value.id).tracked ?? false
+})
 
 const calcLikesStats = () => {
     const likesStats = props.menuData.playlist.likesStats
@@ -272,81 +276,27 @@ const removeTrack = async() => {
     }
 }
 
-const checkPlaylistSaved = async() => {
-    // console.log(props.menuData.playlist.id)
-    let { data } = await supabase
-        .from('playlists')
-        .select(`*`)
-        .eq('id', props.menuData.playlist.id)
-        .order('created_at')
-    if (data)
-        state.playlistSavedId = data.length > 0 ? data[0].id : null
-    console.log('Playlist saved: ' + state.playlistSavedId)
-}
-
-const savePlaylist = async() => {
-    // console.log(props.menuData.playlist)
-    var payload = {
-        name: props.menuData.playlist.name,
-        image: props.menuData.playlist.images[0].url,
-        items: props.menuData.playlist.tracks.length,
-    }
-    console.log(payload)
+const saveThisPlaylist = async() => {
     notify({
         title: 'Please, wait',
         text: 'Saving playlist...',
         type: 'info'
     })
-    try {
-        if (! state.playlistSavedId) {
-            payload.id = props.menuData.playlist.id
-            const { data, error } = await supabase
-                .from('playlists')
-                .insert([
-                    payload
-                ])
-                .select()
-            if (error) {
-                console.error(error.message)
-                notify({
-                    title: 'Ops',
-                    text: error.message,
-                    type: 'error'
-                })
-                return
-            }
-            state.playlistSavedId = data[0].id
-        }
-        if (state.playlistSavedId) {
-            const { data, error } = await supabase
-                .from('playlists')
-                .update(payload)
-                .eq('id', state.playlistSavedId)
-                .select()
-            if (error) {
-                console.error(error.message)
-                notify({
-                    title: 'Ops',
-                    text: error.message,
-                    type: 'error'
-                })
-                return
-            }
-            state.playlistSavedId = data[0].id
-        }        
-        notify({
-            title: 'Alright',
-            text: 'Playlist saved!',
-            type: 'success'
-        })        
-    }catch(error){
-        console.log(error)
+    const result = await savePlaylist(props.menuData.playlist)
+    if (! result) {
         notify({
             title: 'Ops',
-            text: 'An error occurred!',
+            text: 'It´s not possible to save the Playlist at this time.',
             type: 'error'
         })
     }
+
+    notify({
+        title: 'Alright',
+        text: 'Playlist saved!',
+        type: 'success'
+    })
+    closeMenu()
 }
 
 const doRefresh = () => {
@@ -452,12 +402,12 @@ const closeMenu = () => {
                     <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
                         <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
                             <font-awesome-icon icon="heart" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:10px">{{ menuData.followers }}</p>
+                            <p class="playlist-subtitle" style="margin-top:3px">{{ menuData.followers }}</p>
                         </div>
                         <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
                             <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
                             <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:18px;font-size:12px">{{ menuData.visibility }}</p>
+                            <p class="playlist-subtitle" style="margin-top:10px;font-size:12px">{{ menuData.visibility }}</p>
                         </div>
                         <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
                             :class="{
@@ -466,7 +416,7 @@ const closeMenu = () => {
                                 'icon-popularity-good' : (menuData.popularity > 70)
                             }">
                             <font-awesome-icon icon="chart-line" />
-                            <p class="playlist-subtitle" style="margin-top:10px">{{menuData.popularity}}%</p>
+                            <p class="playlist-subtitle" style="margin-top:3px">{{menuData.popularity}}%</p>
                         </div>
                         <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
                         :class="{
@@ -477,7 +427,7 @@ const closeMenu = () => {
                             <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
                             <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
                             <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
-                            <p class="playlist-subtitle" style="margin-top:10px">{{ state.likesAVG }}</p>
+                            <p class="playlist-subtitle" style="margin-top:3px">{{ state.likesAVG }}</p>
                         </div>                       
                     </div>
                     <hr class="style-one">
@@ -508,12 +458,12 @@ const closeMenu = () => {
                     <div v-if="menuData.type == 'playlist'">
                         <div class="menu-item" @click="doRefresh">
                             <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Refresh</h3>
+                            <h3 class="menu-item-option">Refresh from Spotify</h3>
                         </div>
-                        <div class="menu-item" @click="savePlaylist">
+                        <div class="menu-item" @click="saveThisPlaylist">
                             <font-awesome-icon icon="save" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 v-if="!state.playlistSavedId" class="menu-item-option">Save</h3>
-                            <h3 v-else class="menu-item-option">Update</h3>
+                            <h3 v-if="!playlistSaved" class="menu-item-option">Save</h3>
+                            <h3 v-else class="menu-item-option">Update on Database</h3>
                         </div>
                         <div class="menu-item" @click="openArtists">
                             <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
@@ -542,6 +492,7 @@ const closeMenu = () => {
         width: 100%;
         background: rgba(0, 0, 0, 0.8);
         color: #fff;
+        z-index: 11;
     }
     .hidden {
         display: none;
@@ -576,7 +527,7 @@ const closeMenu = () => {
         z-index: 1;
         background-color: #282828;        
         justify-content: center;
-        padding-bottom: 20px;
+        padding-bottom: 80px;
     }
     .menu-item{
         display: flex;
@@ -601,8 +552,9 @@ const closeMenu = () => {
         height: 20px;
     }
     .music-cover {
-        width: auto;
-        height: 12rem;
+        display: none;
+        width: 100px;
+        height: auto;
         margin: 0px 10px 10px 10px;
     }
     .playlist-cover {
@@ -638,12 +590,13 @@ const closeMenu = () => {
         font-size: 11px;
         text-align: left;
         width: 100%;
+        margin-top: 15px;
     }
     .menu-item-track-details {
         color: #999;
         font-size: 12px;
         text-align: center;
-        margin-bottom: 0px;
+        margin-bottom: -20px;
         display: flex;
         flex-direction: row;
         justify-content: space-around;

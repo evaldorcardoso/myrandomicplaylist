@@ -12,6 +12,7 @@
   import Notification from '@/components/Notification.vue'
   import { NOTIFICATIONS_TYPE } from '../support/helpers'
   import { notify } from "@kyvg/vue3-notification";
+  import { PlaylistService } from '../services/PlaylistService'
 
   ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
 
@@ -20,7 +21,8 @@
   const userStore = useUserStore()
   const progress = inject("progress");
   const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist, getAlbum } = useGeneral()
-  const { getPlaylists, executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
+  const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
+  const { hasChangedFromDatabase, savePlaylist, loadAllFromDatabase } = PlaylistService()
 
   const playlistId = computed(() => route.params.id);
 
@@ -38,16 +40,17 @@
   const NOTIFICATION_ACTIONS = {
     UPDATE_SORT: 'update_sort',
     SAVE_LIKES_STATISTICS: 'save_likes_statistics',
-    UPDATE_DESCRIPTION: 'update_description'
+    UPDATE_DESCRIPTION: 'update_description',
+    UPDATE_PLAYLIST: 'update_playlist',
   }
 
   const state = reactive({
     isPlaying: false,
     playlist: null,
     playlistDescription: "",
-    savedPlaylists: [],
     tracks: [],
-    topArtists: [],
+    // topArtists: [],
+    // topGenres: [],
     databaseTracks: [],
     visible: false,
     notificationAction: '',
@@ -119,6 +122,10 @@
     return props.currentData;
   });
 
+  // const topGenreNames = computed(() => {
+  //   return state.topGenres.map(genre => genre.genre)
+  // })
+
   const openPlaylistApp = (playlistId) => {
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
   }
@@ -131,15 +138,29 @@
     }    
   }
 
-  const getTracksStatistics = async() => {
+  const checkTracksStatistics = async() => {
+    // console.log(state.playlist)
+    if (isNotificationOpened.value) {
+        console.log('Notification is already opened, ignoring "checkTracksStatistics"')
+        return;
+    }
     state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
       track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
-      if ((! track.track.tracked) && (state.playlist.owner.display_name == currentUser.value.display_name)) {
-        const databaseTrack = await saveTrackStatistics(track)
-        userStore.loadTrack(databaseTrack)
-        track.track.tracked = userStore.getTrack(track.track.id)
+      if ((!track.track.tracked) && (state.playlist.tracked)) {
+        showNotification(
+            NOTIFICATIONS_TYPE.info,
+            'Hey',
+            'There are new tracks in this playlist. Do you want to update the statistics ?',
+            true,
+            false
+        )
+        state.notificationAction = NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS
+        return
+        // const databaseTrack = await saveTrackStatistics(track)
+        // userStore.loadTrack(databaseTrack)
+        // track.track.tracked = userStore.getTrack(track.track.id)
       }
     }
   }
@@ -522,16 +543,23 @@
   const onUpdateMenuOpened = (value) => {
     isMenuOpened.value = value
     if (! value) {
-      getTracksStatistics()
+      checkTracksStatistics()
     }
   }
 
   const onRefreshPage = async() => {
+    notify({ title: 'Please, wait', text: 'Loading playlist from Spotify...', type: 'info'})
+    console.log('Refresh page!')
     const { data } = await getPlaylist(playlistId.value)
-    state.playlist = data
+    // state.playlist = data
+    await playlistStore.load(data)
     await getPlaylistTracks(true)
     sortUserPlaylist(false)
-    await getTracksStatistics()
+    await checkTracksStatistics()
+    await getTopArtists()
+    await getTopGenres()
+    state.playlist = await playlistStore.getPlaylist(playlistId.value)
+    notify({ title: 'Alright', text: 'Playlist updated!', type: 'success' })
   }
 
   const onOpenStatistics = () => {
@@ -658,6 +686,18 @@
         case NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION:
           updatePlaylistDescription()
           break
+        case NOTIFICATION_ACTIONS.UPDATE_PLAYLIST:
+            notify({ title: 'Please, wait', text: 'Saving playlist...', type: 'info'})
+            const result = await savePlaylist(state.playlist)
+            if (! result) {
+                notify({
+                    title: 'Ops',
+                    text: 'It´s not possible to save the Playlist at this time.',
+                    type: 'error'
+                })
+            }
+            notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
+            break
       }
     }
     if ((!value) && (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION)) {
@@ -699,7 +739,7 @@
     console.log(state.tracks)
   }
 
-  const getArtistsSortedBySongCount = async() => {
+  const getTopArtists = async() => {
     const artistCount = {};
 
     state.tracks.forEach(track => {
@@ -722,26 +762,79 @@
             count: data.count
         }))
         .sort((a, b) => b.count - a.count) // Ordena de forma decrescente pela quantidade de músicas
-        .slice(0, 20); // Pega os 20 primeiros
+        .slice(0, 5); // Pega os 5 primeiros
 
-    const top10ArtistIds = sortedArtists.map(artist => artist.id).join(',');
-    state.topArtists = await getArtists(top10ArtistIds);
+    const top5ArtistIds = sortedArtists.map(artist => artist.id).join(',');
+    const topArtists = await getArtists(top5ArtistIds);
 
     const artistCountMap = sortedArtists.reduce((map, artist) => {
         map[artist.id] = artist.count;
         return map;
     }, {});
 
-    state.topArtists.forEach(artist => {
+    topArtists.forEach(artist => {
         if (artistCountMap[artist.id] !== undefined) {
             artist.count = artistCountMap[artist.id];
         }
     });
+
+    console.log(topArtists)
+    playlistStore.loadTopArtists(state.playlist.id, topArtists)
+  }
+
+  const getTopGenres = async() => {
+    // Conjunto para armazenar IDs únicos de artistas
+    const uniqueArtistIds = new Set();
+
+    // Contagem de artistas e coleta de IDs únicos
+    state.tracks.forEach(track => {
+        track.track.artists.forEach(artist => {
+            const artistId = artist.id;
+            // Adiciona o ID ao conjunto de IDs únicos
+            uniqueArtistIds.add(artistId);
+        });
+    });
+
+    // Converte o conjunto de IDs para array
+    const allArtistIds = Array.from(uniqueArtistIds);
+    
+    // Array para armazenar todos os artistas com detalhes
+    let allArtistsDetails = [];
+    
+    // Processa artistas em lotes de 50 (limite da API do Spotify)
+    for (let i = 0; i < allArtistIds.length; i += 50) {
+        const idsBatch = allArtistIds.slice(i, i + 50).join(',');
+        const artistsBatch = await getArtists(idsBatch);
+        allArtistsDetails = allArtistsDetails.concat(artistsBatch);
+    }
+    
+    // Contagem de gêneros
+    const genreCount = {};
+    
+    // Conta a ocorrência de cada gênero
+    allArtistsDetails.forEach(artist => {
+        if (artist.genres && Array.isArray(artist.genres)) {
+            artist.genres.forEach(genre => {
+                genreCount[genre] = (genreCount[genre] || 0) + 1;
+            });
+        }
+    });
+    
+    // Transforma o objeto de contagem em array, ordena e pega os principais
+    const topGenres = Object.entries(genreCount)
+        .map(([genre, count]) => ({ genre, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    // Armazena os gêneros mais comuns
+    // state.topGenres = topGenres;
+    console.log(topGenres)
+    await playlistStore.loadTopGenres(state.playlist.id, topGenres)
   }
 
   const circleStyle = (index) => {
     return {
-      right: `${10 + index * 10}%`,
+      right: `${10 + index * 7}%`,
     };
   };
 
@@ -750,7 +843,7 @@
     if (includeTopArtists) {
       description = removePartFromText(state.playlist.description)
         + ' Top artistas: ' 
-        + state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
+        + state.playlist?.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
     }
     state.playlistDescription = description
     editPlaylistDescription.value = !editPlaylistDescription.value
@@ -764,35 +857,28 @@
     state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
   }
 
-  const loadSavedPlaylists = async() => {
-    const { data, error } = await supabase
-      .from('playlists')
-      .select('*')
-    state.savedPlaylists = data
-  }
-
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
-      await loadSavedPlaylists()
-      const filteredItems = state.savedPlaylists
-      filteredItems.forEach((item) => {
-        item.isOwner = true
-        item.owner = { display_name: currentUser.value.display_name }
-      })
-      playlistStore.loadAll(filteredItems)
-
-      // const data = await getPlaylists()
-      // data.forEach((item) => {
-      //   item.isOwner = item.owner.display_name === currentUser.value.display_name
-      // })
-
-      // playlistStore.loadAll(data)
+      const playlists = await loadAllFromDatabase()
+      console.log(playlists)
+      playlistStore.loadAll(playlists)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
 
     if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
       const { data } = await getPlaylist(playlistId.value)
+      if (await hasChangedFromDatabase(data)) {
+        console.warning('Playlist changed from database')
+        showNotification(
+          NOTIFICATIONS_TYPE.info,
+          'Info',
+          'Playlist changes detected, do you want to update it ?',
+          true,
+          false
+        )
+        state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_PLAYLIST
+      }
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }
@@ -800,8 +886,8 @@
     if (! state.chartData.datasets[0]?.data) {
       getLikesStats(false)
     }
-    getTracksStatistics()
-    getArtistsSortedBySongCount()
+    checkTracksStatistics()
+    // getArtistsSortedBySongCount()
     progress.finish()
 
     // state.tracks.forEach(track => {
@@ -840,18 +926,23 @@
     <center v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></center>
     <div class="cover">
       <img class="img-album" :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image" />
-      <div class="top-3-artists">
-        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
-        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(1)"><img :src="state.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
-        <div v-if="state.topArtists.length>0" class="circle-container" :style="circleStyle(2)"><img :src="state.topArtists[2]?.images[0]?.url" class="music-cover"/></div>
+      <div style="display: flex;flex-direction:column;justify-content:space-around">
+        <h3 class="playlist-title">{{state.playlist?.name}}</h3>
+        <div class="top-3-artists">
+          <div v-if="state.playlist?.topArtists?.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.playlist?.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
+          <div v-if="state.playlist?.topArtists?.length>1" class="circle-container" :style="circleStyle(1)"><img :src="state.playlist?.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
+          <div v-if="state.playlist?.topArtists?.length>2" class="circle-container" :style="circleStyle(2)"><img :src="state.playlist?.topArtists[2]?.images[0]?.url" class="music-cover"/></div>
+          <div v-if="state.playlist?.topArtists?.length>3" class="circle-container" :style="circleStyle(3)"><img :src="state.playlist?.topArtists[3]?.images[0]?.url" class="music-cover"/></div>
+          <div v-if="state.playlist?.topArtists?.length>4" class="circle-container" :style="circleStyle(4)"><img :src="state.playlist?.topArtists[4]?.images[0]?.url" class="music-cover"/></div>          
+        </div>
       </div>
     </div>
     <div class="playlist-header">      
       <div class="playlist-description">
-        <h3 class="playlist-title">{{state.playlist?.name}}</h3>
         <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description || 'Edit description...'}} </p>
         <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
-        <p class="playlist-subtitle" @click="openEditPlaylistDescription(true)">Top artists: {{state.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')}} </p>
+        <p class="playlist-subtitle" @click="openEditPlaylistDescription(true)">Top artists: {{state.playlist?.topArtists?.slice(0, 5).map(artist => artist.name).join(', ')}} </p>
+        <p class="playlist-subtitle">Top Genres: {{state.playlist?.genres?.map(genre => genre.genre).join(', ')}} </p>
       </div>
     </div>
     <div class="playlist-sub">
@@ -1074,7 +1165,8 @@
   margin-bottom: 0;
 }
 .img-album {
-  /*width: 200px;*/
+  width: 100px;
+  height: auto;
   padding: 10px
 }
 .playlist-header {
@@ -1269,7 +1361,7 @@
   object-fit: cover;
 }
 .cover {
-  height: 30%;
+  height: auto;
   display: flex;
   flex-direction: row;
 }
@@ -1278,7 +1370,7 @@
   height: 60px;
   overflow: hidden;
   border-radius: 50%;
-  top: 70%;
+  /*top: 40%;*/
   position: relative;
 }
 .top-3-artists {
