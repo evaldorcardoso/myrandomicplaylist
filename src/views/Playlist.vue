@@ -869,7 +869,7 @@
     if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
       const { data } = await getPlaylist(playlistId.value)
       if (await hasChangedFromDatabase(data)) {
-        console.warning('Playlist changed from database')
+        console.log('Playlist changed from database')
         showNotification(
           NOTIFICATIONS_TYPE.info,
           'Info',
