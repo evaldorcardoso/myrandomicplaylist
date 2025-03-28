@@ -22,7 +22,7 @@
   const progress = inject("progress");
   const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist, getAlbum } = useGeneral()
   const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
-  const { hasChangedFromDatabase, savePlaylist, loadAllFromDatabase } = PlaylistService()
+  const { hasChangedFromDatabase, hasSilentChangesFromDatabase, savePlaylist, loadAllFromDatabase } = PlaylistService()
 
   const playlistId = computed(() => route.params.id);
 
@@ -140,15 +140,15 @@
 
   const checkTracksStatistics = async() => {
     // console.log(state.playlist)
-    if (isNotificationOpened.value) {
-        console.log('Notification is already opened, ignoring "checkTracksStatistics"')
-        return;
-    }
     state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
       track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
       if ((!track.track.tracked) && (state.playlist.tracked)) {
+        if (isNotificationOpened.value) {
+          console.log('Notification is already opened, ignoring "checkTracksStatistics"')
+          return;
+        }
         showNotification(
             NOTIFICATIONS_TYPE.info,
             'Hey',
@@ -857,28 +857,45 @@
     state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
   }
 
+  const identifyPlaylistChanges = async(data) => {
+    if (await hasChangedFromDatabase(data)) {
+      console.log('Playlist changed from database')
+      showNotification(
+        NOTIFICATIONS_TYPE.info,
+        'Info',
+        'Playlist changes detected, do you want to update it ?',
+        true,
+        false
+      )
+      state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_PLAYLIST
+      return
+    }
+
+    if (await hasSilentChangesFromDatabase(data)) {
+      const result = await savePlaylist(data)
+      console.log(result)
+      if (! result) {
+        notify({
+            title: 'Ops',
+            text: 'It´s not possible to save the Playlist at this time.',
+            type: 'error'
+        })
+      }
+    }
+  }
+
   onMounted(async () => {
     progress.start()
     if (! playlistStore.isLoaded) {
       const playlists = await loadAllFromDatabase()
-      console.log(playlists)
+      // console.log(playlists)
       playlistStore.loadAll(playlists)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
 
     if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
       const { data } = await getPlaylist(playlistId.value)
-      if (await hasChangedFromDatabase(data)) {
-        console.log('Playlist changed from database')
-        showNotification(
-          NOTIFICATIONS_TYPE.info,
-          'Info',
-          'Playlist changes detected, do you want to update it ?',
-          true,
-          false
-        )
-        state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_PLAYLIST
-      }
+      await identifyPlaylistChanges(data)
       playlistStore.load(data)
       state.playlist = await playlistStore.getPlaylist(playlistId.value)
     }

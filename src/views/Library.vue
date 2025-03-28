@@ -97,7 +97,7 @@
       // Ordenação crescente normal
       return a.order - b.order;
     });
-    console.log(state.playlistsOriginal)
+    // console.log(state.playlistsOriginal)
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
     progress.finish()

@@ -10,21 +10,23 @@ export function PlaylistService() {
         // console.error(playlist)
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
         if (!trackedPlaylist) {
-            console.error('trackedPlaylist not found')
             return true
         }
         if (trackedPlaylist.name !== playlist.name) {
-            console.error('name')
             return true
         }
         const imageId = playlist.images[0].url.split('/').pop();
         const databaseImageId = trackedPlaylist.image.split('/').pop();
         if (databaseImageId !== imageId) {
-            console.error('image')
             return true
         }
-        if (trackedPlaylist.items !== playlist.tracks.total) {
-            console.error('items')
+        return false
+    }
+
+    const hasSilentChangesFromDatabase = async (playlist) => {
+        // console.error(playlist)
+        const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
+        if ((trackedPlaylist) && (trackedPlaylist.items !== playlist.tracks.total)) {
             return true
         }
         return false
@@ -110,6 +112,7 @@ export function PlaylistService() {
 
     return {
         hasChangedFromDatabase,
+        hasSilentChangesFromDatabase,
         savePlaylist,
         loadAllFromDatabase
     }

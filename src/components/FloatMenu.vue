@@ -352,13 +352,13 @@ const closeMenu = () => {
                     <p class="close-button">X</p>
                 </div>
                 <div>
-                    <div class="menu-item-track">
+                    <div class="menu-item-track" style="flex-direction: row;">
                         <img :src="menuData.image" class="music-cover"/>
-                        <div class="menu-item-track-content">                
-                        <div class="menu-item-track-title">
+                        <div class="menu-item-track-content">
+                        <div class="menu-item-track-title" style="justify-content: start;">
                             {{menuData.title}}
                         </div>
-                        <div class="menu-item-track-subtitle">{{menuData.subtitle}}</div>
+                        <div class="menu-item-track-subtitle" style="justify-content: start;">{{menuData.subtitle}}</div>
                         </div>
                     </div>
                     <div class="menu-item-track-details" v-if="menuData.type == 'track' && !state.playlistsOpened">
@@ -430,7 +430,7 @@ const closeMenu = () => {
                             <p class="playlist-subtitle" style="margin-top:3px">{{ state.likesAVG }}</p>
                         </div>                       
                     </div>
-                    <hr class="style-one">
+                    <hr class="style-one" style="height: 30px;">
                     <div v-if="menuData.type == 'track'" style="max-height: 500px;">
                         <div class="menu-item" v-if="!state.playlistsOpened" @click="executeTrack(menuData.id)">
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
@@ -446,7 +446,7 @@ const closeMenu = () => {
                         </div>
                         <div class="playlists" v-if="state.playlists">
                             <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
-                                <img :src="playlist.images[0]?.url" class="playlist-cover"/>
+                                <img :src="playlist?.images ? playlist?.images[0]?.url : playlist?.image" class="playlist-cover"/>
                                 <div class="menu-item-playlist-content">                
                                     <div class="menu-item-playlist-title">
                                         {{playlist.name}}
@@ -527,7 +527,7 @@ const closeMenu = () => {
         z-index: 1;
         background-color: #282828;        
         justify-content: center;
-        padding-bottom: 80px;
+        padding-bottom: 20px;
     }
     .menu-item{
         display: flex;
@@ -551,8 +551,7 @@ const closeMenu = () => {
         color: #b3b3b3;
         height: 20px;
     }
-    .music-cover {
-        display: none;
+    .music-cover {        
         width: 100px;
         height: auto;
         margin: 0px 10px 10px 10px;
@@ -637,7 +636,6 @@ const closeMenu = () => {
         color: #999;
         width: 100%;
         font-size: 0.8rem;
-        text-align: center;
     }
     .playlists {
         overflow: scroll;

@@ -59,11 +59,12 @@
   }
 
   const getTrackStatistics = async() => {
+    if (! state.item) return
     if (state.databaseTracks.length == 0) {
       state.databaseTracks = await userStore.getTracks()
     }
-    state.item.popularity_old = userStore.getTrack(state.item.id)?.popularity ?? state.item.popularity
-    state.track.tracked = userStore.getTrack(state.item.id)
+    state.item.popularity_old = userStore.getTrack(state.item?.id)?.popularity ?? state.item?.popularity
+    state.track.tracked = userStore.getTrack(state.item?.id)
   }
 
   const trackInfo = (track, addToAnotherPlaylist = false) => {
@@ -166,13 +167,14 @@
         state.progPerc = (state.prog / state.item.duration_ms) * 100
         let date = new Date(state.prog);          
         state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
-        getTrackStatistics()
+        // getTrackStatistics()
     }, interval)
   };
 
   setInterval(async () => {
     try{
       await getPlaybackUserState()
+      getTrackStatistics()
     } catch(error) {
       console.log('error on get playback state')
       console.error(error)
