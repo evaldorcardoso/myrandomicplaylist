@@ -36,7 +36,7 @@ export const useUserStore = defineStore({
             try {
                 const index = this.tracks.findIndex(element => element.id === track?.id)
                 if (index >= 0) {
-                    this.playlist[index]
+                    this.tracks[index] = track
                     return
                 }
                 this.tracks.push(track)

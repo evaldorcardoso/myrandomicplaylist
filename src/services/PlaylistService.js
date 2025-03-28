@@ -9,7 +9,8 @@ export function PlaylistService() {
     const hasChangedFromDatabase = async (playlist) => {
         // console.error(playlist)
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
-        if (!trackedPlaylist) {
+        // console.log(trackedPlaylist)
+        if (! trackedPlaylist) {
             return true
         }
         if (trackedPlaylist.name !== playlist.name) {
@@ -93,6 +94,7 @@ export function PlaylistService() {
         const { data, error } = await supabase
             .from('playlists')
             .select('*')
+            .order('name', { ascending: true })
         
         if (error) {
             console.error(error.message)

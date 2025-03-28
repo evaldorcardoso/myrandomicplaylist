@@ -10,7 +10,8 @@ export const usePlaylistStore = defineStore({
     },
     actions: {
         loadAll(playlists) {
-            this.playlists = playlists
+            this.playlists = [ ...this.playlists, ...playlists ]
+            // this.playlists = playlists
         },
         load(playlist) {
             const index = this.playlists.findIndex(element => element.id === playlist.id)

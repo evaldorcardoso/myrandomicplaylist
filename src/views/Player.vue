@@ -4,6 +4,7 @@
   import FloatMenu from '@/components/FloatMenu.vue'
   import { useUserStore } from '@/stores/user'
   import { usePlaylistStore } from '@/stores/playlist'
+  import { PlaylistService } from '../services/PlaylistService'
 
   var intervalProgress;
   const { 
@@ -15,6 +16,8 @@
     startResumePlayback,
     transferPlayback
   } = useProfile()
+
+  const { loadAllFromDatabase } = PlaylistService()
 
   const state = reactive({
     progPerc: 0,
@@ -40,7 +43,6 @@
   const menuDataReactive = ref(null)
   const userStore = useUserStore()
   const playlistStore = usePlaylistStore()
-  const { getPlaylists } = useProfile()
 
   const currentUser = computed(() => {
     return userStore.getUser
@@ -184,12 +186,8 @@
   onMounted(async () => {
     progress()
     if (! playlistStore.isLoaded) {
-      const data = await getPlaylists()
-      const filteredItems = data.filter(Boolean)
-      filteredItems.forEach((item) => {
-      item.isOwner = item.owner.display_name === currentUser.value.display_name
-      })
-      playlistStore.loadAll(filteredItems)
+      const playlists = await loadAllFromDatabase()
+      playlistStore.loadAll(playlists)
     }
     getTrackStatistics()
   })

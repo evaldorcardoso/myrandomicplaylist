@@ -168,6 +168,18 @@ const selectPlaylist = async(playlistId) => {
 }
 
 const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
+    // console.log(state.playlistsOriginal)
+    // console.log(playlistId)
+    const playlist = state.playlistsOriginal.filter(
+        (playlist) => playlist.id === playlistId
+    )[0]
+
+    // console.log(playlist)
+    if (!playlist) return
+    if (! playlist?.tracked) return
+
+    // console.log('saving track statistics...')
+
     var trackToSave = {
         track_id: trackId,
         popularity: trackPopularity,
@@ -203,7 +215,7 @@ const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
     const { error: trackInsertedError, data: databaseTrackInserted } = await supabase
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .insert(trackToSave)
-        .select()
+        .select('*')
 
     if (trackInsertedError) {
         console.error(trackInsertedError.message)
@@ -325,11 +337,21 @@ const doQueue = (track) => {
 }
 
 const listPlaylists = async() => {
+    // console.log('listando playlists')
     state.playlistsOriginal = playlistStore.playlists
     state.playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == currentUser.value.display_name          
     )
+    state.playlists.sort((a, b) => {
+      // Se algum dos valores for null, coloca-o por último
+      if (a.order === null) return 1;
+      if (b.order === null) return -1;
+      
+      // Ordenação crescente normal
+      return a.order - b.order;
+    });
     state.playlistsOpened = true
+    // console.log(state.playlists);
 }
 
 onMounted(async () => {

@@ -78,6 +78,7 @@
     state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
+    notify({ title: 'Alright', text: 'Playlists updated!', type: 'success' })
   }
 
   onMounted(async () => {
@@ -89,6 +90,7 @@
     }
     state.savedPlaylists = playlistStore.playlists
     state.playlistsOriginal = playlistStore.playlists
+    // console.log(state.playlistsOriginal)
     state.playlistsOriginal.sort((a, b) => {
       // Se algum dos valores for null, coloca-o por último
       if (a.order === null) return 1;
