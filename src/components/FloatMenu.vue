@@ -86,7 +86,8 @@ const menuData = computed(() => {
         menuData.popularity_old = props.menuData.track.track?.popularity_old ?? 0
         menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
         menuData.playlist = props.menuData.track.playlist.id
-        if (props.menuData.listPlaylists) {
+        menuData.genres = props.menuData.genres
+        if (props.menuData.listPlaylists) {            
             listPlaylists()
         }
         return menuData
@@ -280,6 +281,7 @@ const removeTrack = async() => {
                 text: 'Song removed!',
                 type: 'success'
             })
+            playlistStore.loadTracks(menuData.value.playlist, await getTracks(menuData.value.playlist))
             emit('remove-track', menuData.value.id)
             closeMenu()
         }
@@ -337,21 +339,66 @@ const doQueue = (track) => {
 }
 
 const listPlaylists = async() => {
-    // console.log('listando playlists')
+    console.log('listando playlists')
     state.playlistsOriginal = playlistStore.playlists
-    state.playlists = state.playlistsOriginal.filter(
+    // console.log(state.playlistsOriginal)
+    const trackGenres = convertToGenreMap(props.menuData.genres);
+    // console.log(trackGenres)
+    var playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == currentUser.value.display_name          
     )
+    // console.log(playlists)
+    playlists = playlists.map(playlist => ({
+        ...playlist,
+        genreMap: convertToGenreMap(playlist.genres),
+    }));
+    // console.log(playlists)
+    const compatiblePlaylists = calculateCompatibility(trackGenres, playlists);
+    state.playlists = compatiblePlaylists;
     state.playlists.sort((a, b) => {
       // Se algum dos valores for null, coloca-o por último
-      if (a.order === null) return 1;
-      if (b.order === null) return -1;
+      // if (a.order === null) return 1;
+      // if (b.order === null) return -1;
       
       // Ordenação crescente normal
-      return a.order - b.order;
+      // return a.order - b.order;
+
+        //Ordenação por compatibilidade de gêneros
+        return b.compatibilityScore - a.compatibilityScore
     });
     state.playlistsOpened = true
     // console.log(state.playlists);
+}
+
+// Função para converter o array de gêneros em um objeto
+function convertToGenreMap(genreArray) {
+    // console.log(name)
+    // console.log(genreArray)
+  return genreArray.reduce((map, item) => {
+    map[item.genre] = item.count;
+    return map;
+  }, {});
+}
+
+// Função para calcular a compatibilidade
+function calculateCompatibility(trackGenres, processedPlaylists) {
+  return processedPlaylists.map(playlist => {
+    //console.log(playlist)
+    let compatibilityScore = 0;
+    for (const [genre, trackCount] of Object.entries(trackGenres)) {
+        // console.log(playlist.genreMap, genre)
+      if (playlist.genreMap && playlist.genreMap[genre]) {
+        compatibilityScore += trackCount * playlist.genreMap[genre];
+      }
+    }
+    if (! playlist.genre_compatibility) {
+        compatibilityScore = 0
+    }
+    return {
+      ...playlist,
+      compatibilityScore
+    };
+  });
 }
 
 onMounted(async () => {

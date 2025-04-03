@@ -81,12 +81,14 @@ export const usePlaylistStore = defineStore({
         },
         removeTrack(playlistId, trackUri) {
             const index = this.playlists.findIndex(element => element.id === playlistId)
+            console.warn('Track not found for remove of playlistStore: ' + trackUri)
             if (index === -1) { return }
 
             this.playlists[index].tracks
             this.playlists[index].tracks = this.playlists[index].tracks.filter(function(track) {
                 return track.track.uri !== trackUri
             })
+            console.log('Removed track from playlistStore: ' + trackUri)
         },
         async getTracks(playlistId) {
             const playlist = this.playlists.find(element => element.id === playlistId)
