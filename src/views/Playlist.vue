@@ -40,6 +40,7 @@
   const NOTIFICATION_ACTIONS = {
     UPDATE_SORT: 'update_sort',
     SAVE_LIKES_STATISTICS: 'save_likes_statistics',
+    SAVE_TRACKS_STATISTICS: 'save_tracks_statistics',
     UPDATE_DESCRIPTION: 'update_description',
     UPDATE_PLAYLIST: 'update_playlist',
   }
@@ -140,15 +141,23 @@
 
   const checkTracksStatistics = async() => {
     // console.log(state.playlist)
+    var newTracks = false
     state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
       track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
       track.track.tracked = userStore.getTrack(track.track.id)
       if ((!track.track.tracked) && (state.playlist.tracked)) {
-        if (isNotificationOpened.value) {
+        newTracks = true        
+        // const databaseTrack = await saveTrackStatistics(track)
+        // userStore.loadTrack(databaseTrack)
+        // track.track.tracked = userStore.getTrack(track.track.id)
+      }
+    }
+    if (newTracks) {
+      if (isNotificationOpened.value) {
           console.log('Notification is already opened, ignoring "checkTracksStatistics"')
           return;
-        }
+        }        
         showNotification(
             NOTIFICATIONS_TYPE.info,
             'Hey',
@@ -156,12 +165,7 @@
             true,
             false
         )
-        state.notificationAction = NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS
-        return
-        // const databaseTrack = await saveTrackStatistics(track)
-        // userStore.loadTrack(databaseTrack)
-        // track.track.tracked = userStore.getTrack(track.track.id)
-      }
+        state.notificationAction = NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS
     }
   }
 
@@ -682,6 +686,14 @@
               type: 'success'
             })
           }
+          break
+        case NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS:
+          await saveTracksStatistics()
+          notify({
+            title: 'Alright',
+            text: 'Statistics saved!',
+            type: 'success'
+          })
           break
         case NOTIFICATION_ACTIONS.UPDATE_SORT:
           updateTracksOrder()
