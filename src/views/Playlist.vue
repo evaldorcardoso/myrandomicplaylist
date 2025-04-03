@@ -539,7 +539,8 @@
     if (trackFound) {
       removeTrackStatistics(trackFound)
     }
-    await onRefreshPage()
+    await getPlaylistTracks()
+    sortUserPlaylist(false)
   }
 
   const onUpdateMenuOpened = (value) => {

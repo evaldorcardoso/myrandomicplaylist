@@ -282,7 +282,7 @@ const removeTrack = async() => {
                 text: 'Song removed!',
                 type: 'success'
             })
-            playlistStore.loadTracks(menuData.value.playlist, await getTracks(menuData.value.playlist))
+            //playlistStore.loadTracks(menuData.value.playlist, await getTracks(menuData.value.playlist))
             emit('remove-track', menuData.value.id)
             closeMenu()
         }
@@ -340,7 +340,7 @@ const doQueue = (track) => {
 }
 
 const listPlaylists = async() => {
-    console.log('listando playlists')
+    // console.log('listando playlists')
     state.playlistsOriginal = playlistStore.playlists
     // console.log(state.playlistsOriginal)
     const trackGenres = convertToGenreMap(props.menuData.genres);
@@ -384,7 +384,7 @@ function convertToGenreMap(genreArray) {
 // Função para calcular a compatibilidade
 function calculateCompatibility(trackGenres, processedPlaylists) {
   return processedPlaylists.map(playlist => {
-    console.log(trackGenres)
+    // console.log(trackGenres)
     let compatibilityScore = 0;
     for (const [genre, trackCount] of Object.entries(trackGenres)) {
         // console.log(playlist.genreMap, genre)
@@ -395,7 +395,7 @@ function calculateCompatibility(trackGenres, processedPlaylists) {
     if (! playlist.genre_compatibility) {
         compatibilityScore = 0
     }
-    console.log(playlist.name, compatibilityScore)
+    // console.log(playlist.name, compatibilityScore)
     return {
       ...playlist,
       compatibilityScore
