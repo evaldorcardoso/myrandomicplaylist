@@ -944,7 +944,7 @@
     <div class="cover">
       <img class="img-album" :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image" />
       <div style="display: flex;flex-direction:column;justify-content:space-around">
-        <h3 class="playlist-title">{{state.playlist?.name}}</h3>
+        <h4 class="playlist-title">{{state.playlist?.name}}</h4>
         <div class="top-3-artists">
           <div v-if="state.playlist?.topArtists?.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.playlist?.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
           <div v-if="state.playlist?.topArtists?.length>1" class="circle-container" :style="circleStyle(1)"><img :src="state.playlist?.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
@@ -954,10 +954,13 @@
         </div>
       </div>
     </div>
-    <div class="playlist-header">      
+    <div class="playlist-header">
+      <div style="display:flex;flex-direction:row">
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPlaylistModal">Edit</button>
+        <button type="button" class="btn btn-outline-primary">Refresh</button>
+      </div>
       <div class="playlist-description">
-        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description || 'Edit description...'}} </p>
-        <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
+        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description || 'Edit description...'}} </p>        
         <p class="playlist-subtitle" @click="openEditPlaylistDescription(true)">Top artists: {{state.playlist?.topArtists?.slice(0, 5).map(artist => artist.name).join(', ')}} </p>
         <p class="playlist-subtitle">Top Genres: {{state.playlist?.genres?.map(genre => genre.genre).join(', ')}} </p>
       </div>
@@ -1119,6 +1122,24 @@
     </div>
     <div style="color:#1c1c1c">
       {{ removeTrack }}
+    </div>
+  </div>
+
+  <div class="modal fade" id="editPlaylistModal" tabindex="-1" aria-labelledby="exemploModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exemploModalLabel">Título do Modal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          <button type="button" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

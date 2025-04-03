@@ -54,6 +54,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { createPinia } from 'pinia';
 import Notifications from '@kyvg/vue3-notification'
 import Vue3ProgressBar from "@ctechhindi/vue3-progress-bar";
+import * as bootstrap from 'bootstrap/dist/js/bootstrap.bundle'
 
 library.add(
     faSignOutAlt, 
@@ -124,4 +125,5 @@ app.component("font-awesome-icon", FontAwesomeIcon)
 app.use(pinia)
 app.use(Notifications)
 app.use(Vue3ProgressBar, progressOptions)
+app.provide('bootstrap', bootstrap)
 app.mount('#app')

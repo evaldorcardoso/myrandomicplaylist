@@ -31,7 +31,7 @@
           <li class="content__container__list__item">spotify !</li>
         </ul>
       </div>
-      <router-link to="/randomic" props="stepData" style="text-decoration:none;margin-top: 75px;display: block;">
+      <router-link to="/randomic" props="stepData" style="text-decoration:none;margin-top: 50px;display: block;">
         <button class="btn-generate">
           Start now !
         </button>

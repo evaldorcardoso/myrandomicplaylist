@@ -7,8 +7,8 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '../stores/user'
   import { PlaylistService } from '../services/PlaylistService'
+  import { notify } from "@kyvg/vue3-notification";
   
-
   const { getPlaylists } = useProfile()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
@@ -87,6 +87,7 @@
       const playlists = await loadAllFromDatabase()
       state.savedPlaylists = playlists
       playlistStore.loadAll(playlists)
+      await doRefresh()
     }
     state.savedPlaylists = playlistStore.playlists
     state.playlistsOriginal = playlistStore.playlists
@@ -121,23 +122,23 @@
         </div>
       </div>
     </div>
-    <div style="margin-top: 10px;height:30px;line-height:30px;">
+    <div style="margin-top: 10px;height:60px;line-height:30px;">
       <button 
-        class="button-spotify-clear-filter button-light" 
+        class="btn button-spotify-clear-filter button-light" 
         v-if="!state.filters.includes('all')"
         @click="filterPLaylists('all')"
       >
       X
       </button>
       <button 
-        class="button-spotify" 
+        class="btn button-spotify" 
         :class="{ 'button-dark': state.filters.includes('private'), 'button-light': !state.filters.includes('private') }"
         @click="filterPLaylists('private')"
       >
       My playlists
       </button>
       <button 
-        class="button-spotify" 
+        class="btn button-spotify" 
         :class="{ 'button-dark': state.filters.includes('liked'), 'button-light': !state.filters.includes('liked') }" 
         @click="filterPLaylists('liked')"
       >
