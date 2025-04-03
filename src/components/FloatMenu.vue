@@ -342,11 +342,16 @@ const doQueue = (track) => {
 const listPlaylists = async() => {
     // console.log('listando playlists')
     state.playlistsOriginal = playlistStore.playlists
+
     // console.log(state.playlistsOriginal)
     const trackGenres = convertToGenreMap(props.menuData.genres);
     // console.log(trackGenres)
     var playlists = state.playlistsOriginal.filter(
-        playlist => playlist.owner.display_name == currentUser.value.display_name          
+        playlist => playlist.owner.display_name == currentUser.value.display_name
+    )
+    // console.log(playlists[0].id, props.menuData.track.playlist.id)
+    var playlists = playlists.filter(
+        playlist => playlist.id !== props.menuData.track.playlist.id
     )
     // console.log(playlists)
     playlists = playlists.map(playlist => ({
