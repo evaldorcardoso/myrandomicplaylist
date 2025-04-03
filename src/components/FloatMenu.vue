@@ -78,7 +78,7 @@ const menuData = computed(() => {
         menuData.trackId = props.menuData.track.track?.id ?? props.menuData.track?.id
         menuData.image = props.menuData.track.track?.album.images[0].url ?? props.menuData.track.album.images[0].url
         menuData.title = props.menuData.track.track?.name ?? props.menuData.track.name
-        menuData.subtitle = props.menuData.track.track?.artists.map(artist => artist.name).join(' ,') ?? props.menuData.track.artists.map(artist => artist.name).join(' ,')
+        menuData.subtitle = props.menuData.track.track?.artists.map(artist => artist.name).join(', ') ?? props.menuData.track.artists.map(artist => artist.name).join(', ')
         menuData.addedAt = new Date(props.menuData.track.added_at).toLocaleDateString()
         menuData.releasedAt = new Date(props.menuData.track.track?.album.release_date ?? props.menuData.track.album.release_date).toLocaleDateString()
         menuData.duration = new Date(props.menuData.track.track?.duration_ms ?? props.menuData.track.duration_ms).toISOString().slice(14, 19)
