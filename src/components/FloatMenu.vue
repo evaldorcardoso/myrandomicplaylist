@@ -87,6 +87,7 @@ const menuData = computed(() => {
         menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
         menuData.playlist = props.menuData.track.playlist.id
         menuData.genres = props.menuData.genres
+        console.log(menuData.genres)
         if (props.menuData.listPlaylists) {            
             listPlaylists()
         }
@@ -383,7 +384,7 @@ function convertToGenreMap(genreArray) {
 // Função para calcular a compatibilidade
 function calculateCompatibility(trackGenres, processedPlaylists) {
   return processedPlaylists.map(playlist => {
-    //console.log(playlist)
+    console.log(trackGenres)
     let compatibilityScore = 0;
     for (const [genre, trackCount] of Object.entries(trackGenres)) {
         // console.log(playlist.genreMap, genre)
@@ -394,6 +395,7 @@ function calculateCompatibility(trackGenres, processedPlaylists) {
     if (! playlist.genre_compatibility) {
         compatibilityScore = 0
     }
+    console.log(playlist.name, compatibilityScore)
     return {
       ...playlist,
       compatibilityScore
@@ -430,7 +432,7 @@ const closeMenu = () => {
                         <div class="menu-item-track-subtitle" style="justify-content: start;">{{menuData.subtitle}}</div>
                         </div>
                     </div>
-                    <div class="menu-item-track-details" v-if="menuData.type == 'track' && !state.playlistsOpened">
+                    <div class="menu-item-track-details" style="margin-bottom: 0;" v-if="menuData.type == 'track'">
                         <div style="display: flex;flex-direction:column;">
                             <p>Added:</p>
                             {{menuData?.addedAt}}
@@ -464,6 +466,9 @@ const closeMenu = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="menu-item-track-details" style="height: 20px" v-if="menuData.type == 'track'">
+                        <p class="playlist-subtitle">Genres: {{menuData?.genres?.map(genre => genre.genre).join(', ')}} </p>
                     </div>
                     <div class="menu-item-track-details" style="margin-bottom: 10px;" v-if="menuData.type == 'playlist'">
                         Created by: {{ menuData.owner }}
