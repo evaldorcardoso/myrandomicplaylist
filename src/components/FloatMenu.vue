@@ -372,7 +372,7 @@ const listPlaylists = async() => {
         //Ordenação por compatibilidade de gêneros
         return b.compatibilityScore - a.compatibilityScore
     });
-    state.playlistsOpened = true
+    state.playlistsOpened = true    
     // console.log(state.playlists);
 }
 
@@ -385,6 +385,11 @@ function convertToGenreMap(genreArray) {
     return map;
   }, {});
 }
+
+const calcDiffDays = (data1, data2) => {
+    let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+    return Math.abs((data1.getTime() - data2.getTime()) / (oneDay));
+  }
 
 // Função para calcular a compatibilidade
 function calculateCompatibility(trackGenres, processedPlaylists) {
@@ -399,6 +404,15 @@ function calculateCompatibility(trackGenres, processedPlaylists) {
     }
     if (! playlist.genre_compatibility) {
         compatibilityScore = 0
+    }
+    // console.log(props.menuData.track)
+    const track = props.menuData.track.track ?? props.menuData.track
+    const diffDays = calcDiffDays(new Date(), new Date(track.album.release_date));
+    if (playlist.name.indexOf('Lançamentos') > -1) {
+        // console.log(diffDays)
+        if (diffDays < 7) {
+            compatibilityScore = 999;
+        }
     }
     // console.log(playlist.name, compatibilityScore)
     return {
