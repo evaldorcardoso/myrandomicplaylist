@@ -87,7 +87,7 @@ const menuData = computed(() => {
         menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
         menuData.playlist = props.menuData.track.playlist.id
         menuData.genres = props.menuData.genres
-        console.log(menuData.genres)
+        // console.log(menuData.genres)
         if (props.menuData.listPlaylists) {            
             listPlaylists()
         }
@@ -379,7 +379,7 @@ const listPlaylists = async() => {
 // Função para converter o array de gêneros em um objeto
 function convertToGenreMap(genreArray) {
     // console.log(name)
-    // console.log(genreArray)
+    //console.log(genreArray)
   return genreArray.reduce((map, item) => {
     map[item.genre] = item.count;
     return map;
