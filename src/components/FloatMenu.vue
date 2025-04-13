@@ -20,7 +20,7 @@ const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
-const { savePlaylist } = PlaylistService()
+const { savePlaylist, updatePlaylistTotalTracks } = PlaylistService()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -150,7 +150,9 @@ const selectPlaylist = async(playlistId) => {
                 text: 'Song added!',
                 type: 'success'
             })
-            playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+            const tracks = await getTracks(playlistId)
+            playlistStore.loadTracks(playlistId, tracks)
+            updatePlaylistTotalTracks(playlistId, tracks.length)
             closeMenu()
             return
         }

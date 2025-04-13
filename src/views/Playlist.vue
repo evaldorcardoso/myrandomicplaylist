@@ -20,9 +20,16 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress");
-  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist, getAlbum } = useGeneral()
+  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist } = useGeneral()
   const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
-  const { hasChangedFromDatabase, hasSilentChangesFromDatabase, savePlaylist, loadAllFromDatabase } = PlaylistService()
+  const { 
+    hasChangedFromDatabase,
+    hasSilentChangesFromDatabase,
+    savePlaylist,
+    loadAllFromDatabase,
+    updatePlaylistTotalTracks,
+    getGenres
+  } = PlaylistService()
 
   const playlistId = computed(() => route.params.id);
 
@@ -50,8 +57,6 @@
     playlist: null,
     playlistDescription: "",
     tracks: [],
-    // topArtists: [],
-    // topGenres: [],
     databaseTracks: [],
     visible: false,
     notificationAction: '',
@@ -123,10 +128,6 @@
     return props.currentData;
   });
 
-  // const topGenreNames = computed(() => {
-  //   return state.topGenres.map(genre => genre.genre)
-  // })
-
   const openPlaylistApp = (playlistId) => {
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
   }
@@ -140,7 +141,6 @@
   }
 
   const checkTracksStatistics = async() => {
-    // console.log(state.playlist)
     var newTracks = false
     state.databaseTracks = userStore.getTracks()
     for (const track of state.tracks) {
@@ -148,9 +148,6 @@
       track.track.tracked = userStore.getTrack(track.track.id)
       if ((!track.track.tracked) && (state.playlist.tracked)) {
         newTracks = true        
-        // const databaseTrack = await saveTrackStatistics(track)
-        // userStore.loadTrack(databaseTrack)
-        // track.track.tracked = userStore.getTrack(track.track.id)
       }
     }
     if (newTracks) {
@@ -177,7 +174,6 @@
       };
     } catch (error) {
       console.log(error)
-      //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
     }
     progress.finish()
   }
@@ -200,7 +196,6 @@
           .select()
 
         if (trackUpdatedError) {
-          //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackUpdatedError.message)
           console.log(trackUpdatedError.message)
         }
         return databaseTrack
@@ -212,14 +207,12 @@
           .select()
 
       if (trackInsertedError) {
-        //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', trackInsertedError.message)
         console.log(trackInsertedError.message)
       }
 
       return databaseTrack
     } catch (error) {
       console.log(error)
-      //showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.message)
     }
   }
 
@@ -544,6 +537,7 @@
       removeTrackStatistics(trackFound)
     }
     await getPlaylistTracks()
+    await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
     sortUserPlaylist(false)
   }
 
@@ -558,7 +552,6 @@
     notify({ title: 'Please, wait', text: 'Loading playlist from Spotify...', type: 'info'})
     console.log('Refresh page!')
     const { data } = await getPlaylist(playlistId.value)
-    // state.playlist = data
     await playlistStore.load(data)
     await getPlaylistTracks(true)
     sortUserPlaylist(false)
@@ -751,7 +744,6 @@
     state.tracks.splice(pos, 1)
     state.tracks.splice(pos + 1, 0, track)
     checkDifferentSort()
-    // console.log(state.tracks)
   }
 
   const getTopArtists = async() => {
@@ -792,13 +784,10 @@
             artist.count = artistCountMap[artist.id];
         }
     });
-
-    // console.log(topArtists)
     playlistStore.loadTopArtists(state.playlist.id, topArtists)
   }
 
   const getTopGenres = async() => {
-    // Conjunto para armazenar IDs únicos de artistas
     const uniqueArtistIds = new Set();
 
     // Contagem de artistas e coleta de IDs únicos
@@ -823,7 +812,6 @@
         allArtistsDetails = allArtistsDetails.concat(artistsBatch);
     }
     
-    // Contagem de gêneros
     const genreCount = {};
     
     // Conta a ocorrência de cada gênero
@@ -840,59 +828,8 @@
         .map(([genre, count]) => ({ genre, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
-    
-    // Armazena os gêneros mais comuns
-    // state.topGenres = topGenres;
-    // console.log(topGenres)
+
     await playlistStore.loadTopGenres(state.playlist.id, topGenres)
-  }
-
-  const getGenres = async(artists) => {
-    // Conjunto para armazenar IDs únicos de artistas
-    const uniqueArtistIds = new Set();
-
-    // Contagem de artistas e coleta de IDs únicos
-    artists.forEach(artist => {
-        const artistId = artist.id;
-        // Adiciona o ID ao conjunto de IDs únicos
-        uniqueArtistIds.add(artistId);
-    });
-
-    // Converte o conjunto de IDs para array
-    const allArtistIds = Array.from(uniqueArtistIds);
-    
-    // Array para armazenar todos os artistas com detalhes
-    let allArtistsDetails = [];
-    
-    // Processa artistas em lotes de 50 (limite da API do Spotify)
-    for (let i = 0; i < allArtistIds.length; i += 50) {
-        const idsBatch = allArtistIds.slice(i, i + 50).join(',');
-        const artistsBatch = await getArtists(idsBatch);
-        allArtistsDetails = allArtistsDetails.concat(artistsBatch);
-    }
-    
-    // Contagem de gêneros
-    const genreCount = {};
-    
-    // Conta a ocorrência de cada gênero
-    allArtistsDetails.forEach(artist => {
-        if (artist.genres && Array.isArray(artist.genres)) {
-            artist.genres.forEach(genre => {
-                genreCount[genre] = (genreCount[genre] || 0) + 1;
-            });
-        }
-    });
-    
-    // Transforma o objeto de contagem em array, ordena e pega os principais
-    const topGenres = Object.entries(genreCount)
-        .map(([genre, count]) => ({ genre, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-    
-    // Armazena os gêneros mais comuns
-    // state.topGenres = topGenres;
-    // console.log(topGenres)
-    return topGenres
   }
 
   const circleStyle = (index) => {
@@ -951,7 +888,6 @@
     progress.start()
     if (! playlistStore.isLoaded) {
       const playlists = await loadAllFromDatabase()
-      // console.log(playlists)
       playlistStore.loadAll(playlists)
     }
     state.playlist = await playlistStore.getPlaylist(playlistId.value)
@@ -967,19 +903,7 @@
       getLikesStats(false)
     }
     checkTracksStatistics()
-    // getArtistsSortedBySongCount()
     progress.finish()
-
-    // state.tracks.forEach(track => {
-    //   track.opened = true
-    // });
-
-    // const tempid = state.playlist.tracks[0].track
-    // console.log(tempid)
-    // const { data } = await getAlbum(tempid)
-    // console.log(data)
-
-    
   })
 
 </script>

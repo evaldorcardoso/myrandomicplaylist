@@ -90,7 +90,6 @@
     }
     state.savedPlaylists = playlistStore.playlists
     state.playlistsOriginal = playlistStore.playlists
-    // console.log(state.playlistsOriginal)
     state.playlistsOriginal.sort((a, b) => {
       // Se algum dos valores for null, coloca-o por último
       if (a.order === null) return 1;
@@ -99,7 +98,6 @@
       // Ordenação crescente normal
       return a.order - b.order;
     });
-    // console.log(state.playlistsOriginal)
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
     progress.finish()

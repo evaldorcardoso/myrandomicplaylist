@@ -1,6 +1,6 @@
 <script setup>
   import { onMounted, onBeforeMount, ref, computed, reactive } from 'vue'
-  import { useProfile, useGeneral } from '@/support/spotifyApi'
+  import { useProfile } from '@/support/spotifyApi'
   import FloatMenu from '@/components/FloatMenu.vue'
   import { useUserStore } from '@/stores/user'
   import { usePlaylistStore } from '@/stores/playlist'
@@ -17,9 +17,7 @@
     transferPlayback
   } = useProfile()
 
-  const { getArtists } = useGeneral()
-
-  const { loadAllFromDatabase } = PlaylistService()
+  const { loadAllFromDatabase, getGenres } = PlaylistService()
 
   const state = reactive({
     progPerc: 0,
@@ -86,54 +84,6 @@
     }
     menuDataReactive.value = menuData
     isMenuOpened.value = true
-  }
-
-  const getGenres = async(artists) => {
-    // Conjunto para armazenar IDs únicos de artistas
-    const uniqueArtistIds = new Set();
-
-    // Contagem de artistas e coleta de IDs únicos
-    artists.forEach(artist => {
-        const artistId = artist.id;
-        // Adiciona o ID ao conjunto de IDs únicos
-        uniqueArtistIds.add(artistId);
-    });
-
-    // Converte o conjunto de IDs para array
-    const allArtistIds = Array.from(uniqueArtistIds);
-    
-    // Array para armazenar todos os artistas com detalhes
-    let allArtistsDetails = [];
-    
-    // Processa artistas em lotes de 50 (limite da API do Spotify)
-    for (let i = 0; i < allArtistIds.length; i += 50) {
-        const idsBatch = allArtistIds.slice(i, i + 50).join(',');
-        const artistsBatch = await getArtists(idsBatch);
-        allArtistsDetails = allArtistsDetails.concat(artistsBatch);
-    }
-    
-    // Contagem de gêneros
-    const genreCount = {};
-    
-    // Conta a ocorrência de cada gênero
-    allArtistsDetails.forEach(artist => {
-        if (artist.genres && Array.isArray(artist.genres)) {
-            artist.genres.forEach(genre => {
-                genreCount[genre] = (genreCount[genre] || 0) + 1;
-            });
-        }
-    });
-    
-    // Transforma o objeto de contagem em array, ordena e pega os principais
-    const topGenres = Object.entries(genreCount)
-        .map(([genre, count]) => ({ genre, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-    
-    // Armazena os gêneros mais comuns
-    // state.topGenres = topGenres;
-    // console.log(topGenres)
-    return topGenres
   }
 
   const getUserDevices = async() => {
@@ -221,7 +171,6 @@
         state.progPerc = (state.prog / state.item.duration_ms) * 100
         let date = new Date(state.prog);          
         state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
-        // getTrackStatistics()
     }, interval)
   };
 
