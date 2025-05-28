@@ -35,6 +35,17 @@ export const usePlaylistStore = defineStore({
                 track.id = index
             })
         },
+        async updateTracksPosition(playlistId) {
+            const index = this.playlists.findIndex(element => element.id === playlistId)
+
+            if (index === -1) {
+                return
+            }
+
+            this.playlists[index].tracks.forEach((track, index) => {
+                track.id = index
+            })
+        },
         async loadTopArtists(playlistId, topArtists) {
             const index = this.playlists.findIndex(element => element.id === playlistId)
 

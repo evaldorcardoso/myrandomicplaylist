@@ -536,6 +536,7 @@
     if (trackFound) {
       removeTrackStatistics(trackFound)
     }
+    await playlistStore.updateTracksPosition(playlistId.value)
     await getPlaylistTracks()
     await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
     sortUserPlaylist(false)
