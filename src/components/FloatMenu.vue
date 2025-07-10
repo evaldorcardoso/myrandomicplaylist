@@ -390,8 +390,9 @@ const listPlaylists = async() => {
 
 // Função para converter o array de gêneros em um objeto
 function convertToGenreMap(genreArray) {
-    // console.log(name)
-    //console.log(genreArray)
+  if (!genreArray) {
+    return {};
+  }
   return genreArray.reduce((map, item) => {
     map[item.genre] = item.count;
     return map;
