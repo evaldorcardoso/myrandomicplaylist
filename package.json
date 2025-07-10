@@ -1,6 +1,6 @@
 {
   "name": "myrandomicplaylist",
-  "version": "3.20.9",
+  "version": "3.20.10",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

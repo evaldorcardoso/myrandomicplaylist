@@ -7,7 +7,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '../stores/user'
   import { PlaylistService } from '../services/PlaylistService'
-  
+  import { notify } from "@kyvg/vue3-notification";
 
   const { getPlaylists } = useProfile()
   const router = useRouter()

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, reactive, ref } from "vue"
+import { onMounted, computed, reactive, ref, watchEffect } from "vue"
 import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 import { usePlaylistStore } from '@/stores/playlist'
@@ -59,6 +59,9 @@ const menuData = computed(() => {
     state.playlistsOpened = false
     let menuData = {};
     menuData.type = props.menuData.type
+    if (! props.menuData) {
+        return
+    }
     if (menuData.type == 'playlist') {
         menuData.id = props.menuData.playlist.id
         menuData.image = props.menuData.playlist.images[0].url
@@ -99,8 +102,15 @@ const currentUser = computed(() => {
     return props.userData;
 });
 
-const playlistSaved = computed(async() => {
-    return await playlistStore.getPlaylist(menuData.value.id).tracked ?? false
+const playlistSaved = ref(false)
+
+watchEffect(async () => {
+    if (props.menuData) {
+        const data = await playlistStore.getPlaylist(menuData.value.id)
+        playlistSaved.value = data?.tracked ?? false
+        return
+    }
+    return false
 })
 
 const calcLikesStats = () => {
@@ -557,8 +567,8 @@ const closeMenu = () => {
                         </div>
                         <div class="menu-item" @click="saveThisPlaylist">
                             <font-awesome-icon icon="save" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 v-if="!playlistSaved" class="menu-item-option">Save</h3>
-                            <h3 v-else class="menu-item-option">Update on Database</h3>
+                            <h3 v-if="playlistSaved" class="menu-item-option">Update on Database</h3>
+                            <h3 v-else class="menu-item-option">Save</h3>
                         </div>
                         <div class="menu-item" @click="openArtists">
                             <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />

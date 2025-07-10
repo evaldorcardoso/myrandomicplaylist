@@ -57,6 +57,7 @@
     playlist: null,
     playlistDescription: "",
     tracks: [],
+    topArtists: [],
     databaseTracks: [],
     visible: false,
     notificationAction: '',
@@ -785,6 +786,7 @@
             artist.count = artistCountMap[artist.id];
         }
     });
+    state.topArtists = topArtists
     playlistStore.loadTopArtists(state.playlist.id, topArtists)
   }
 
@@ -1347,7 +1349,7 @@
   align-items: center;
   justify-content: center;
   bottom: 85px;
-  position: relative;
+  position: absolute;
   width: 100%;
   opacity: 0.3;
 }

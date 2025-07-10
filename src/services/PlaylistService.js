@@ -9,11 +9,10 @@ export function PlaylistService() {
     const { getArtists } = useGeneral()
     
     const hasChangedFromDatabase = async (playlist) => {
-        // console.error(playlist)
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
-        // console.log(trackedPlaylist)
-        if (! trackedPlaylist) {
-            return true
+
+        if (! trackedPlaylist.tracked) {
+            return false
         }
         if (trackedPlaylist.name !== playlist.name) {
             return true
@@ -27,8 +26,11 @@ export function PlaylistService() {
     }
 
     const hasSilentChangesFromDatabase = async (playlist) => {
-        // console.error(playlist)
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
+
+        if (! trackedPlaylist.tracked) {
+            return false
+        }
         if ((trackedPlaylist) && (trackedPlaylist.items !== playlist.tracks.total)) {
             return true
         }
@@ -53,7 +55,7 @@ export function PlaylistService() {
         var payload = {
             name: spotifyPlaylist.name,
             image: spotifyPlaylist.images[0].url,
-            items: spotifyPlaylist.tracks.total,
+            items: spotifyPlaylist.tracks.total ?? spotifyPlaylist.tracks.length,
         }
         const genres = await playlistStore.getTopGenres(spotifyPlaylist.id)
         if (genres) {
@@ -63,8 +65,8 @@ export function PlaylistService() {
         if (genres) {
             payload.top_artists = topArtists
         }
-        console.log(payload)
-        const trackedPlaylist = await playlistStore.getPlaylist(spotifyPlaylist.id)
+        const ps = await playlistStore.getPlaylist(spotifyPlaylist.id) 
+        const trackedPlaylist = ps.tracked ?? false
         if (!trackedPlaylist) {
             payload.id = spotifyPlaylist.id
             const { data, error } = await supabase
