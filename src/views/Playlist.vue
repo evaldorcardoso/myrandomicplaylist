@@ -837,7 +837,7 @@
 
   const circleStyle = (index) => {
     return {
-      right: `${10 + index * 7}%`,
+      right: `${0 + index * 7}%`,
     };
   };
 
@@ -1202,6 +1202,7 @@
 .playlist-title {
   color:#fff;
   margin: 0px;
+  width: 75%;
 }
 .playlist-subtitle {
   margin-top: 0px;
