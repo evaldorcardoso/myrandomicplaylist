@@ -100,46 +100,39 @@
     state.isPlaying = data.is_playing
     if (! data.is_playing) {
       stopProgress()
+      return
     }
-    let date = new Date(data.progress_ms);
+    let date = new Date(data.progress_ms)
     state.item = data.item
     state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
-    date = new Date(data.item.duration_ms);
+    date = new Date(data.item.duration_ms)
     state.track.time_total = data.item.duration_ms
     state.track.display_time_total = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
     state.track.progress = (data.progress_ms / state.track.duration_ms) * 100
     state.progressMs = data.progress_ms
     date = new Date(data.item?.album.release_date)
-    state.track.release = ((date.getDate() )) + "/" + ((date.getMonth() + 1)) + "/" + date.getFullYear();
+    state.track.release = ((date.getDate() )) + "/" + ((date.getMonth() + 1)) + "/" + date.getFullYear()
     progress()
   }
 
   const resumeUserPlayback = async() => {
     const { status } = await startResumePlayback()
-    if (status == 204){
-      await getPlaybackUserState()
-    }
+    await getPlaybackUserState()
   }
 
   const pauseUserPlayback = async() => {
       const { status } = await pausePlayback()
-      if (status == 204){
-        await getPlaybackUserState()
-      }
+      await getPlaybackUserState()
   }
 
   const skipToUserNext = async() => {
       const { status } = await skipToNext()
-      if (status == 204){
-        await getPlaybackUserState()
-      }
+      await getPlaybackUserState()
   }
 
   const skipToUserPrevious = async() => {
       const { status } = await skipToPrevious()
-      if (status == 204){
-        await getPlaybackUserState()
-      }
+      await getPlaybackUserState()
   }
 
   const transferUserPlayback = async(deviceId) => {
@@ -182,7 +175,7 @@
             state.prog = state.progressMs
         }
         state.progPerc = (state.prog / state.item.duration_ms) * 100
-        let date = new Date(state.prog);          
+        let date = new Date(state.prog)
         state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
     }, interval)
   };
