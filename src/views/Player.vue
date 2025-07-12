@@ -93,11 +93,15 @@
 
   const getPlaybackUserState = async() => {
     const { data } = await getPlaybackState()
-    if (!data) {
+    if (! data) {
+      stopProgress()
       return
     }
     state.isPlaying = data.is_playing
-    let date = new Date(data.progress_ms);          
+    if (! data.is_playing) {
+      stopProgress()
+    }
+    let date = new Date(data.progress_ms);
     state.item = data.item
     state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
     date = new Date(data.item.duration_ms);
@@ -107,35 +111,34 @@
     state.progressMs = data.progress_ms
     date = new Date(data.item?.album.release_date)
     state.track.release = ((date.getDate() )) + "/" + ((date.getMonth() + 1)) + "/" + date.getFullYear();
+    progress()
   }
 
   const resumeUserPlayback = async() => {
     const { status } = await startResumePlayback()
     if (status == 204){
-        state.isPlaying = !state.isPlaying
-        progress()
+      await getPlaybackUserState()
     }
   }
 
   const pauseUserPlayback = async() => {
       const { status } = await pausePlayback()
       if (status == 204){
-          state.isPlaying = !state.isPlaying
-          clearInterval(intervalProgress);
+        await getPlaybackUserState()
       }
   }
 
   const skipToUserNext = async() => {
       const { status } = await skipToNext()
       if (status == 204){
-        state.progPerc = 0
+        await getPlaybackUserState()
       }
   }
 
   const skipToUserPrevious = async() => {
       const { status } = await skipToPrevious()
       if (status == 204){
-        state.progPerc = 0
+        await getPlaybackUserState()
       }
   }
 
@@ -151,17 +154,27 @@
     await getUserDevices()
   }
 
+  const stopProgress = () => {
+    if (intervalProgress) {
+      stopProgress()
+    }
+  }
+
   const progress = async() => {
     const interval = 500
+    if (intervalProgress) {
+      return //interval already started
+    }
     intervalProgress = setInterval(function() {
-        if (!state.isPlaying){
+        if (! state.isPlaying){
             state.prog = 0
+            stopProgress()
             return
         }
         state.prog = state.prog + interval
         if (state.prog >= state.track.time_total) {
             state.prog = 0
-            getPlaybackUserState()            
+            getPlaybackUserState()
             return
         }
         if (state.progOrig != state.progressMs) {
@@ -323,15 +336,15 @@
 }
 .bar-progress{
   width: 100%;
-  height: 4px;
+  height: 10px;
   background-color: #ccc;
   border-radius: 4px;
 }
 .bar-progress-fill{  
-  height: 4px;
+  height: 10px;
   background-color: #42b983;
   border-radius: 4px;
-  transition: width 0.1s;
+  transition: width 0.3s;
 }
 .track-time{
   margin-top: 5px;
