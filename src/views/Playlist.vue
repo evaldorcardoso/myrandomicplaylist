@@ -1104,9 +1104,6 @@
         </li>
       </ul>
     </div>
-    <div class="footer">
-      <img class="center" style="width: 45px;" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')"/>
-    </div>
     <div style="color:#1c1c1c">
       {{ removeTrack }}
     </div>
@@ -1343,16 +1340,6 @@
   text-align: left;
   width: 100%;
   margin-top: 4px;
-}
-.footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  bottom: 85px;
-  position: absolute;
-  width: 100%;
-  opacity: 0.3;
 }
 
 .circle-container {

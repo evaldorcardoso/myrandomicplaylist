@@ -90,8 +90,9 @@ const menuData = computed(() => {
         menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
         menuData.playlist = props.menuData.track.playlist.id
         menuData.genres = props.menuData.genres
-        // console.log(menuData.genres)
-        if (props.menuData.listPlaylists) {            
+        state.playlistsOpened = false
+
+        if (props.menuData.listPlaylists) {
             listPlaylists()
         }
         return menuData
@@ -352,25 +353,23 @@ const doQueue = (track) => {
 }
 
 const listPlaylists = async() => {
-    // console.log('listando playlists')
     state.playlistsOriginal = playlistStore.playlists
 
-    // console.log(state.playlistsOriginal)
     const trackGenres = convertToGenreMap(props.menuData.genres);
-    // console.log(trackGenres)
+
     var playlists = state.playlistsOriginal.filter(
         playlist => playlist.owner.display_name == currentUser.value.display_name
     )
-    // console.log(playlists[0].id, props.menuData.track.playlist.id)
+
     var playlists = playlists.filter(
         playlist => playlist.id !== props.menuData.track.playlist.id
     )
-    // console.log(playlists)
+
     playlists = playlists.map(playlist => ({
         ...playlist,
         genreMap: convertToGenreMap(playlist.genres),
     }));
-    // console.log(playlists)
+
     const compatiblePlaylists = calculateCompatibility(trackGenres, playlists);
     state.playlists = compatiblePlaylists;
     state.playlists.sort((a, b) => {
@@ -384,8 +383,7 @@ const listPlaylists = async() => {
         //Ordenação por compatibilidade de gêneros
         return b.compatibilityScore - a.compatibilityScore
     });
-    state.playlistsOpened = true    
-    // console.log(state.playlists);
+    state.playlistsOpened = true
 }
 
 // Função para converter o array de gêneros em um objeto
@@ -499,7 +497,7 @@ const closeMenu = () => {
                             </div>
                         </div>
                     </div>
-                    <div class="menu-item-track-details" style="height: 20px" v-if="menuData.type == 'track'">
+                    <div class="menu-item-track-details" style="height: 30px" v-if="menuData.type == 'track'">
                         <p class="playlist-subtitle">Genres: {{menuData?.genres?.map(genre => genre.genre).join(', ')}} </p>
                     </div>
                     <div class="menu-item-track-details" style="margin-bottom: 10px;" v-if="menuData.type == 'playlist'">
@@ -550,7 +548,7 @@ const closeMenu = () => {
                             <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Remove from this playlist</h3>
                         </div>
-                        <div class="playlists" v-if="state.playlists">
+                        <div class="playlists" v-if="state.playlists && state.playlistsOpened">
                             <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
                                 <img :src="playlist?.images ? playlist?.images[0]?.url : playlist?.image" class="playlist-cover"/>
                                 <div class="menu-item-playlist-content">                
@@ -658,9 +656,9 @@ const closeMenu = () => {
         height: 20px;
     }
     .music-cover {        
-        width: 100px;
+        width: 145px;
         height: auto;
-        margin: 0px 10px 10px 10px;
+        margin: 0px 5px 0px 5px;
     }
     .playlist-cover {
         width: 40px;
@@ -714,7 +712,7 @@ const closeMenu = () => {
         margin: auto;
         width: 100%;
         height: auto;
-        margin-bottom: 20px;
+        margin-bottom: 5px;
     }
     .menu-item-playlist {
         display: flex;
