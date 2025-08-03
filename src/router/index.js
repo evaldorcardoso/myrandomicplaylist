@@ -27,12 +27,12 @@ const routes = [
       {
         path: "",
         name: "Home",
-        component: Inicio,
+        component: Library,
       },
       {
-        path: "/library",
-        name: "Library",
-        component: Library,
+        path: "/random",
+        name: "Random",
+        component: Inicio,
       },
       {
         path: "/playlist/:id",

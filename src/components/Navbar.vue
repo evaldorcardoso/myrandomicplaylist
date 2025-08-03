@@ -111,7 +111,7 @@ import { useUserStore } from '../stores/user';
         <div class="navbar-right-inner">
           <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/')" v-if="state.menuOpen">
             <font-awesome-icon icon="home"/>
-            <p>Início</p>
+            <p>Home</p>
           </div>
           <router-link to="/player">
             <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen" v-if="state.menuOpen">
@@ -119,9 +119,9 @@ import { useUserStore } from '../stores/user';
               <p>Player</p>
             </div>
           </router-link>
-          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/library')" v-if="state.menuOpen">
+          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/random')" v-if="state.menuOpen">
             <font-awesome-icon icon="user"/>
-            <p>Biblioteca</p>
+            <p>Random</p>
           </div>
           <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;openLink('https://developer.spotify.com/dashboard')" v-if="state.menuOpen">
             <font-awesome-icon icon="book"/>
@@ -129,7 +129,7 @@ import { useUserStore } from '../stores/user';
           </div>
           <div class="navbar-right-inner-item" @click="logout()">
             <font-awesome-icon icon="sign-out-alt"/>
-            <p>Sair</p>
+            <p>Logout</p>
           </div>
           <p class="version">{{ state.version }}</p>
         </div>
