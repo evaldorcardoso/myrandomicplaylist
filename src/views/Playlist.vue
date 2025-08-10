@@ -105,6 +105,8 @@
     }
   });
 
+  const emit = defineEmits(['updateStepData', 'updateMenuData'])
+
   const currentUser = computed(() => {
     return userStore.getUser
   });
@@ -552,7 +554,6 @@
 
   const onRefreshPage = async() => {
     notify({ title: 'Please, wait', text: 'Loading playlist from Spotify...', type: 'info'})
-    console.log('Refresh page!')
     const { data } = await getPlaylist(playlistId.value)
     await playlistStore.load(data)
     await getPlaylistTracks(true)
@@ -684,6 +685,7 @@
           break
         case NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS:
           await saveTracksStatistics()
+          await getPlaylistTracks(true)
           notify({
             title: 'Alright',
             text: 'Statistics saved!',
@@ -930,7 +932,7 @@
     />
   <div class="page">    
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <center v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></center>
+    <div v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></div>
     <div class="cover">
       <img class="img-album" :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image" />
       <div style="display: flex;flex-direction:column;justify-content:space-around">

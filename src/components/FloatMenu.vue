@@ -69,7 +69,7 @@ const menuData = computed(() => {
         menuData.subtitle = props.menuData.playlist.description
         menuData.followers = props.menuData.playlist.followers.total
         menuData.owner = props.menuData.playlist.owner.display_name
-        menuData.isOwner = props.menuData.playlist.owner.display_name == currentUser.value.display_name
+        menuData.isOwner = currentUser.value ? props.menuData.playlist.owner.display_name == currentUser.value.display_name : true
         menuData.visibility = props.menuData.playlist.public ? 'Public' : 'Private'
         menuData.popularity = props.menuData.playlist.popularity
         menuData.likesStats = props.menuData.playlist.likesStats
@@ -87,7 +87,7 @@ const menuData = computed(() => {
         menuData.duration = new Date(props.menuData.track.track?.duration_ms ?? props.menuData.track.duration_ms).toISOString().slice(14, 19)
         menuData.popularity = props.menuData.track.track?.popularity ?? props.menuData.track.popularity
         menuData.popularity_old = props.menuData.track.track?.popularity_old ?? 0
-        menuData.isOwner = props.menuData.track.playlist.owner == currentUser.value.display_name
+        menuData.isOwner = currentUser.value ? props.menuData.track.playlist.owner == currentUser.value.display_name : true
         menuData.playlist = props.menuData.track.playlist.id
         menuData.genres = props.menuData.genres
         state.playlistsOpened = false
@@ -611,7 +611,7 @@ const closeMenu = () => {
         position: absolute;
         width: 100%;
         z-index: 9999;
-        max-height: 85%;
+        max-height: 90%;
     }
     .close-button {
         display: flex;

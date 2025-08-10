@@ -106,7 +106,7 @@
 </script>
 
 <template>
-  <div class="page" style="height: 88%;">
+  <div class="page" style="height: 82%;">
     <div style="display: flex;justify-content: center" >
       <img :src="currentUser.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
     </div>

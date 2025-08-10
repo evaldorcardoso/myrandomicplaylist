@@ -38,6 +38,7 @@
     }
 
     const props = defineProps({
+        id: String,
         stepData: {
             type: Number,
             default: 0
