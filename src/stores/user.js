@@ -1,8 +1,7 @@
 import { defineStore } from "pinia"
 import helpers, { LOCALSTORAGE_KEYS } from "../support/helpers"
 
-export const useUserStore = defineStore({
-    id: 'user',
+export const useUserStore = defineStore('user', {
     state: () => ({
         user: null,
         tracks: []

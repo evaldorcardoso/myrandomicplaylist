@@ -14,7 +14,28 @@ export default defineConfig({
     },
     workbox: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-      sourcemap: true
+      sourcemap: true,
+      runtimeCaching: [
+          {
+            // Cachear imagens do Spotify
+            urlPattern: /^https:\/\/image-cdn-ak\.spotifycdn\.com\/.*$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'spotify-images-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 dias
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+      ],
+      // Ignorar recursos externos não configurados
+      navigateFallbackDenylist: [
+        /^https:\/\/image-cdn-ak\.spotifycdn\.com/
+      ]
     },
     includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
     manifest: {
