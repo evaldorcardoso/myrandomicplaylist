@@ -120,7 +120,7 @@ export function PlaylistService() {
 
         data.forEach((item) => {
             item.isOwner = true
-            item.owner = { display_name: userStore.getUser.display_name }
+            item.owner = { display_name: userStore.getUser?.display_name }
             item.tracked = true
             item.topArtists = JSON.parse(item.top_artists)
             item.genres = JSON.parse(item.genres)
