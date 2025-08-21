@@ -108,14 +108,14 @@
 <template>
   <div class="page" style="height: 82%;">
     <div style="display: flex;justify-content: center" >
-      <img :src="currentUser.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
+      <img :src="currentUser?.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
     </div>
     <div style="display: flex;flex-direction:column" >
       <h2 style="padding-top: 15px;color:#fff;text-align:center;margin:0">{{ msg }}</h2>
       <div class="playlist-sub">
         <div class="playlist-details">
           <p class="playlist-subtitle" style="cursor:pointer;margin-right: 20px;" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-          <p class="playlist-subtitle">{{currentUser.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+          <p class="playlist-subtitle">{{currentUser?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
         </div>
       </div>
     </div>

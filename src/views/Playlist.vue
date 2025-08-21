@@ -1042,6 +1042,7 @@
         <li :id="track.track?.id" 
           v-for="(track, i) in state.tracks" 
           class="list-item"
+          :class="{'unavailable' : ! track.track?.available_markets.includes('BR')}"
           :key="track"
         >
           <div class="list-item-div" :class="{'opened' : track.opened}" style="cursor: pointer;" @mouseover="handleMouseOver(track)"><!---->
@@ -1372,5 +1373,8 @@
 }
 .top-3-artists {
   display: flex;
+}
+.unavailable {
+  opacity: .3;
 }
 </style>
