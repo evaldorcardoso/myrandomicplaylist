@@ -282,6 +282,13 @@ const executeTrack = async(track) => {
 }
 
 const removeTrack = async() => {
+    if (! menuData.value.isOwner) {
+        notify({
+            title: 'Ops',
+            text: 'This playlist does not belong to you!',
+            type: 'error'
+        })
+    }
     try {
         const formData = {
             'tracks': [
@@ -295,7 +302,6 @@ const removeTrack = async() => {
                 text: 'Song removed!',
                 type: 'success'
             })
-            //playlistStore.loadTracks(menuData.value.playlist, await getTracks(menuData.value.playlist))
             emit('remove-track', menuData.value.id)
             closeMenu()
         }
@@ -544,7 +550,7 @@ const closeMenu = () => {
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Add to queue</h3>
                         </div>
-                        <div class="menu-item" v-if="menuData.isOwner && !state.playlistsOpened" @click="removeTrack">
+                        <div class="menu-item" v-if="!state.playlistsOpened" @click="removeTrack">
                             <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Remove from this playlist</h3>
                         </div>
@@ -607,7 +613,7 @@ const closeMenu = () => {
         height: 100%;
     }
     .menu {
-        bottom: 0;
+        bottom: 50px;
         position: absolute;
         width: 100%;
         z-index: 9999;
