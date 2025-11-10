@@ -1,7 +1,7 @@
 <script setup>
-  import { onMounted, computed, reactive, ref, inject } from 'vue'
+  import { onMounted, computed, reactive, ref, inject, nextTick } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
-  import { useRouter } from 'vue-router'
+  import { onBeforeRouteLeave, useRouter } from 'vue-router'
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
@@ -16,6 +16,7 @@
   const { loadAllFromDatabase } = PlaylistService()
   const msg = ref('Your library')
   const progress = inject("progress");
+  const playlistContainer = ref(null);
 
   const currentUser = computed(() => {
     return userStore.getUser
@@ -28,6 +29,7 @@
     filters: ['all'],
     devices: [],
     tracks: [],
+    scrollPosition: 0
   })
 
   const openPlaylist = (playlistId) => {
@@ -101,12 +103,25 @@
     const { filterLibrary } = helpers.getLocalStorage()
     filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
     progress.finish()
-  })
+
+    const savedScrollPos = sessionStorage.getItem('playlistScrollPos');
+    if (savedScrollPos && playlistContainer.value) {
+      nextTick(() => {
+        playlistContainer.value.scrollTop = parseInt(savedScrollPos);
+      });
+    }
+  });
+  
+  onBeforeRouteLeave(() => {
+    if (playlistContainer.value) {
+      sessionStorage.setItem('playlistScrollPos', playlistContainer.value.scrollTop.toString());
+    }
+  });
 
 </script>
 
 <template>
-  <div class="page" style="height: 82%;">
+  <div class="page" style="height: 82%;" ref="playlistContainer">
     <div style="display: flex;justify-content: center" >
       <img :src="currentUser?.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
     </div>
