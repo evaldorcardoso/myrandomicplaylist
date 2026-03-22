@@ -76,8 +76,8 @@
   const getUserPlaylists = async() => {
     state.isProcessing = true
     if (!playlistStore.isLoaded) {
-      const { data } = await getPlaylists()
-      playlistStore.loadAll(data.items)
+      const playlists = await getPlaylists()
+      playlistStore.loadAll(playlists)
     }
     state.playlistsOriginal = playlistStore.playlists
     state.playlistsOriginal.forEach(item => item.checked = false)
@@ -548,7 +548,7 @@
               </div>
               <div class="list-item-content">
                 <div class="list-item-image">
-                  <img :src="playlist.images[0]?.url" style="width: 40px; height: 40px;margin-right: 20px;" />
+                  <img :src="playlist.images?.[0]?.url" style="width: 40px; height: 40px;margin-right: 20px;" />
                 </div>
                 <div class="list-item-text">
                   <div class="list-item-title">{{playlist.name}}</div>
