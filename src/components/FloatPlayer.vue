@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, reactive } from "vue";
+import { onMounted, onBeforeUnmount, computed, reactive } from "vue";
 import { useRouter } from 'vue-router'
 import { useProfile } from '@/support/spotifyApi'
 
@@ -44,13 +44,18 @@ const pauseUserPlayback = async() => {
 const progress = async() => {
     const interval = 500
     intervalProgress = setInterval(function() {
-        if (!currentPlaying){
+        if (!currentPlaying.value?.item) {
+            clearInterval(intervalProgress)
             state.prog = 0
+            state.progPerc = 0
             return
         }
         state.prog = state.prog + interval
         if (state.prog >= currentPlaying.value.item.time_total) {
+            clearInterval(intervalProgress)
             state.prog = 0
+            state.progPerc = 0
+            return
         }
         if (state.progOrig != currentPlaying.value.progress_ms) {
             state.progOrig = currentPlaying.value.progress_ms
@@ -62,6 +67,10 @@ const progress = async() => {
 
 onMounted(async () => {    
     progress()
+})
+
+onBeforeUnmount(() => {
+    clearInterval(intervalProgress)
 })
 </script>
 

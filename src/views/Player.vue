@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, onBeforeMount, ref, computed, reactive } from 'vue'
+  import { onMounted, onBeforeMount, onBeforeUnmount, ref, computed, reactive } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
   import FloatMenu from '@/components/FloatMenu.vue'
   import { useUserStore } from '@/stores/user'
@@ -18,6 +18,23 @@
   } = useProfile()
 
   const { loadAllFromDatabase, getGenres } = PlaylistService()
+
+  const emit = defineEmits(['updateStepData', 'updateMenuData'])
+
+  const props = defineProps({
+    stepData: {
+      type: Number,
+      default: 0
+    },
+    removeTrack: {
+      type: String,
+      default: ''
+    },
+    currentData: {
+      type: [Object, String, null],
+      default: () => ({})
+    }
+  });
 
   const state = reactive({
     progPerc: 0,
@@ -148,9 +165,8 @@
   }
 
   const stopProgress = () => {
-    if (intervalProgress) {
-      stopProgress()
-    }
+    clearInterval(intervalProgress)
+    intervalProgress = null
   }
 
   const progress = async() => {
@@ -202,6 +218,10 @@
   onBeforeMount(async () => {
     await getUserDevices()
     await getPlaybackUserState()
+  })
+
+  onBeforeUnmount(() => {
+    stopProgress()
   })
 
 </script>

@@ -9,14 +9,15 @@
     const floatPlayerData = ref(null)
     
     const user = ref(null)
-    const step = ref(null)
+    const step = ref(0)
     
     const refresh = ref(null)
-    const removeTrackRef = ref(null)
+    const removeTrackRef = ref('')
     const userStore = useUserStore()
 
     const currentData = computed(() => {
-        return floatPlayerData.value;
+        const data = floatPlayerData.value
+        return (data && typeof data === 'object') ? data : {}
     })
     const currentUser = computed(() => {
         return user.value;
