@@ -32,9 +32,10 @@ export default defineConfig({
             }
           }
       ],
-      // Ignorar recursos externos não configurados
       navigateFallbackDenylist: [
-        /^https:\/\/image-cdn-ak\.spotifycdn\.com/
+        /^https:\/\/api\.spotify\.com/,
+        /^https:\/\/image-cdn-ak\.spotifycdn\.com/,
+        /^https:\/\/.*\.supabase\.co/
       ]
     },
     includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
