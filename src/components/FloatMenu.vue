@@ -37,6 +37,11 @@ const state = reactive({
     selectedPosition: null,
     pendingRelocation: null,
     playlistToAdd: null,
+    removeMode: 'confirm',
+    removeTargetTrack: null,
+    availableReplacementTracks: [],
+    selectedReplacementTrack: null,
+    replacementSearchQuery: '',
 })
 
 const props = defineProps({
@@ -105,6 +110,15 @@ const menuData = computed(() => {
 const currentUser = computed(() => {
     return props.userData;
 });
+
+const filteredReplacementTracks = computed(() => {
+    if (!state.replacementSearchQuery) return state.availableReplacementTracks
+    const query = state.replacementSearchQuery.toLowerCase()
+    return state.availableReplacementTracks.filter(track => 
+        (track.track?.name ?? track.name).toLowerCase().includes(query) ||
+        (track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ')).toLowerCase().includes(query)
+    )
+})
 
 const playlistSaved = ref(false)
 
@@ -440,11 +454,26 @@ const removeTrack = async() => {
             text: 'This playlist does not belong to you!',
             type: 'error'
         })
+        return
     }
+    state.removeTargetTrack = {
+        uri: menuData.value.id,
+        name: menuData.value.title,
+        artist: menuData.value.subtitle
+    }
+    state.removeMode = 'confirm'
+}
+
+const removeOnly = async() => {
+    notify({
+        title: 'Please, wait',
+        text: 'Removing track...',
+        type: 'info'
+    })
     try {
         const formData = {
             'tracks': [
-                { 'uri': menuData.value.id }
+                { 'uri': state.removeTargetTrack.uri }
             ]
         }
         const { status } = await removeTracksOfPlaylist(menuData.value.playlist, formData)
@@ -454,12 +483,116 @@ const removeTrack = async() => {
                 text: 'Song removed!',
                 type: 'success'
             })
-            emit('remove-track', menuData.value.id)
+            emit('remove-track', state.removeTargetTrack.uri)
+            resetRemoveState()
             closeMenu()
+            return
         }
+        notify({
+            title: 'Ops',
+            text: 'Status: ' + status + ' not expected!',
+            type: 'error'
+        })
     }catch(error){
-      console.log(error)
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
     }
+}
+
+const showReplacementList = async() => {
+    const playlistId = menuData.value.playlist
+    let tracks = await playlistStore.getTracks(playlistId)
+    if (!tracks || tracks.length === 0) {
+        tracks = await getTracks(playlistId)
+        playlistStore.loadTracks(playlistId, tracks)
+    }
+    state.availableReplacementTracks = tracks.filter(
+        t => (t.track?.uri ?? t.uri) !== state.removeTargetTrack.uri
+    )
+    state.removeMode = 'replace'
+}
+
+const selectReplacement = (track) => {
+    state.selectedReplacementTrack = track
+    state.removeMode = 'list'
+}
+
+const backToReplacementList = () => {
+    state.selectedReplacementTrack = null
+    state.removeMode = 'replace'
+}
+
+const confirmReplacement = async() => {
+    const playlistId = menuData.value.playlist
+    const targetUri = state.removeTargetTrack.uri
+    const replacementUri = state.selectedReplacementTrack.track?.uri ?? state.selectedReplacementTrack.uri
+
+    notify({
+        title: 'Please, wait',
+        text: 'Replacing track...',
+        type: 'info'
+    })
+
+    try {
+        const tracks = await getTracks(playlistId)
+        const replacementTrack = tracks.find(t => (t.track?.uri ?? t.uri) === replacementUri)
+        const removalTrack = tracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+        if (!replacementTrack || !removalTrack) {
+            notify({ title: 'Error', text: 'Track not found', type: 'error' })
+            return
+        }
+
+        const moveFormData = {
+            'range_start': replacementTrack.id,
+            'insert_before': removalTrack.id
+        }
+        await updateTracksOfPlaylist(playlistId, moveFormData)
+
+        const updatedTracks = await getTracks(playlistId)
+        const newRemovalTrack = updatedTracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+        if (newRemovalTrack) {
+            const removeFormData = {
+                'tracks': [{ 'uri': targetUri }]
+            }
+            await removeTracksOfPlaylist(playlistId, removeFormData)
+        }
+
+        playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+
+        notify({
+            title: 'Alright',
+            text: 'Track replaced successfully!',
+            type: 'success'
+        })
+        emit('remove-track', targetUri)
+        resetRemoveState()
+        closeMenu()
+    }catch(error){
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
+    }
+}
+
+const cancelRemove = () => {
+    resetRemoveState()
+}
+
+const resetRemoveState = () => {
+    state.removeMode = 'confirm'
+    state.removeTargetTrack = null
+    state.availableReplacementTracks = []
+    state.selectedReplacementTrack = null
+    state.replacementSearchQuery = ''
 }
 
 const saveThisPlaylist = async() => {
@@ -600,6 +733,7 @@ const closeMenu = () => {
     state.pendingRelocation = null
     state.playlistToAdd = null
     state.selectedPosition = null
+    resetRemoveState()
     emit('update-menu-opened', false)
 }
 </script>
@@ -705,9 +839,52 @@ const closeMenu = () => {
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Add to queue</h3>
                         </div>
-                        <div class="menu-item" v-if="!state.playlistsOpened" @click="removeTrack">
+                        <div class="menu-item" v-if="!state.playlistsOpened && state.removeMode === 'confirm'" @click="removeTrack">
                             <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Remove from this playlist</h3>
+                        </div>
+                        <div class="remove-confirm" v-if="!state.playlistsOpened && state.removeMode === 'confirm' && state.removeTargetTrack">
+                            <p class="remove-confirm-title">Remove "{{ state.removeTargetTrack.name }}"?</p>
+                            <div class="remove-buttons">
+                                <button class="btn-remove-only" @click="removeOnly">Remove only</button>
+                                <button class="btn-replace" @click="showReplacementList">Replace with another track</button>
+                            </div>
+                            <button class="btn-cancel-remove" @click="cancelRemove">Cancel</button>
+                        </div>
+                        <div class="replacement-container" v-if="!state.playlistsOpened && state.removeMode === 'replace'">
+                            <input 
+                                v-model="state.replacementSearchQuery"
+                                placeholder="Search tracks..."
+                                class="replacement-search"
+                            />
+                            <div class="replacement-list">
+                                <div v-for="track in filteredReplacementTracks" 
+                                     :key="track.track?.uri ?? track.uri"
+                                     class="replacement-track"
+                                     @click="selectReplacement(track)">
+                                    <span class="replacement-position">{{ track.id + 1 }}</span>
+                                    <img :src="track.track?.album?.images[0]?.url ?? track.album?.images[0]?.url" class="replacement-cover"/>
+                                    <div class="replacement-info">
+                                        <strong>{{ track.track?.name ?? track.name }}</strong>
+                                        <p>{{ track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-cancel-remove" @click="cancelRemove">Cancel</button>
+                        </div>
+                        <div class="selected-replacement" v-if="!state.playlistsOpened && state.removeMode === 'list' && state.selectedReplacementTrack">
+                            <p class="selected-replacement-title">Replace with:</p>
+                            <div class="selected-track-preview">
+                                <img :src="state.selectedReplacementTrack.track?.album?.images[0]?.url ?? state.selectedReplacementTrack.album?.images[0]?.url" class="selected-replacement-cover"/>
+                                <div class="selected-replacement-info">
+                                    <strong>{{ state.selectedReplacementTrack.track?.name ?? state.selectedReplacementTrack.name }}</strong>
+                                    <p>{{ state.selectedReplacementTrack.track?.artists?.map(a => a.name).join(', ') ?? state.selectedReplacementTrack.artists?.map(a => a.name).join(', ') }}</p>
+                                </div>
+                            </div>
+                            <div class="confirm-buttons">
+                                <button class="btn-confirm" @click="confirmReplacement">Confirm</button>
+                                <button class="btn-cancel" @click="backToReplacementList">Back</button>
+                            </div>
                         </div>
                         <div class="playlists" v-if="state.playlists && state.playlistsOpened">
                             <div class="position-input-container" v-if="!state.pendingRelocation">
@@ -1049,5 +1226,164 @@ const closeMenu = () => {
     }
     .btn-cancel:hover {
         background-color: #555;
+    }
+    .remove-confirm {
+        padding: 20px;
+        text-align: center;
+    }
+    .remove-confirm-title {
+        color: #fff;
+        font-size: 14px;
+        margin: 0 0 20px 0;
+    }
+    .remove-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .btn-remove-only, .btn-replace {
+        padding: 12px 20px;
+        border-radius: 20px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .btn-remove-only {
+        background-color: #e74c3c;
+        color: #fff;
+    }
+    .btn-remove-only:hover {
+        background-color: #c0392b;
+    }
+    .btn-replace {
+        background-color: #1db954;
+        color: #000;
+    }
+    .btn-replace:hover {
+        background-color: #1ed760;
+    }
+    .btn-cancel-remove {
+        background: transparent;
+        border: 1px solid #b3b3b3;
+        color: #b3b3b3;
+        padding: 8px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .btn-cancel-remove:hover {
+        border-color: #fff;
+        color: #fff;
+    }
+    .replacement-container {
+        padding: 15px;
+    }
+    .replacement-search {
+        width: 100%;
+        padding: 10px 15px;
+        border-radius: 20px;
+        border: 1px solid #b3b3b3;
+        background-color: #404040;
+        color: #fff;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+    .replacement-search::placeholder {
+        color: #888;
+    }
+    .replacement-search:focus {
+        border-color: #1db954;
+        outline: none;
+    }
+    .replacement-list {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .replacement-track {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 8px;
+    }
+    .replacement-track:hover {
+        background-color: #383838;
+    }
+    .replacement-position {
+        color: #888;
+        font-size: 12px;
+        min-width: 25px;
+    }
+    .replacement-cover {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+    }
+    .replacement-info {
+        flex: 1;
+        overflow: hidden;
+    }
+    .replacement-info strong {
+        color: #fff;
+        font-size: 13px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .replacement-info p {
+        color: #888;
+        font-size: 11px;
+        margin: 2px 0 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .selected-replacement {
+        padding: 20px;
+        text-align: center;
+    }
+    .selected-replacement-title {
+        color: #fff;
+        font-size: 14px;
+        margin: 0 0 15px 0;
+    }
+    .selected-track-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    .selected-replacement-cover {
+        width: 50px;
+        height: 50px;
+        border-radius: 4px;
+    }
+    .selected-replacement-info {
+        flex: 1;
+        overflow: hidden;
+        text-align: left;
+    }
+    .selected-replacement-info strong {
+        color: #fff;
+        font-size: 13px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .selected-replacement-info p {
+        color: #888;
+        font-size: 11px;
+        margin: 4px 0 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 </style>
