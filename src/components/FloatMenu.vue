@@ -16,7 +16,7 @@ const emit = defineEmits([
     'open-statistics',
     'open-artists'
 ])
-const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
+const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
@@ -34,6 +34,9 @@ const state = reactive({
     playlists: [],
     likesAVG: 0,
     playlistsOpened: false,
+    selectedPosition: null,
+    pendingRelocation: null,
+    playlistToAdd: null,
 })
 
 const props = defineProps({
@@ -133,6 +136,26 @@ const calcLikesStats = () => {
     
 }
 
+const getTrackAtPosition = async(playlistId, position) => {
+    let tracks = await playlistStore.getTracks(playlistId)
+    if (tracks.length === 0) {
+        playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+        tracks = await playlistStore.getTracks(playlistId)
+    }
+    const index = position - 1
+    if (index >= 0 && index < tracks.length) {
+        const track = tracks[index]
+        return {
+            name: track.track?.name ?? track.name,
+            artist: track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', '),
+            image: track.track?.album?.images[0]?.url ?? track.album?.images[0]?.url,
+            uri: track.track?.uri ?? track.uri,
+            position: position
+        }
+    }
+    return null
+}
+
 const selectPlaylist = async(playlistId) => {
     if (! await verifyDuplicateTrackInPlaylist(playlistId, menuData.value.id)) {
         notify({
@@ -142,28 +165,46 @@ const selectPlaylist = async(playlistId) => {
         })
         return
     }
+
+    const position = state.selectedPosition ? parseInt(state.selectedPosition) : null
+
+    if (position) {
+        const existingTrack = await getTrackAtPosition(playlistId, position)
+        if (existingTrack) {
+            state.pendingRelocation = existingTrack
+            state.playlistToAdd = playlistId
+            return
+        }
+        await addTrackAtPosition(playlistId, position)
+        return
+    }
+
+    await addTrackAtEnd(playlistId)
+}
+
+const addTrackAtPosition = async(playlistId, position) => {
     notify({
         title: 'Please, wait',
-        text: 'Moving track...',
+        text: 'Adding track...',
         type: 'info'
     })
     try {
         const formData = {
-            'uris': [
-                menuData.value.id
-            ]
+            'uris': [menuData.value.id],
+            'position': position - 1
         }
         const { status } = await addTracksToPlaylist(playlistId, formData)
         if ((status === 200)||(status === 201)) {
             await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
             notify({
                 title: 'Alright',
-                text: 'Song added!',
+                text: `Song added at position ${position}!`,
                 type: 'success'
             })
             const tracks = await getTracks(playlistId)
             playlistStore.loadTracks(playlistId, tracks)
             updatePlaylistTotalTracks(playlistId, tracks.length)
+            resetAddState()
             closeMenu()
             return
         }
@@ -180,6 +221,117 @@ const selectPlaylist = async(playlistId) => {
             type: 'error'
         })
     }
+}
+
+const addTrackAtEnd = async(playlistId) => {
+    notify({
+        title: 'Please, wait',
+        text: 'Moving track...',
+        type: 'info'
+    })
+    try {
+        const formData = {
+            'uris': [menuData.value.id]
+        }
+        const { status } = await addTracksToPlaylist(playlistId, formData)
+        if ((status === 200)||(status === 201)) {
+            await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
+            notify({
+                title: 'Alright',
+                text: 'Song added!',
+                type: 'success'
+            })
+            const tracks = await getTracks(playlistId)
+            playlistStore.loadTracks(playlistId, tracks)
+            updatePlaylistTotalTracks(playlistId, tracks.length)
+            resetAddState()
+            closeMenu()
+            return
+        }
+        notify({
+            title: 'Ops',
+            text: 'Status: ' + status + ' not expected!',
+            type: 'info'
+        })
+    }catch(error){
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
+    }
+}
+
+const confirmRelocation = async() => {
+    const playlistId = state.playlistToAdd
+    const position = parseInt(state.selectedPosition)
+    const trackToRelocate = state.pendingRelocation
+
+    notify({
+        title: 'Please, wait',
+        text: 'Adding track and relocating...',
+        type: 'info'
+    })
+
+    try {
+        const formData = {
+            'uris': [menuData.value.id],
+            'position': position - 1
+        }
+        const { status } = await addTracksToPlaylist(playlistId, formData)
+
+        if ((status === 200)||(status === 201)) {
+            await saveTracksStatistics(playlistId, menuData.value.trackId, menuData.value.popularity)
+
+            const tracks = await getTracks(playlistId)
+            const newTotal = tracks.length
+            const trackToMoveIndex = tracks.findIndex(t => (t.track?.uri ?? t.uri) === trackToRelocate.uri)
+
+            if (trackToMoveIndex !== -1 && trackToMoveIndex !== newTotal - 1) {
+                const moveFormData = {
+                    'range_start': trackToMoveIndex,
+                    'insert_before': newTotal
+                }
+                await updateTracksOfPlaylist(playlistId, moveFormData)
+            }
+
+            playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+            updatePlaylistTotalTracks(playlistId, newTotal)
+
+            notify({
+                title: 'Alright',
+                text: `Song added at position ${position}! "${trackToRelocate.name}" moved to the end.`,
+                type: 'success'
+            })
+            resetAddState()
+            closeMenu()
+            return
+        }
+
+        notify({
+            title: 'Ops',
+            text: 'Status: ' + status + ' not expected!',
+            type: 'info'
+        })
+    }catch(error){
+        console.log(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
+    }
+}
+
+const cancelRelocation = () => {
+    resetAddState()
+}
+
+const resetAddState = () => {
+    state.pendingRelocation = null
+    state.playlistToAdd = null
+    state.selectedPosition = null
 }
 
 const saveTracksStatistics = async(playlistId, trackId, trackPopularity) => {
@@ -445,6 +597,9 @@ onMounted(async () => {
 
 const closeMenu = () => {
     state.playlists = null
+    state.pendingRelocation = null
+    state.playlistToAdd = null
+    state.selectedPosition = null
     emit('update-menu-opened', false)
 }
 </script>
@@ -555,7 +710,31 @@ const closeMenu = () => {
                             <h3 class="menu-item-option">Remove from this playlist</h3>
                         </div>
                         <div class="playlists" v-if="state.playlists && state.playlistsOpened">
-                            <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)">
+                            <div class="position-input-container" v-if="!state.pendingRelocation">
+                                <input 
+                                    type="number" 
+                                    v-model="state.selectedPosition" 
+                                    placeholder="Position (optional)"
+                                    min="1"
+                                    class="position-input"
+                                />
+                            </div>
+                            <div class="relocation-confirm" v-if="state.pendingRelocation">
+                                <p class="relocation-title">Position {{ state.pendingRelocation.position }} is occupied by:</p>
+                                <div class="relocation-track">
+                                    <img :src="state.pendingRelocation.image" class="relocation-cover"/>
+                                    <div class="relocation-track-info">
+                                        <strong class="relocation-track-name">{{ state.pendingRelocation.name }}</strong>
+                                        <p class="relocation-track-artist">{{ state.pendingRelocation.artist }}</p>
+                                    </div>
+                                </div>
+                                <p class="relocation-hint">This track will be moved to the end of the playlist.</p>
+                                <div class="confirm-buttons">
+                                    <button class="btn-confirm" @click="confirmRelocation">Confirm</button>
+                                    <button class="btn-cancel" @click="cancelRelocation">Cancel</button>
+                                </div>
+                            </div>
+                            <div v-for="playlist in state.playlists" :key="playlist.id" class="menu-item-playlist" @click="selectPlaylist(playlist.id)" v-if="!state.pendingRelocation">
                                 <img :src="playlist?.images ? playlist?.images[0]?.url : playlist?.image" class="playlist-cover"/>
                                 <div class="menu-item-playlist-content">                
                                     <div class="menu-item-playlist-title">
@@ -771,5 +950,104 @@ const closeMenu = () => {
     /* .slide-fade-leave-active below version 2.1.8 */ {
         transform: translateY(100px);
         opacity: 0;
+    }
+    .position-input-container {
+        margin: 10px 10px 15px 10px;
+    }
+    .position-input {
+        width: 100%;
+        padding: 10px 15px;
+        border-radius: 20px;
+        border: 1px solid #b3b3b3;
+        background-color: #404040;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+    }
+    .position-input::placeholder {
+        color: #888;
+    }
+    .position-input:focus {
+        border-color: #1db954;
+    }
+    .relocation-confirm {
+        padding: 15px;
+        margin: 0 10px 15px 10px;
+        background-color: #383838;
+        border-radius: 12px;
+        text-align: center;
+    }
+    .relocation-title {
+        color: #fff;
+        font-size: 14px;
+        margin: 0 0 15px 0;
+    }
+    .relocation-track {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    .relocation-cover {
+        width: 50px;
+        height: 50px;
+        border-radius: 4px;
+    }
+    .relocation-track-info {
+        text-align: left;
+        flex: 1;
+        overflow: hidden;
+    }
+    .relocation-track-name {
+        color: #fff;
+        font-size: 13px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .relocation-track-artist {
+        color: #999;
+        font-size: 11px;
+        margin: 4px 0 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .relocation-hint {
+        color: #b3b3b3;
+        font-size: 12px;
+        margin: 0 0 15px 0;
+    }
+    .confirm-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+    .btn-confirm, .btn-cancel {
+        padding: 10px 25px;
+        border-radius: 20px;
+        border: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .btn-confirm {
+        background-color: #1db954;
+        color: #000;
+    }
+    .btn-confirm:hover {
+        background-color: #1ed760;
+    }
+    .btn-cancel {
+        background-color: #404040;
+        color: #fff;
+    }
+    .btn-cancel:hover {
+        background-color: #555;
     }
 </style>
