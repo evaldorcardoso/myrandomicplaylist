@@ -516,6 +516,23 @@
     isMenuOpened.value = true
   }
 
+  const openMovePositionMenu = (track, index) => {
+    track['playlist'] = {
+      id: state.playlist.id,
+      owner: state.playlist.owner.display_name
+    }
+
+    let menuData = {
+      type: 'track',
+      track,
+      moveMode: true,
+      playlistTracks: state.tracks,
+      currentPosition: index
+    }
+    menuDataReactive.value = menuData
+    isMenuOpened.value = true
+  }
+
   const openMenuPlaylist = async() => {
     let menuData = {
       type: 'playlist',
@@ -1087,14 +1104,6 @@
               <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" />
               <p>Play</p>
             </button>
-            <button class="button-options" @click="moveTrackUp(track, i)" v-if="track.id > 0 && state.playlist.owner.display_name == currentUser.display_name">
-              <font-awesome-icon icon="chevron-up" style="vertical-align:middle;margin-left:3px;" />
-              <p>Up</p>
-            </button>
-            <button class="button-options" @click="moveTrackDown(track, i)" v-if="track.id < state.tracks.length - 1 && state.playlist.owner.display_name == currentUser.display_name">
-              <font-awesome-icon icon="chevron-down" style="vertical-align:middle;margin-left:3px;" />
-              <p>Down</p>
-            </button>
             <button class="button-options" @click="trackInfo(track)">
               <font-awesome-icon icon="info" style="vertical-align:middle;margin-left:3px;" />
               <p>Info</p>
@@ -1102,6 +1111,10 @@
             <button class="button-options" @click="trackInfo(track, true)">
               <font-awesome-icon icon="plus" style="vertical-align:middle;margin-left:3px;" />
               <p>Add</p>
+            </button>
+            <button class="button-options" @click="openMovePositionMenu(track, i)" v-if="state.playlist.owner.display_name == currentUser.display_name">
+              <font-awesome-icon icon="sort" style="vertical-align:middle;margin-left:3px;" />
+              <p>Position</p>
             </button>
           </div>
         </li>

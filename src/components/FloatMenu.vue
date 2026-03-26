@@ -42,6 +42,11 @@ const state = reactive({
     availableReplacementTracks: [],
     selectedReplacementTrack: null,
     replacementSearchQuery: '',
+    moveMode: false,
+    moveSourcePosition: null,
+    moveTargetPosition: null,
+    movePlaylistTracks: [],
+    moveSourceTrack: null,
 })
 
 const props = defineProps({
@@ -103,6 +108,15 @@ const menuData = computed(() => {
         if (props.menuData.listPlaylists) {
             listPlaylists()
         }
+
+        if (props.menuData.moveMode) {
+            state.moveMode = true
+            state.moveSourcePosition = props.menuData.currentPosition
+            state.moveTargetPosition = null
+            state.movePlaylistTracks = props.menuData.playlistTracks
+            state.moveSourceTrack = props.menuData.track
+        }
+
         return menuData
     }
 });
@@ -728,11 +742,111 @@ onMounted(async () => {
     
 })
 
+const executeMoveTrack = async() => {
+    const sourcePos = state.moveSourcePosition
+    const targetPos = parseInt(state.moveTargetPosition) - 1
+
+    if (isNaN(targetPos) || targetPos < 0 || targetPos >= state.movePlaylistTracks.length) {
+        notify({
+            title: 'Ops',
+            text: 'Invalid position!',
+            type: 'warn'
+        })
+        return
+    }
+
+    if (sourcePos === targetPos) {
+        notify({
+            title: 'Ops',
+            text: 'Same position!',
+            type: 'warn'
+        })
+        return
+    }
+
+    notify({
+        title: 'Please, wait',
+        text: 'Moving track...',
+        type: 'info'
+    })
+
+    try {
+        const playlistId = menuData.value.playlist
+    
+        if (sourcePos < targetPos) {
+            console.log({
+                'range_start': sourcePos,
+                'insert_before': targetPos
+            })
+            await updateTracksOfPlaylist(playlistId, {
+                'range_start': sourcePos,
+                'insert_before': targetPos
+            })
+            console.log({
+                'range_start': targetPos + 1,
+                'insert_before': sourcePos
+            })
+            await updateTracksOfPlaylist(playlistId, {
+                'range_start': targetPos + 1,
+                'insert_before': sourcePos
+            })
+        } else {
+            console.log({
+                'range_start': sourcePos,
+                'insert_before': targetPos
+            })
+            await updateTracksOfPlaylist(playlistId, {
+                'range_start': sourcePos,
+                'insert_before': targetPos
+            })
+            console.log({
+                'range_start': targetPos + 1,
+                'insert_before': sourcePos
+            })
+            await updateTracksOfPlaylist(playlistId, {
+                'range_start': targetPos + 1,
+                'insert_before': sourcePos + 1
+            })
+        }
+
+        notify({
+            title: 'Alright',
+            text: 'Tracks swapped successfully!',
+            type: 'success'
+        })
+
+        resetMoveState()
+        emit('refresh-playlist')
+        closeMenu()
+    } catch (error) {
+        console.error(error)
+        notify({
+            title: 'Ops',
+            text: 'An error occurred!',
+            type: 'error'
+        })
+    }
+}
+
+const cancelMoveMode = () => {
+    resetMoveState()
+    closeMenu()
+}
+
+const resetMoveState = () => {
+    state.moveMode = false
+    state.moveSourcePosition = null
+    state.moveTargetPosition = null
+    state.movePlaylistTracks = []
+    state.moveSourceTrack = null
+}
+
 const closeMenu = () => {
     state.playlists = null
     state.pendingRelocation = null
     state.playlistToAdd = null
     state.selectedPosition = null
+    resetMoveState()
     resetRemoveState()
     emit('update-menu-opened', false)
 }
@@ -918,6 +1032,31 @@ const closeMenu = () => {
                                         {{playlist.name}}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="move-position-container" v-if="state.moveMode">
+                            <p class="move-track-title">Current position: <strong>{{ state.moveSourcePosition + 1 }}</strong></p>
+                            <input 
+                                type="number" 
+                                v-model="state.moveTargetPosition" 
+                                placeholder="New position"
+                                min="1"
+                                :max="state.movePlaylistTracks.length"
+                                class="position-input"
+                            />
+                            <p class="move-subtitle">Current playlist tracks:</p>
+                            <div class="move-tracks-list">
+                                <div v-for="(track, index) in state.movePlaylistTracks" 
+                                     :key="track.id"
+                                     class="move-track-item"
+                                     :class="{ 'current-track': index === state.moveSourcePosition }">
+                                    <span class="move-track-position">{{ index + 1 }}</span>
+                                    <span class="move-track-name">{{ track.track?.name ?? track.name }}</span>
+                                </div>
+                            </div>
+                            <div class="confirm-buttons">
+                                <button class="btn-confirm" @click="executeMoveTrack" :disabled="!state.moveTargetPosition">Confirm</button>
+                                <button class="btn-cancel" @click="cancelMoveMode">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -1385,5 +1524,61 @@ const closeMenu = () => {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    .move-position-container {
+        padding: 15px 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .move-track-title {
+        color: #fff;
+        font-size: 14px;
+        margin: 0 0 15px 0;
+        text-align: center;
+    }
+    .move-subtitle {
+        color: #888;
+        font-size: 12px;
+        margin: 15px 0 10px 0;
+    }
+    .move-tracks-list {
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        padding: 5px 0;
+    }
+    .move-track-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        cursor: default;
+    }
+    .move-track-item:hover {
+        background-color: #383838;
+    }
+    .move-track-item.current-track {
+        background-color: #1e8658;
+    }
+    .move-track-position {
+        color: #888;
+        font-size: 12px;
+        min-width: 30px;
+        text-align: center;
+    }
+    .move-track-item.current-track .move-track-position {
+        color: #fff;
+        font-weight: bold;
+    }
+    .move-track-name {
+        color: #ccc;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+    .move-track-item.current-track .move-track-name {
+        color: #fff;
     }
 </style>
