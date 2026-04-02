@@ -1,6 +1,18 @@
 import axios from 'axios'
 import helpers, { LOCALSTORAGE_KEYS } from './support/helpers'
 
+let isRefreshing = false
+let refreshSubscribers = []
+
+function subscribeTokenRefresh(callback) {
+    refreshSubscribers.push(callback)
+}
+
+function onTokenRefreshed(accessToken) {
+    refreshSubscribers.forEach(callback => callback(accessToken))
+    refreshSubscribers = []
+}
+
 async function refreshAccessToken() {
     const { refreshToken: storedRefreshToken } = helpers.getLocalStorage()
     const data = {
@@ -16,16 +28,17 @@ async function refreshAccessToken() {
         body: new URLSearchParams(data),
     }
     const response = await fetch("https://accounts.spotify.com/api/token", options)
-    if (response.status == 400) {
+    if (response.status == 400 || response.status == 401) {
         helpers.logout()
         window.location.href = '/login'
         setTimeout(() => { window.location.reload() }, 100)
-        return
+        return false
     }
     const { access_token, expires_in } = await response.json()
-    const tokenExpiresIn = Date.now() + (expires_in - 400) * 3600
+    const tokenExpiresIn = Date.now() + (expires_in - 400) * 1000
     helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, access_token)
     helpers.setLocalStorage(LOCALSTORAGE_KEYS.expireTime, tokenExpiresIn)
+    return access_token
 }
 
 export default {
@@ -40,25 +53,61 @@ export default {
 		});
 
 		if (accessToken !== null && accessToken !== undefined) {
-			useAxios.interceptors.response.use(async config => {
-				if (Date.now() > expireTime) {
-					await refreshAccessToken();
-					const { accessToken } = helpers.getLocalStorage()
-					config.headers["Authorization"] = `Bearer ${accessToken}`;
-				}
-				return config;
-			},
-			async (error) => {
-				if (error.response.status === 401) {
-					await refreshAccessToken();
-					const config = error.config;
-					config.headers["Authorization"] = `Bearer ${accessToken}`;
-					return useAxios(config);
-				}
-				return Promise.reject(error);
-			});
+            useAxios.interceptors.request.use(async config => {
+                if (Date.now() > expireTime) {
+                    if (!isRefreshing) {
+                        isRefreshing = true
+                        try {
+                            const newToken = await refreshAccessToken()
+                            if (newToken) {
+                                onTokenRefreshed(newToken)
+                            }
+                        } finally {
+                            isRefreshing = false
+                        }
+                    } else {
+                        await new Promise(resolve => {
+                            subscribeTokenRefresh(token => {
+                                config.headers["Authorization"] = `Bearer ${token}`
+                                resolve()
+                            })
+                        })
+                    }
+                }
+                return config
+            })
+
+			useAxios.interceptors.response.use(
+                response => response,
+                async (error) => {
+			        const originalRequest = error.config
+                    if (error.response?.status === 401 && !originalRequest._retry) {
+                        originalRequest._retry = true
+                        if (!isRefreshing) {
+                            isRefreshing = true
+                            try {
+                                const newToken = await refreshAccessToken()
+                                if (newToken) {
+                                    originalRequest.headers["Authorization"] = `Bearer ${newToken}`
+                                    return useAxios(originalRequest)
+                                }
+                            } finally {
+                                isRefreshing = false
+                            }
+                        } else {
+                            return new Promise(resolve => {
+                                subscribeTokenRefresh(token => {
+                                    originalRequest.headers["Authorization"] = `Bearer ${token}`
+                                    resolve(useAxios(originalRequest))
+                                })
+                            })
+                        }
+                    }
+                    return Promise.reject(error)
+                }
+            )
 		}
 
-		app.provide("useAxios", useAxios);
+		app.provide("useAxios", useAxios)
 	},
-};
+}

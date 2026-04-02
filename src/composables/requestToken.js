@@ -35,7 +35,7 @@ export function useRequestToken() {
         const { access_token, expires_in, refresh_token } = await response.json();
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, access_token)
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.refreshToken, refresh_token)
-        const tokenExpiresIn = Date.now() + (expires_in - 400) * 3600;       
+        const tokenExpiresIn = Date.now() + (expires_in - 400) * 1000;       
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.expireTime, tokenExpiresIn)
         router.push('/')
         setTimeout(() => {
@@ -74,7 +74,7 @@ export function useRequestToken() {
             return
         }
         const { access_token, expires_in } = await response.json();
-        const tokenExpiresIn = Date.now() + (expires_in - 400) * 3600;
+        const tokenExpiresIn = Date.now() + (expires_in - 400) * 1000;
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.accessToken, access_token)
         helpers.setLocalStorage(LOCALSTORAGE_KEYS.expireTime, tokenExpiresIn)
         setTimeout(() => {
