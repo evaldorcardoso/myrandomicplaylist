@@ -5,6 +5,7 @@ dist
 dist-ssr
 *.local
 .env
+.kilo/*
 dev-dist/sw.js
 dev-dist/sw.js.map
 db.json

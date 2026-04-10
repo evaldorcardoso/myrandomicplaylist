@@ -782,12 +782,13 @@ const executeMoveTrack = async() => {
                 'range_start': sourcePos,
                 'insert_before': targetPos
             })
+            
             console.log({
-                'range_start': targetPos + 1,
+                'range_start': targetPos,
                 'insert_before': sourcePos
             })
             await updateTracksOfPlaylist(playlistId, {
-                'range_start': targetPos + 1,
+                'range_start': targetPos,
                 'insert_before': sourcePos
             })
         } else {
@@ -800,11 +801,11 @@ const executeMoveTrack = async() => {
                 'insert_before': targetPos
             })
             console.log({
-                'range_start': targetPos + 1,
-                'insert_before': sourcePos
+                'range_start': targetPos,
+                'insert_before': sourcePos + 1
             })
             await updateTracksOfPlaylist(playlistId, {
-                'range_start': targetPos + 1,
+                'range_start': targetPos,
                 'insert_before': sourcePos + 1
             })
         }
