@@ -86,6 +86,22 @@
     state.track.tracked = userStore.getTrack(state.item?.id)
   }
 
+  const copyTrackName = async () => {
+    if (state.item?.name) {
+      await navigator.clipboard.writeText(state.item.name)
+      state.message = 'Track name copied!'
+      setTimeout(() => { state.message = '' }, 2000)
+    }
+  }
+
+  const copyTrackArtist = async () => {
+    if (state.item?.artists?.[0]?.name) {
+      await navigator.clipboard.writeText(state.item.artists[0].name)
+      state.message = 'Artist name copied!'
+      setTimeout(() => { state.message = '' }, 2000)
+    }
+  }
+
   const trackInfo = async (track, addToAnotherPlaylist = false) => {
     const topGenres = await getGenres(track.artists)
     track['playlist'] = {
@@ -264,6 +280,14 @@
         <h4>Popularity: {{ state.item?.popularity }}</h4>
         <h4>Released: {{ state.track?.release }}</h4>
         <button class="btn-generate" @click="trackInfo(state.item, true)">Add to playlist</button>
+        <div class="copy-buttons">
+          <button class="btn-copy" @click="copyTrackName()" title="Copy track name">
+            <font-awesome-icon icon="copy" /> Copy Track
+          </button>
+          <button class="btn-copy" @click="copyTrackArtist()" title="Copy artist name">
+            <font-awesome-icon icon="copy" /> Copy Artist
+          </button>
+        </div>
       </div>
     </div>         
     <div class="devices" v-if="state.devices.length > 0">
@@ -488,5 +512,22 @@
   display: flex;
   border-radius: 20px;
   border: none;
+}
+.copy-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.btn-copy {
+  background-color: #1c1c1c;
+  color: #999;
+  border: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 4px;
 }
 </style>

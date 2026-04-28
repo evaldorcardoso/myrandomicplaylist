@@ -155,3 +155,25 @@ notify({ type: 'success', title: 'Message' })
 - Production build uses `/myrandomicplaylist/` base path
 - Development uses `/` as base path
 - No linting or tests configured - ensure code quality manually before commits
+
+## Font Awesome Icons
+
+To use an icon in a component, you need to add it in two places in `main.js`:
+
+1. Import the icon from `@fortawesome/free-solid-svg-icons` or `@fortawesome/free-regular-svg-icons`:
+```javascript
+import { 
+    faSomeIcon,
+    faAnotherIcon
+} from '@fortawesome/free-solid-svg-icons'
+```
+
+2. Add to the library:
+```javascript
+library.add(
+    faSomeIcon,
+    faAnotherIcon
+)
+```
+
+Then use in template with `<font-awesome-icon icon="some-icon" />`. Use `solid` prefix for regular icons: `<font-awesome-icon :icon="['fas', 'some-icon']" />`

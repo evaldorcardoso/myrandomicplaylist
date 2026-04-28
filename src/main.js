@@ -46,7 +46,8 @@ import {
     faUnlockAlt,
     faTimes,
     faInfo,
-    faPlus
+    faPlus,
+    faCopy
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -98,7 +99,8 @@ library.add(
     faUnlockAlt,
     faTimes,
     faInfo,
-    faPlus
+    faPlus,
+    faCopy
 )
 
 const updateSW = registerSW({
