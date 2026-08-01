@@ -113,6 +113,10 @@ import { useUserStore } from '../stores/user';
             <font-awesome-icon icon="home"/>
             <p>Home</p>
           </div>
+          <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen;router.push('/library')" v-if="state.menuOpen">
+            <font-awesome-icon icon="list"/>
+            <p>Library</p>
+          </div>
           <router-link to="/player">
             <div class="navbar-right-inner-item" @click="state.menuOpen = !state.menuOpen" v-if="state.menuOpen">
               <font-awesome-icon icon="play-circle"/>

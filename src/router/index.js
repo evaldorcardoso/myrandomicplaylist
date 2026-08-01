@@ -1,4 +1,5 @@
 import { createWebHistory, createRouter } from "vue-router"
+import Dashboard from "@/views/Dashboard.vue"
 import Inicio from "@/views/Inicio.vue"
 import Player from "@/views/Player.vue"
 import Callback from "@/views/Callback.vue"
@@ -27,6 +28,11 @@ const routes = [
       {
         path: "",
         name: "Home",
+        component: Dashboard,
+      },
+      {
+        path: "/library",
+        name: "Library",
         component: Library,
       },
       {

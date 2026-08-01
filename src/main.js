@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import './assets/main.css'
 import axiosPlugin from './axios-plugin';
 import { library } from '@fortawesome/fontawesome-svg-core'
 import Vue3TouchEvents from 'vue3-touch-events';
@@ -47,7 +48,8 @@ import {
     faTimes,
     faInfo,
     faPlus,
-    faCopy
+    faCopy,
+    faList
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -100,7 +102,8 @@ library.add(
     faTimes,
     faInfo,
     faPlus,
-    faCopy
+    faCopy,
+    faList
 )
 
 const updateSW = registerSW({
