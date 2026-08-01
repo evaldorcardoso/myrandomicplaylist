@@ -193,19 +193,21 @@
         requester_id: requester.id,
         status: paid.value ? 'paid' : 'pending'
       }
-      const { data, error } = await createTrackRequest(payload)
-      if (error) throw error
+      const trackRequestPromise = createTrackRequest(payload)
+      const pricePositionPromise = !pricePositionExists.value
+        ? createPricePosition({
+            playlist_id: selectedPlaylist.value || props.playlistId,
+            position: position.value,
+            value: parseValue()
+          })
+        : Promise.resolve(null)
 
-      if (!pricePositionExists.value) {
-        await createPricePosition({
-          playlist_id: selectedPlaylist.value || props.playlistId,
-          position: position.value,
-          value: parseValue()
-        })
-      }
+      const [trackResult, priceResult] = await Promise.all([trackRequestPromise, pricePositionPromise])
+      if (trackResult.error) throw trackResult.error
+      if (priceResult?.error) console.error(priceResult.error.message)
 
       submitState.value = 'success'
-      emit('confirm', { track: props.track, request: data?.[0] ?? payload })
+      emit('confirm', { track: props.track, request: trackResult.data?.[0] ?? payload })
     } catch (error) {
       console.error(error)
       submitState.value = 'idle'

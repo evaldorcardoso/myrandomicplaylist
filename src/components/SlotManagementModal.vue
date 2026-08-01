@@ -145,6 +145,8 @@
   const saveRequester = async () => {
     if (isSubmitting.value || !props.request) return
     if (!requesterName.value.trim()) return
+    const nameChanged = requesterName.value.trim() !== (props.request.requester_name ?? '').trim()
+    if (!nameChanged) return
     try {
       const requester = await resolveRequester()
       if (requester.id === props.request.requester_id) return
@@ -235,7 +237,10 @@
     isSubmitting.value = true
     submitState.value = 'idle'
     try {
-      const requester = await resolveRequester()
+      let requester = props.request
+      if (requesterName.value.trim() !== (props.request.requester_name ?? '').trim()) {
+        requester = await resolveRequester()
+      }
       const parsedValue = parseValue()
       const payload = {
         requester_id: requester?.id ?? props.request.requester_id

@@ -1,5 +1,5 @@
 import { supabase } from '@/support/supabaseClient'
-import { setCurator, getCachedCurator } from '@/support/requesterCuratorCache'
+import { setRequester, getCachedRequester } from '@/support/requesterCuratorCache'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
 const REQUESTERS_TABLE = 'requesters'
@@ -23,7 +23,7 @@ export function TrackRequestService() {
         }))
         for (const request of requests) {
             if (request.requester_name) {
-                setCurator(request.requester_name, request.curator)
+                setRequester(request.requester_name, request.requester_id, request.curator)
             }
         }
         return requests
@@ -82,13 +82,16 @@ export function TrackRequestService() {
             return []
         }
         for (const requester of data ?? []) {
-            setCurator(requester.name, requester.curator)
+            setRequester(requester.name, requester.id, requester.curator)
         }
         return data ?? []
     }
 
     const getRequesterByName = async (name) => {
-        const cached = getCachedCurator(name)
+        const cached = getCachedRequester(name)
+        if (cached.cached && cached.id) {
+            return { data: { id: cached.id, name: String(name ?? '').trim(), curator: cached.curator }, error: null }
+        }
         if (cached.cached) {
             return { data: { name: String(name ?? '').trim(), curator: cached.curator }, error: null }
         }
@@ -104,7 +107,7 @@ export function TrackRequestService() {
             return { data: null, error }
         }
         if (data) {
-            setCurator(data.name, data.curator)
+            setRequester(data.name, data.id, data.curator)
         }
         return { data, error: null }
     }
@@ -164,10 +167,18 @@ export function TrackRequestService() {
     }
 
     const getOrCreateRequester = async ({ name, curator }) => {
+        const trimmedName = String(name ?? '').trim()
+        if (!trimmedName) return { data: null, error: null }
+
+        const cached = getCachedRequester(trimmedName)
+        if (cached.cached && cached.id) {
+            return { data: { id: cached.id, name: trimmedName, curator: cached.curator }, error: null }
+        }
+
         const { data: found, error: foundError } = await supabase
             .from(REQUESTERS_TABLE)
             .select('*')
-            .ilike('name', name.trim())
+            .ilike('name', trimmedName)
             .limit(1)
 
         if (foundError) {
@@ -175,20 +186,20 @@ export function TrackRequestService() {
             return { data: null, error: foundError }
         }
         if (found?.length) {
-            setCurator(found[0].name, found[0].curator)
+            setRequester(found[0].name, found[0].id, found[0].curator)
             return { data: found[0], error: null }
         }
 
         const { data: created, error } = await supabase
             .from(REQUESTERS_TABLE)
-            .insert({ name: name.trim(), curator: curator?.trim() || null })
+            .insert({ name: trimmedName, curator: curator?.trim() || null })
             .select()
 
         if (error) {
             console.error(error.message)
             return { data: null, error }
         }
-        setCurator(created[0].name, created[0].curator)
+        setRequester(created[0].name, created[0].id, created[0].curator)
         return { data: created[0], error: null }
     }
 
