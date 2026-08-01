@@ -561,11 +561,11 @@
       </div>
 
       <div class="flex-1 flex flex-col gap-sm pb-2">
-        <div v-if="state.playlist?.tracked" class="flex items-center gap-2 text-primary uppercase tracking-widest text-label-sm">
-          <font-awesome-icon icon="check-circle" class="text-[16px]" />
-          Playlist Verificada
-        </div>
         <h1 class="text-headline-lg md:text-display-lg text-on-surface">{{ state.playlist?.name }}</h1>
+        <div v-if="state.playlist?.owner?.display_name" class="flex items-center gap-2 text-primary lowercase tracking-widest text-label-sm">
+          <font-awesome-icon icon="check-circle" class="text-[16px]" />
+          by @{{ state.playlist.owner.display_name }}
+        </div>
         <p v-if="!editPlaylistDescription" class="text-on-surface-variant max-w-2xl text-body-md cursor-pointer" @click="openEditPlaylistDescription()">
           {{ state.playlist?.description || 'Edit description...' }}
         </p>
