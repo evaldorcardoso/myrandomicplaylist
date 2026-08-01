@@ -708,7 +708,13 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest" :class="statusPill(track._slot).cls">
+                <button
+                  v-if="!track._slot || track._slot.status === 'free'"
+                  class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/80 text-black"
+                >
+                  Sell slot
+                </button>
+                <span v-else class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest" :class="statusPill(track._slot).cls">
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
