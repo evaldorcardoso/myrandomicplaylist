@@ -28,7 +28,7 @@
     }
   })
 
-  const { createTrackRequest, getRequesters, getOrCreateRequester } = TrackRequestService()
+  const { createTrackRequest, getRequesters, getOrCreateRequester, getPricePosition } = TrackRequestService()
 
   const selectedPlaylist = ref(props.playlistId)
   const permanenceDays = ref(30)
@@ -89,10 +89,14 @@
     paid.value = false
   }
 
-  watch(() => props.open, (opened) => {
+  watch(() => props.open, async (opened) => {
     if (opened) {
       reset()
       requesterName.value = trackData.value?.artists?.[0]?.name ?? ''
+      const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
+      if (pricePosition?.value != null) {
+        value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
+      }
     }
   })
 

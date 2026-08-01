@@ -2,6 +2,7 @@ import { supabase } from '@/support/supabaseClient'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
 const REQUESTERS_TABLE = 'requesters'
+const PRICE_POSITIONS_TABLE = 'price_positions'
 
 export function TrackRequestService() {
     const getTrackRequests = async (playlistId) => {
@@ -76,6 +77,21 @@ export function TrackRequestService() {
         return data ?? []
     }
 
+    const getPricePosition = async (playlistId, position) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .select('value')
+            .eq('playlist_id', playlistId)
+            .eq('position', position)
+            .maybeSingle()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
     const getOrCreateRequester = async ({ name, curator }) => {
         const { data: found, error: foundError } = await supabase
             .from(REQUESTERS_TABLE)
@@ -109,6 +125,7 @@ export function TrackRequestService() {
         updateTrackRequest,
         deleteTrackRequest,
         getRequesters,
-        getOrCreateRequester
+        getOrCreateRequester,
+        getPricePosition
     }
 }
