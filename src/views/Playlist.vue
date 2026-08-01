@@ -154,6 +154,14 @@
     return new Intl.NumberFormat('pt-BR').format(value)
   }
 
+  const popularityDiff = (track) => (track.track?.popularity ?? 0) - (track.track?.popularity_old ?? track.track?.popularity ?? 0)
+
+  const popularityIcon = (popularity) => {
+    if (popularity <= 40) return 'text-[#ff1717]'
+    if (popularity > 40 && popularity <= 70) return 'text-[#fff01e]'
+    return 'text-[#75ff18]'
+  }
+
   const buildSlots = () => {
     const requestsByTrackId = new Map(trackRequests.value.map(request => [request.track_id, request]))
     state.tracks.forEach((track, index) => {
@@ -704,6 +712,7 @@
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
             </tr>
           </thead>
@@ -769,6 +778,18 @@
                 <span v-else class="text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</span>
               </td>
               <td class="px-6 py-4">
+                <div class="flex flex-col items-center gap-0.5">
+                  <div class="flex items-center gap-1 text-label-md text-on-surface">
+                    <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
+                    {{ track.track?.popularity }}%
+                  </div>
+                  <div v-if="popularityDiff(track) !== 0" class="flex items-center gap-1" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
+                    <font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />
+                    {{ popularityDiff(track) }}
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2 bg-surface-container-low/50 p-1 rounded-lg" @click.stop>
                   <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
                     <font-awesome-icon icon="sort" />
@@ -783,7 +804,7 @@
               </td>
             </tr>
             <tr v-if="isLoading && state.tracks.length === 0">
-              <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+              <td colspan="8" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 <div class="flex items-center justify-center gap-3">
                   <font-awesome-icon icon="spinner" spin class="text-primary" />
                   <span>Carregando músicas...</span>
@@ -791,7 +812,7 @@
               </td>
             </tr>
             <tr v-else-if="pagedTracks.length === 0">
-              <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+              <td colspan="8" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 Nenhuma música nesta categoria.
               </td>
             </tr>
