@@ -40,6 +40,7 @@
   const searchTimer = ref(null)
   const isSubmitting = ref(false)
   const submitState = ref('idle')
+  const paid = ref(false)
 
   const trackData = computed(() => props.track?.track ?? null)
 
@@ -85,6 +86,7 @@
     value.value = ''
     isSubmitting.value = false
     submitState.value = 'idle'
+    paid.value = false
   }
 
   watch(() => props.open, (opened) => {
@@ -150,7 +152,7 @@
         due_date: dueDateInput.value,
         value: parseValue(),
         requester_id: requester.id,
-        status: 'pending'
+        status: paid.value ? 'paid' : 'pending'
       }
       const { data, error } = await createTrackRequest(payload)
       if (error) throw error
@@ -320,6 +322,17 @@
             <p class="text-body-sm text-on-surface-variant leading-relaxed">
               A conversão desta faixa para <strong class="text-on-surface">Posição Paga</strong> atualizará seu status no painel de gerenciamento e iniciará o cronômetro de expiração conforme o período selecionado.
             </p>
+            <label class="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                v-model="paid"
+                type="checkbox"
+                class="peer sr-only"
+              />
+              <span class="w-5 h-5 rounded-md border-2 border-primary/40 bg-surface-container-lowest flex items-center justify-center transition-colors peer-checked:bg-primary peer-checked:border-primary">
+                <font-awesome-icon v-if="paid" icon="check" class="text-on-primary text-[12px]" />
+              </span>
+              <span class="text-body-sm text-on-surface">Já está pago</span>
+            </label>
           </div>
 
           <!-- Action Button -->
