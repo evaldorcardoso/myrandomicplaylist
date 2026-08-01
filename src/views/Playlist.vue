@@ -95,7 +95,13 @@
   const menuOpened = computed(() => isMenuOpened.value)
   const menuData = computed(() => menuDataReactive.value)
 
-  const details = computed(() => getPlaylistDetails(state.playlist ?? {}, state.tracks.length))
+  const details = computed(() => {
+    const trackIds = new Set(state.tracks.map(t => t.track?.id))
+    const requests = trackRequests.value.filter(r => r.track_id && trackIds.has(r.track_id))
+    const filledPositions = requests.length
+    const monthlyRevenue = requests.reduce((sum, r) => sum + (r.value ?? 0), 0)
+    return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue)
+  })
   const audience = computed(() => getAudience())
 
   const filteredTracks = computed(() => {

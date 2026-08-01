@@ -38,15 +38,14 @@ const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   return fallbackLength
 }
 
-const getPlaylistDetails = (playlist = null, tracksLength = 0) => {
+const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCount = 0, monthlyRevenue = 0) => {
   playlist = playlist ?? {}
   const totalPositions = getTrackCount(playlist, tracksLength)
-  const filledPositions = Math.min(totalPositions, Math.round(totalPositions * 0.8))
 
   return {
     totalPositions,
-    filledPositions,
-    monthlyRevenue: 'R$ 1.840,00',
+    filledPositions: Math.min(filledPositionsCount, totalPositions),
+    monthlyRevenue: formatCurrency(monthlyRevenue),
     growth: '+12.4%'
   }
 }
