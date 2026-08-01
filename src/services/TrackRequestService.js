@@ -106,6 +106,19 @@ export function TrackRequestService() {
         return { data, error: null }
     }
 
+    const createPricePosition = async ({ playlist_id, position, value }) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .insert({ playlist_id, position, value })
+            .select()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
     const getOrCreateRequester = async ({ name, curator }) => {
         const { data: found, error: foundError } = await supabase
             .from(REQUESTERS_TABLE)
@@ -141,6 +154,7 @@ export function TrackRequestService() {
         getRequesters,
         getRequesterByName,
         getOrCreateRequester,
-        getPricePosition
+        getPricePosition,
+        createPricePosition
     }
 }

@@ -28,7 +28,7 @@
     }
   })
 
-  const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition } = TrackRequestService()
+  const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition, createPricePosition } = TrackRequestService()
 
   const selectedPlaylist = ref(props.playlistId)
   const permanenceDays = ref(30)
@@ -41,6 +41,7 @@
   const isSubmitting = ref(false)
   const submitState = ref('idle')
   const paid = ref(false)
+  const pricePositionExists = ref(false)
 
   const trackData = computed(() => props.track?.track ?? null)
 
@@ -87,6 +88,7 @@
     isSubmitting.value = false
     submitState.value = 'idle'
     paid.value = false
+    pricePositionExists.value = false
   }
 
   watch(() => props.open, async (opened) => {
@@ -98,6 +100,7 @@
         curator.value = existingRequester.curator
       }
       const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
+      pricePositionExists.value = pricePosition?.value != null
       if (pricePosition?.value != null) {
         value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
       }
@@ -165,6 +168,14 @@
       }
       const { data, error } = await createTrackRequest(payload)
       if (error) throw error
+
+      if (!pricePositionExists.value) {
+        await createPricePosition({
+          playlist_id: selectedPlaylist.value || props.playlistId,
+          position: position.value,
+          value: parseValue()
+        })
+      }
 
       submitState.value = 'success'
       emit('confirm', { track: props.track, request: data?.[0] ?? payload })
