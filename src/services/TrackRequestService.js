@@ -91,6 +91,32 @@ export function TrackRequestService() {
         return { data, error: null }
     }
 
+    const getCurators = async () => {
+        const { data, error } = await supabase
+            .from(REQUESTERS_TABLE)
+            .select('curator')
+            .not('curator', 'is', null)
+
+        if (error) {
+            console.error(error.message)
+            return { data: [], error }
+        }
+
+        const counts = {}
+        for (const row of data) {
+            const name = (row.curator ?? '').trim()
+            if (!name) continue
+            counts[name] = (counts[name] ?? 0) + 1
+        }
+
+        const curators = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name]) => name)
+
+        return { data: curators, error: null }
+    }
+
     const getPricePosition = async (playlistId, position) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
@@ -154,6 +180,7 @@ export function TrackRequestService() {
         getRequesters,
         getRequesterByName,
         getOrCreateRequester,
+        getCurators,
         getPricePosition,
         createPricePosition
     }

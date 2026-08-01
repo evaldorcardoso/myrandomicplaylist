@@ -2,6 +2,7 @@
   import { ref, computed, watch, onBeforeUnmount } from 'vue'
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
+  import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
 
   const emit = defineEmits(['close', 'updated', 'remove-track'])
 
@@ -33,6 +34,7 @@
   })
 
   const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester } = TrackRequestService()
+  const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
 
   const requesterName = ref('')
   const curator = ref('')
@@ -42,6 +44,7 @@
   const isSubmitting = ref(false)
   const submitState = ref('idle')
   const removeConfirmOpen = ref(false)
+  const isLoading = ref(false)
 
   const isPending = computed(() => props.request?.status === 'pending')
 
@@ -97,6 +100,15 @@
     return requester
   }
 
+  const loadCuratorSuggestions = async () => {
+    isLoading.value = true
+    try {
+      await loadSuggestions()
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const init = () => {
     requesterName.value = props.request?.requester_name ?? ''
     curator.value = props.request?.curator ?? ''
@@ -108,6 +120,9 @@
     isSubmitting.value = false
     submitState.value = 'idle'
     removeConfirmOpen.value = false
+    if (!curator.value) {
+      loadCuratorSuggestions()
+    }
   }
 
   watch(() => props.open, (opened) => {
@@ -137,6 +152,11 @@
         type: 'error'
       })
     }
+  }
+
+  const selectCuratorSuggestion = (name) => {
+    curator.value = name
+    trackCurator(name)
   }
 
   const saveValue = async () => {
@@ -364,13 +384,26 @@
               </div>
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Curator</label>
-                <input
-                  v-model="curator"
-                  type="text"
-                  placeholder="Nome do curator"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
-                  @blur="saveRequester"
-                />
+                <div v-if="isLoading" class="animate-pulse h-10 w-full rounded-xl bg-surface-container-high"></div>
+                <template v-else>
+                  <input
+                    v-model="curator"
+                    type="text"
+                    placeholder="Nome do curator"
+                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                    @blur="saveRequester"
+                  />
+                  <div v-if="!curator && suggestions.length" class="flex flex-wrap gap-2">
+                    <span
+                      v-for="name in suggestions"
+                      :key="name"
+                      class="px-3 py-1 bg-primary text-on-primary border border-primary/40 rounded-full text-label-sm cursor-pointer hover:bg-primary-fixed transition-colors"
+                      @click="selectCuratorSuggestion(name)"
+                    >
+                      {{ name }}
+                    </span>
+                  </div>
+                </template>
               </div>
             </div>
 

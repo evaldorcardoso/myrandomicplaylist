@@ -2,6 +2,7 @@
   import { ref, computed, watch, onBeforeUnmount } from 'vue'
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
+  import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
 
   const emit = defineEmits(['close', 'confirm'])
 
@@ -29,6 +30,7 @@
   })
 
   const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition, createPricePosition } = TrackRequestService()
+  const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
 
   const selectedPlaylist = ref(props.playlistId)
   const permanenceDays = ref(30)
@@ -42,6 +44,7 @@
   const submitState = ref('idle')
   const paid = ref(false)
   const pricePositionExists = ref(false)
+  const isLoading = ref(false)
 
   const trackData = computed(() => props.track?.track ?? null)
 
@@ -94,15 +97,23 @@
   watch(() => props.open, async (opened) => {
     if (opened) {
       reset()
-      requesterName.value = trackData.value?.artists?.[0]?.name ?? ''
-      const { data: existingRequester } = await getRequesterByName(requesterName.value)
-      if (existingRequester?.curator) {
-        curator.value = existingRequester.curator
-      }
-      const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
-      pricePositionExists.value = pricePosition?.value != null
-      if (pricePosition?.value != null) {
-        value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
+      isLoading.value = true
+      try {
+        requesterName.value = trackData.value?.artists?.[0]?.name ?? ''
+        const { data: existingRequester } = await getRequesterByName(requesterName.value)
+        if (existingRequester?.curator) {
+          curator.value = existingRequester.curator
+        }
+        if (!curator.value) {
+          await loadSuggestions()
+        }
+        const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
+        pricePositionExists.value = pricePosition?.value != null
+        if (pricePosition?.value != null) {
+          value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
+        }
+      } finally {
+        isLoading.value = false
       }
     }
   })
@@ -139,6 +150,11 @@
     curator.value = requester.curator ?? ''
     requesters.value = []
     dropdownOpen.value = false
+  }
+
+  const selectCuratorSuggestion = (name) => {
+    curator.value = name
+    trackCurator(name)
   }
 
   const close = () => {
@@ -288,12 +304,25 @@
               </div>
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Curator</label>
-                <input
-                  v-model="curator"
-                  type="text"
-                  placeholder="Nome do curator"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
-                />
+                <div v-if="isLoading" class="animate-pulse h-10 w-full rounded-xl bg-surface-container-high"></div>
+                <template v-else>
+                  <input
+                    v-model="curator"
+                    type="text"
+                    placeholder="Nome do curator"
+                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                  />
+                  <div v-if="!curator && suggestions.length" class="flex flex-wrap gap-2">
+                    <span
+                      v-for="name in suggestions"
+                      :key="name"
+                      class="px-3 py-1 bg-primary text-on-primary border border-primary/40 rounded-full text-label-sm cursor-pointer hover:bg-primary-fixed transition-colors"
+                      @click="selectCuratorSuggestion(name)"
+                    >
+                      {{ name }}
+                    </span>
+                  </div>
+                </template>
               </div>
             </div>
 
@@ -315,7 +344,9 @@
               </div>
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Valor (R$)</label>
+                <div v-if="isLoading" class="animate-pulse h-10 w-full rounded-xl bg-surface-container-high"></div>
                 <input
+                  v-else
                   v-model="value"
                   type="text"
                   inputmode="decimal"
