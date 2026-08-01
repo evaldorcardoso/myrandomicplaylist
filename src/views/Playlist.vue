@@ -129,14 +129,6 @@
     return `${pad(h)}:${pad(m)}:${pad(s)}`
   }
 
-  const formatDays = (seconds) => {
-    if (seconds == null) return '--:--:--'
-    const d = Math.floor(seconds / 86400)
-    const h = Math.floor((seconds % 86400) / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    return `${pad(d)}:${pad(h)}:${pad(m)}`
-  }
-
   const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '-'
 
   const formatNumber = (value) => {
@@ -185,7 +177,14 @@
       return { value: 'Expirado', label: 'Vencido', urgent: true }
     }
     if (slot.status === 'pending') {
-      return { value: formatDays(slot.secondsLeft), label: 'Dias', urgent: slot.urgent }
+      return { value: Math.floor(slot.secondsLeft / 86400), label: 'Dias', urgent: slot.urgent }
+    }
+    if (slot.secondsLeft > 86400) {
+      return {
+        value: Math.floor(slot.secondsLeft / 86400),
+        label: slot.urgent ? 'Expirando' : 'Dias Restantes',
+        urgent: slot.urgent
+      }
     }
     return {
       value: formatCountdown(slot.secondsLeft),
