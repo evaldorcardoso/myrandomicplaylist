@@ -427,7 +427,7 @@
             </div>
             <p class="text-body-sm text-on-surface-variant leading-relaxed">
               <template v-if="isPending">
-                Esta posição está aguardando pagamento. O link de pagamento expira em <strong class="text-tertiary-container">24 horas</strong>. Realize o pagamento para confirmar sua permanência.
+                Esta posição está aguardando pagamento. Realize o pagamento para confirmar sua permanência.
               </template>
               <template v-else>
                 Esta posição está ativa e expira em <strong class="text-primary">{{ daysLeft != null ? `${daysLeft} dias` : 'sem prazo' }}</strong>. Renove agora para garantir a permanência na grade.

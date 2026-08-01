@@ -92,6 +92,7 @@
   watch(() => props.open, (opened) => {
     if (opened) {
       reset()
+      requesterName.value = trackData.value?.artists?.[0]?.name ?? ''
     }
   })
 
@@ -203,6 +204,7 @@
             <div class="flex items-center justify-center gap-3 mt-4">
               <span class="text-label-sm px-3 py-1 bg-primary/10 border border-primary/30 rounded-full text-primary font-bold">FREE</span>
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
+              <span class="text-label-sm px-3 py-1 bg-primary/10 border border-primary/30 rounded-full text-primary font-bold">#{{ position }}</span>
             </div>
           </div>
         </div>
