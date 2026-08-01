@@ -6,6 +6,7 @@
   import { useUserStore } from '@/stores/user'
   import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
+  import SellSlotModal from '@/components/SellSlotModal.vue'
   import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
@@ -89,6 +90,8 @@
   const trackRequests = ref([])
   const trackRequestsLoaded = ref(false)
   const isLoading = ref(true)
+  const sellSlotOpened = ref(false)
+  const sellSlotTrack = ref(null)
 
   const followersReady = computed(() => state.playlist?.followers != null)
   const growthReady = computed(() => state.dataLikes.length > 0)
@@ -243,6 +246,39 @@
       text: 'Venda de posições estará disponível em breve!',
       type: 'info'
     })
+  }
+
+  const openSellSlot = (track) => {
+    sellSlotTrack.value = track
+    sellSlotOpened.value = true
+  }
+
+  const closeSellSlot = () => {
+    sellSlotOpened.value = false
+    sellSlotTrack.value = null
+  }
+
+  const onConfirmSellSlot = async () => {
+    closeSellSlot()
+    trackRequestsLoaded.value = false
+    state.tracks.forEach(track => {
+      track._slot = null
+    })
+    try {
+      await loadTrackRequests()
+      notify({
+        title: 'Alright',
+        text: 'Slot vendido com sucesso!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao atualizar as posições!',
+        type: 'error'
+      })
+    }
   }
 
   const onOpenStatistics = () => {
@@ -565,6 +601,14 @@
     @open-statistics="onOpenStatistics"
     @open-artists="onOpenArtists"
   />
+  <SellSlotModal
+    :open="sellSlotOpened"
+    :track="sellSlotTrack"
+    :playlist-id="playlistId"
+    :playlist="state.playlist"
+    @close="closeSellSlot"
+    @confirm="onConfirmSellSlot"
+  />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
@@ -766,6 +810,7 @@
                 <button
                   v-else-if="track._slot.status === 'free'"
                   class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/80 text-black"
+                  @click.stop="openSellSlot(track)"
                 >
                   Sell slot
                 </button>
