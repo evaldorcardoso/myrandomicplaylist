@@ -77,6 +77,20 @@ export function TrackRequestService() {
         return data ?? []
     }
 
+    const getRequesterByName = async (name) => {
+        const { data, error } = await supabase
+            .from(REQUESTERS_TABLE)
+            .select('*')
+            .ilike('name', name.trim())
+            .maybeSingle()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
     const getPricePosition = async (playlistId, position) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
@@ -125,6 +139,7 @@ export function TrackRequestService() {
         updateTrackRequest,
         deleteTrackRequest,
         getRequesters,
+        getRequesterByName,
         getOrCreateRequester,
         getPricePosition
     }

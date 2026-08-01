@@ -28,7 +28,7 @@
     }
   })
 
-  const { createTrackRequest, getRequesters, getOrCreateRequester, getPricePosition } = TrackRequestService()
+  const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition } = TrackRequestService()
 
   const selectedPlaylist = ref(props.playlistId)
   const permanenceDays = ref(30)
@@ -93,6 +93,10 @@
     if (opened) {
       reset()
       requesterName.value = trackData.value?.artists?.[0]?.name ?? ''
+      const { data: existingRequester } = await getRequesterByName(requesterName.value)
+      if (existingRequester?.curator) {
+        curator.value = existingRequester.curator
+      }
       const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
       if (pricePosition?.value != null) {
         value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
