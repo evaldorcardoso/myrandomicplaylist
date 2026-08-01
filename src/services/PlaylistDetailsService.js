@@ -2,6 +2,7 @@ const SECONDS_PER_HOUR = 3600
 const SECONDS_PER_DAY = 86400
 const DUE_DATE_DEADLINE_HOUR = 9
 const TIMEZONE_OFFSET = '-03:00'
+const DAY_IN_MS = 24 * 60 * 60 * 1000
 
 const formatCurrency = (value) => {
   if (value == null) return '-'
@@ -38,7 +39,37 @@ const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   return fallbackLength
 }
 
-const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCount = 0, monthlyRevenue = 0) => {
+const formatPercent = (percent) => {
+  const sign = percent >= 0 ? '+' : ''
+  const abs = Math.abs(percent)
+  const decimals = abs >= 0.05 ? 1 : (abs >= 0.005 ? 2 : 3)
+  return `${sign}${percent.toFixed(decimals)}%`
+}
+
+const getGrowth = (likesHistory = []) => {
+  if (!Array.isArray(likesHistory) || likesHistory.length < 2) {
+    return { days: 0, value: '+0(+0.0%)' }
+  }
+  const now = Date.now()
+  const entries = likesHistory
+    .map(e => ({ likes: e.likes_count, time: new Date(e.created_at).getTime() }))
+    .filter(e => Number.isFinite(e.time))
+    .sort((a, b) => a.time - b.time)
+
+  const current = entries[entries.length - 1]
+  const baseline = entries[entries.length - 2]
+
+  const days = Math.max(1, Math.round((now - baseline.time) / DAY_IN_MS))
+  const delta = current.likes - baseline.likes
+  const sign = delta >= 0 ? '+' : ''
+  const percent = baseline.likes ? (delta / baseline.likes) * 100 : 0
+  return {
+    days,
+    value: `${sign}${Math.round(delta)}(${formatPercent(percent)})`
+  }
+}
+
+const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCount = 0, monthlyRevenue = 0, growth = { days: 0, value: '+0(+0.0%)' }) => {
   playlist = playlist ?? {}
   const totalPositions = getTrackCount(playlist, tracksLength)
 
@@ -46,7 +77,7 @@ const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCo
     totalPositions,
     filledPositions: Math.min(filledPositionsCount, totalPositions),
     monthlyRevenue: formatCurrency(monthlyRevenue),
-    growth: '+12.4%'
+    growth
   }
 }
 
@@ -59,6 +90,7 @@ export function PlaylistDetailsService() {
   return {
     getTrackSlot,
     getPlaylistDetails,
+    getGrowth,
     getAudience
   }
 }

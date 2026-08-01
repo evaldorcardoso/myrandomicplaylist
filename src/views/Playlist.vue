@@ -21,7 +21,7 @@
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
   const { addTrackToQueue } = useProfile()
   const { updatePlaylistTotalTracks, getGenres } = PlaylistService()
-  const { getPlaylistDetails, getAudience, getTrackSlot } = PlaylistDetailsService()
+  const { getPlaylistDetails, getAudience, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests } = TrackRequestService()
 
   const PAGE_SIZE = 20
@@ -100,8 +100,13 @@
     const requests = trackRequests.value.filter(r => r.track_id && trackIds.has(r.track_id))
     const filledPositions = requests.length
     const monthlyRevenue = requests.reduce((sum, r) => sum + (r.value ?? 0), 0)
-    return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue)
+    return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue, getGrowth(state.dataLikes))
   })
+  const growthHint = computed(() => {
+    const days = details.growth?.days
+    return `Crescimento dos seguidores comparado com a última estatística salva${days ? ` (${days} dias atrás)` : ''}.`
+  })
+
   const audience = computed(() => getAudience())
 
   const filteredTracks = computed(() => {
@@ -576,19 +581,35 @@
           rows="3"
         />
         <div class="flex flex-wrap items-center gap-xl mt-4">
-          <div class="flex flex-col">
+          <div v-if="isLoading" class="flex flex-col gap-1">
+            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+          </div>
+          <div v-else class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
             <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
           </div>
-          <div class="flex flex-col">
-            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Crescimento (30d)</span>
-            <span class="text-headline-md text-primary">{{ details.growth }}</span>
+          <div v-if="isLoading" class="flex flex-col gap-1">
+            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
-          <div class="flex flex-col">
+          <div v-else class="flex flex-col">
+            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
+            <span class="text-headline-md text-primary">{{ details.growth.value }}</span>
+          </div>
+          <div v-if="isLoading" class="flex flex-col gap-1">
+            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+          </div>
+          <div v-else class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
             <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
           </div>
-          <div class="flex flex-col">
+          <div v-if="isLoading" class="flex flex-col gap-1">
+            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+          </div>
+          <div v-else class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Faturamento Mensal</span>
             <span class="text-headline-md text-on-surface">{{ details.monthlyRevenue }}</span>
           </div>
