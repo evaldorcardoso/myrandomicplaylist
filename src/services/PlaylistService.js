@@ -111,6 +111,7 @@ export function PlaylistService() {
         const { data, error } = await supabase
             .from('playlists')
             .select('*')
+            .order('order', { ascending: true, nullsFirst: false })
             .order('name', { ascending: true })
         
         if (error) {
