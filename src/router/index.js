@@ -7,6 +7,7 @@ import Login from "@/views/Login.vue"
 import Library from "@/views/Library.vue"
 import Randomic from "@/views/Randomic.vue"
 import Playlist from "@/views/Playlist.vue"
+import Estatisticas from "@/views/Estatisticas.vue"
 import helpers from "@/support/helpers"
 
 const isLogged = (to, from, next) => {
@@ -44,6 +45,11 @@ const routes = [
         path: "/playlist/:id",
         name: "Playlist",
         component: Playlist,
+      },
+      {
+        path: "/playlist/:id/stats",
+        name: "PlaylistStats",
+        component: Estatisticas,
       },
       {
         path: "/randomic",

@@ -1,90 +1,28 @@
 <script setup>
-  import { onMounted, computed, reactive, ref, inject } from 'vue'
-  import { useRoute } from 'vue-router'
-  import VueBasicAlert from 'vue-basic-alert'
+  import { onMounted, onUnmounted, computed, reactive, ref, inject, watch } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
-  import { supabase } from '@/support/supabaseClient'
-  import { Line, Pie } from 'vue-chartjs'
-  import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
   import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
-  import { NOTIFICATIONS_TYPE } from '../support/helpers'
+  import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
-  import { PlaylistService } from '../services/PlaylistService'
+  import { PlaylistService } from '@/services/PlaylistService'
+  import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
+  import { PlaylistDetailsService } from '@/services/PlaylistDetailsService'
 
-  ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, ArcElement)
-
-  const route = useRoute();
+  const route = useRoute()
+  const router = useRouter()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
-  const progress = inject("progress");
-  const { getPlaylist, getTracks, updateTracksOfPlaylist, getArtists, updatePlaylist } = useGeneral()
-  const { executePlaylist, pausePlayback, addTrackToQueue } = useProfile()
-  const { 
-    hasChangedFromDatabase,
-    hasSilentChangesFromDatabase,
-    savePlaylist,
-    loadAllFromDatabase,
-    updatePlaylistTotalTracks,
-    getGenres
-  } = PlaylistService()
+  const progress = inject("progress")
+  const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
+  const { addTrackToQueue } = useProfile()
+  const { updatePlaylistTotalTracks, getGenres } = PlaylistService()
+  const { getPlaylistDetails, getAudience, getTrackSlot } = PlaylistDetailsService()
 
-  const playlistId = computed(() => route.params.id);
-
-  const MAX_STATISTICS_ITEMS_TO_RETAIN = 10
-  const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 6
-
-  const sortOptions = [
-    'default',
-    'top first',
-    'top last',
-    'added first',
-    'added last'
-  ]
-
-  const NOTIFICATION_ACTIONS = {
-    UPDATE_SORT: 'update_sort',
-    SAVE_LIKES_STATISTICS: 'save_likes_statistics',
-    SAVE_TRACKS_STATISTICS: 'save_tracks_statistics',
-    UPDATE_DESCRIPTION: 'update_description',
-    UPDATE_PLAYLIST: 'update_playlist',
-  }
-
-  const state = reactive({
-    isPlaying: false,
-    playlist: null,
-    playlistDescription: "",
-    tracks: [],
-    topArtists: [],
-    databaseTracks: [],
-    visible: false,
-    notificationAction: '',
-    sortPosition: 0,
-    isProcessing: false,
-    message: '',
-    statisticsOpen: false,
-    artistsOpen: false,
-    dataLikes: [],
-    chartData: {
-      labels: [],
-      datasets: []
-    },
-    chartDataPopularity: {
-      labels: [],
-      datasets: []
-    },
-    chartOptions: {
-      responsive: true
-    },
-  })
-  const isMenuOpened = ref(null)
-  const menuDataReactive = ref(null)
-  const isNotificationOpened = ref(null)
-  const notificationDataReactive = ref(null)
-  const editPlaylistDescription = ref(false)
-  const alert = ref(null)
+  const PAGE_SIZE = 20
 
   const props = defineProps({
     forceRefresh: {
@@ -107,399 +45,241 @@
 
   const emit = defineEmits(['updateStepData', 'updateMenuData'])
 
-  const currentUser = computed(() => {
-    return userStore.getUser
-  });
+  const sortOptions = [
+    'default',
+    'top first',
+    'top last',
+    'added first',
+    'added last'
+  ]
 
-  const menuOpened = computed(() => {
-    return isMenuOpened.value;
+  const callbacks = {}
+  const pd = usePlaylistData(callbacks)
+
+  const {
+    state,
+    playlistId,
+    notificationOpened,
+    notificationData,
+    notificationAction,
+    isNotificationOpened,
+    init,
+    onRefreshPage,
+    onNotificationAction,
+    showNotification,
+    executeUserPlaylist,
+    getPlaylistTracks,
+    checkTracksStatistics,
+    removeTrackStatistics,
+    genres
+  } = pd
+
+  const isMenuOpened = ref(null)
+  const menuDataReactive = ref(null)
+  const editPlaylistDescription = ref(false)
+  const activeTab = ref('Todas')
+  const currentPage = ref(1)
+  const sortPosition = ref(0)
+  const differentSort = ref(false)
+  const isProcessing = ref(false)
+  const lastUpdatedLabel = ref('')
+  const countdownTimer = ref(null)
+
+  const currentUser = computed(() => userStore.getUser)
+  const currentPlaying = computed(() => props.currentData)
+
+  const menuOpened = computed(() => isMenuOpened.value)
+  const menuData = computed(() => menuDataReactive.value)
+
+  const details = computed(() => getPlaylistDetails(state.playlist ?? {}, state.tracks.length))
+  const audience = computed(() => getAudience())
+
+  const filteredTracks = computed(() => {
+    if (activeTab.value === 'Expira em breve') {
+      return state.tracks.filter(t => t._slot?.status === 'Comprada' && t._slot?.urgent)
+    }
+    if (activeTab.value === 'Pendentes') {
+      return state.tracks.filter(t => t._slot?.status === 'Aguardando')
+    }
+    return state.tracks
   })
 
-  const menuData = computed(() => {
-    return menuDataReactive.value
-  })
-  
-  const notificationOpened = computed(() => {
-    return isNotificationOpened.value;
+  const totalPages = computed(() => Math.max(1, Math.ceil(filteredTracks.value.length / PAGE_SIZE)))
+
+  const pagedTracks = computed(() => {
+    const start = (currentPage.value - 1) * PAGE_SIZE
+    return filteredTracks.value.slice(start, start + PAGE_SIZE)
   })
 
-  const notificationData = computed(() => {
-    return notificationDataReactive.value
+  watch(activeTab, () => {
+    currentPage.value = 1
   })
 
-  const currentPlaying = computed(() => {
-    return props.currentData;
-  });
+  const pad = (n) => String(n).padStart(2, '0')
+
+  const formatCountdown = (seconds) => {
+    if (seconds == null) return '--:--:--'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${pad(h)}:${pad(m)}:${pad(s)}`
+  }
+
+  const formatDays = (seconds) => {
+    if (seconds == null) return '--:--:--'
+    const d = Math.floor(seconds / 86400)
+    const h = Math.floor((seconds % 86400) / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    return `${pad(d)}:${pad(h)}:${pad(m)}`
+  }
+
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '-'
+
+  const formatNumber = (value) => {
+    if (value == null) return '0'
+    return new Intl.NumberFormat('pt-BR').format(value)
+  }
+
+  const buildSlots = () => {
+    state.tracks.forEach((track, index) => {
+      track._slot = getTrackSlot(track, index)
+    })
+  }
+
+  const tickCountdown = () => {
+    state.tracks.forEach(track => {
+      if (track._slot?.secondsLeft != null && track._slot.secondsLeft > 0) {
+        track._slot.secondsLeft--
+      }
+    })
+  }
+
+  const statusPill = (slot) => {
+    if (!slot || slot.status === 'Orgânica') {
+      return { label: 'Orgânica', cls: 'bg-surface-container-highest text-on-surface-variant border border-outline-variant/20' }
+    }
+    if (slot.status === 'Aguardando') {
+      return { label: 'Aguardando', cls: 'bg-secondary-container/20 text-secondary border border-secondary/20' }
+    }
+    return { label: 'Comprada', cls: 'bg-primary/10 text-primary border border-primary/20' }
+  }
+
+  const expirationInfo = (slot) => {
+    if (!slot || slot.status === 'Orgânica') {
+      return { value: '--:--:--', label: 'Permanente', urgent: false }
+    }
+    if (slot.status === 'Aguardando') {
+      return { value: formatDays(slot.secondsLeft), label: 'Dias', urgent: false }
+    }
+    return {
+      value: formatCountdown(slot.secondsLeft),
+      label: slot.urgent ? 'Expirando' : 'Tempo Restante',
+      urgent: slot.urgent
+    }
+  }
 
   const openPlaylistApp = (playlistId) => {
     window.open(`https://open.spotify.com/playlist/${playlistId}`)
   }
 
-  const getPlaylistTracks = async(force = false) => {
-    state.tracks = await playlistStore.getTracks(playlistId.value)
-    if ((state.tracks.length === 0) || force) {
-      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value), force)
-      state.tracks = await playlistStore.getTracks(playlistId.value)
-    }    
+  const sharePlaylist = async () => {
+    const url = `https://open.spotify.com/playlist/${playlistId.value}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: state.playlist?.name, url })
+      } catch (error) {
+        console.log(error)
+      }
+      return
+    }
+    openPlaylistApp(playlistId.value)
   }
 
-  const checkTracksStatistics = async() => {
-    var newTracks = false
-    state.databaseTracks = userStore.getTracks()
-    for (const track of state.tracks) {
-      track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
-      track.track.tracked = userStore.getTrack(track.track.id)
-      if ((!track.track.tracked) && (state.playlist.tracked)) {
-        newTracks = true        
-      }
-    }
-    if (newTracks) {
-      if (isNotificationOpened.value) {
-          console.log('Notification is already opened, ignoring "checkTracksStatistics"')
-          return;
-        }        
-        showNotification(
-            NOTIFICATIONS_TYPE.info,
-            'Hey',
-            'There are new tracks in this playlist. Do you want to update the statistics ?',
-            true,
-            false
-        )
-        state.notificationAction = NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS
-    }
+  const onSellPosition = () => {
+    notify({
+      title: 'Em breve',
+      text: 'Venda de posições estará disponível em breve!',
+      type: 'info'
+    })
   }
 
-  const saveTracksStatistics = async() => {
-    progress.start()
-    try {
-      for (const track of state.tracks) {
-        await saveTrackStatistics(track)
-      };
-    } catch (error) {
-      console.log(error)
-    }
-    progress.finish()
+  const onOpenStatistics = () => {
+    router.push(`/playlist/${playlistId.value}/stats`)
   }
 
-  const saveTrackStatistics = async(track) => {
-    try {
-      var trackToSave = {
-        track_id: track.track.id,
-        popularity: track.track.popularity,
-        playlist_id: state.playlist.id
-      }
+  const onOpenArtists = () => {
+    router.push(`/playlist/${playlistId.value}/stats`)
+  }
 
-      const trackFound = state.databaseTracks.find(e => e.track_id === track.track.id)?.id
-
-      if (trackFound) {
-        trackToSave.id = trackFound
-        const { data: databaseTrack, error: trackUpdatedError } = await supabase
-          .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-          .upsert(trackToSave)
-          .select()
-
-        if (trackUpdatedError) {
-          console.log(trackUpdatedError.message)
-        }
-        return databaseTrack
-      }
-
-      const { data: databaseTrack, error: trackInsertedError } = await supabase
-          .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-          .insert(trackToSave)
-          .select()
-
-      if (trackInsertedError) {
-        console.log(trackInsertedError.message)
-      }
-
-      return databaseTrack
-    } catch (error) {
-      console.log(error)
+  const onUpdateMenuOpened = (value) => {
+    isMenuOpened.value = value
+    if (!value) {
+      checkTracksStatistics()
     }
   }
 
-  const removeTrackStatistics = async(trackToRemove) => {
-    const trackFound = state.databaseTracks.find(e => e.track_id === trackToRemove)?.id
+  const onRemoveTrack = async (value) => {
+    playlistStore.removeTrack(playlistId.value, value)
+    const trackFound = state.tracks.find(e => e.track.uri === value)?.track?.id
     if (trackFound) {
-      const { error } = await supabase
-        .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
-        .delete()
-        .eq('id', trackFound)
-        .eq('playlist_id', state.playlist.id)
-
-      if (error) throw error
+      removeTrackStatistics(trackFound)
     }
+    await playlistStore.updateTracksPosition(playlistId.value)
+    await getPlaylistTracks()
+    await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
+    sortUserPlaylist(false)
+    buildSlots()
   }
 
-  const saveStatistics = async() => {
+  const removeInlineTrack = async (track) => {
     try {
-      const data = {
-        likes_count: state.playlist?.followers.total,
-        playlist_id: state.playlist?.id
+      const formData = {
+        'tracks': [{ 'uri': track.track.uri }]
       }
-
-      let { error } = await supabase.from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE).insert(data)
-
-      if (error) throw error
-      
-      await getLikesStats()
-      mountLikeStatsChart(state.dataLikes)
-      mountPopularityStatsChart()
-    } catch (error) {
-      console.log(error)
-      console.log(error.message)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
-    }
-  }
-
-  const deleteStatistic = async(id) => {
-    console.log('delete statistic for id '+ id)
-    let { error, status } = await supabase
-        .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
-        .delete()
-        .eq('id', id)
-
-      if (error && status !== 406) throw error
-  }
-
-  const getLikesStats = async() => {
-    try {
-      let { data, error, status } = await supabase
-        .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
-        .select(`id, likes_count, created_at`)
-        .eq('playlist_id', state.playlist?.id)
-        .order('created_at')
-
-      if (error && status !== 406) throw error
-
-      if (data) {
-        if (data.length > MAX_STATISTICS_ITEMS_TO_RETAIN) {
-          let row = data.shift()
-          await deleteStatistic(row.id)
-        }        
+      const { status } = await removeTracksOfPlaylist(playlistId.value, formData)
+      if (status === 200) {
+        await onRemoveTrack(track.track.uri)
+        notify({
+          title: 'Alright',
+          text: 'Song removed!',
+          type: 'success'
+        })
+        return
       }
-      const parcialData = {
-        created_at: new Date(),
-        id: Date.now(),
-        likes_count: state.playlist.followers.total
-      }
-      data.push(parcialData)          
-      state.dataLikes = data          
-    } catch (error) {
-      console.log(error.message)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
-    }
-  }
-
-  const mountLikeStatsChart = async(data) => {
-    let labels = data.map(row => new Date(row.created_at).toLocaleDateString())
-    let likes = data.map(row => row.likes_count)
-    var pointStyles = []
-    for(let i=0; i<data.length; i++) {
-      pointStyles.push('circle')
-    }
-    pointStyles[pointStyles.length-1] = 'crossRot'
-    state.chartData = {
-      labels,      
-      datasets: [
-        {
-          label: 'Likes',
-          backgroundColor: '#1ed760',
-          borderColor: '#fff',
-          borderWidth: 1,
-          pointRadius: 7,
-          fill: false,
-          pointHoverRadius: 10,
-          pointStyle: pointStyles,
-          data: likes
-        }
-      ]
-    }
-  }
-
-  const mountPopularityStatsChart = async() => {
-    let labels = ['0-40%', '40-70%', '70-100%']
-    let level1 = state.tracks.filter(track => track.track.popularity <= 40);
-    let level2 = state.tracks.filter(track => track.track.popularity > 40 && track.track.popularity <= 70);
-    let level3 = state.tracks.filter(track => track.track.popularity > 70);
-    
-    let popularity = [level1.length, level2.length, level3.length]
-    state.chartDataPopularity = {
-      labels,      
-      datasets: [
-        {
-          label: 'Popularity',
-          backgroundColor: ['#ff1717', '#fff01e', '#75ff18'],
-          borderColor: '#fff',
-          borderWidth: 1,
-          data: popularity
-        }
-      ]
-    }
-  }
-
-  const calcDiffDays = (data1, data2) => {
-    let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
-    return Math.abs((data1.getTime() - data2.getTime()) / (oneDay));
-  }
-
-  const updatePlaylistDescription = async() => {
-    state.isProcessing = true
-    const formData = {
-      'description': state.playlistDescription
-    }
-    try {
-      await updatePlaylist(state.playlist.id, formData)
-      let message = 'Playlist description updated successfully!'
-      state.message = message
       notify({
-        title: 'Awesome',
-        text: message,
-        type: 'success'
+        title: 'Ops',
+        text: 'Status: ' + status + ' not expected!',
+        type: 'error'
       })
-      editPlaylistDescription.value = false
     } catch (error) {
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
-    }
-    await onRefreshPage()
-    state.isProcessing = false
-  }
-
-  const removePartFromText = (text) => {
-    const part = "Top artistas:";
-    const indice = text.indexOf(part);
-  
-    if (indice !== -1) {
-      text = text.substring(0, indice);
-     }
-  
-    return text.trimEnd();
-  }
-
-  const executeUserPlaylist = async() => {
-    try{
-      if (currentPlaying.value.is_playing) {
-        const { status } = await pausePlayback()
-        if (status != 204){
-          openPlaylistApp(state.playlist.id)
-          return
-        }
-
-        return
-      }
-      const formData = {
-        "context_uri": "spotify:playlist:" + state.playlist.id,
-          "offset": {
-            "position": 0
-          },
-          "position_ms": 0,
-      }
-      const { status } = await executePlaylist(formData)
-      if (status != 204){
-        openPlaylistApp(state.playlist.id)
-        return
-      }
-    }catch(error){
-      console.log(error.response)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response.data.error.message)
+      notify({
+        title: 'Ops',
+        text: 'An error occurred!',
+        type: 'error'
+      })
     }
   }
 
-  const executeTrack = async(track) => {
-    if (!track.opened) return
+  const openMenuPlaylist = async() => {
+    let menuData = {
+      type: 'playlist',
+      playlist: state.playlist
+    }
 
-    try{
-      const formData = {
-        "uris": [ track.track.uri ]
-      }
-      const { status } = await executePlaylist(formData)
-      if (status != 204){
-        showNotification(
-          NOTIFICATIONS_TYPE.danger,
-          'Ops',
-          error.response.data.error.message
-        )
-        return
-      }
-      state.isPlaying = true  
-    }catch(error){
-      console.log(error.response)
-      showNotification(
-        NOTIFICATIONS_TYPE.danger,
-        'Ops',
-        error.response.data.error.message
-      )
-    }
-  }
-
-  const sortUserPlaylist = (increment = true) => {
-    if(increment) {
-      state.sortPosition++
-      if (state.sortPosition >= sortOptions.length) {
-        state.sortPosition = 0
-      }
-    }
-    
-    if (sortOptions[state.sortPosition] === 'top first') {
-      state.tracks.sort((a, b) => b.track?.popularity - a.track?.popularity)
-      checkDifferentSort()
-      return
-    }
-    if (sortOptions[state.sortPosition] === 'top last') {
-      state.tracks.sort((a, b) => a.track?.popularity - b.track?.popularity)
-      checkDifferentSort()
-      return
-    }
-    if (sortOptions[state.sortPosition] === 'added first') {
-      state.tracks.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
-      checkDifferentSort()
-      return
-    }
-    if (sortOptions[state.sortPosition] === 'added last') {
-      state.tracks.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
-      checkDifferentSort()
-      return
-    }
-    if (sortOptions[state.sortPosition] === 'default') {
-      state.tracks.sort((a, b) => a.id - b.id)
-      checkDifferentSort()
-      return
-    }
-  }
-
-  const checkDifferentSort = () => {
-    if(state.playlist.owner.display_name != currentUser.value.display_name) {
-      return
-    }
-    for (let i=0; i<state.tracks.length; i++) {
-      if (i != state.tracks[i].id) {
-        showNotification(
-          NOTIFICATIONS_TYPE.info,
-          'Info',
-          'Apply this sort on Spotify ?',
-          true,
-          false
-        )
-        state.differentSort = true
-        state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_SORT
-        return;
-      }
-    }
-    state.differentSort = false
-    state.notificationAction = ''
-    isNotificationOpened.value = false
-  }
-
-  const openLink = (url) => {
-    window.open(url, '_blank')
+    let popularities = state.tracks.map(track => { return track.track?.popularity ?? 0 })
+    let popularity = popularities.reduce(function(a, b) {
+      return a + b
+    }, 0)
+    menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
+    menuData.playlist.popularity = state.tracks.length ? (popularity / state.tracks.length).toFixed(2) : 0
+    menuData.playlist.likesStats = state.dataLikes
+    menuDataReactive.value = menuData
+    isMenuOpened.value = true
   }
 
   const trackInfo = async (track, addToAnotherPlaylist = false) => {
-    // console.log(track)
     const topGenres = await getGenres(track.track.artists)
-    if (!track.opened) return
 
     track['playlist'] = {
       id: state.playlist.id,
@@ -533,89 +313,6 @@
     isMenuOpened.value = true
   }
 
-  const openMenuPlaylist = async() => {
-    let menuData = {
-      type: 'playlist',
-      playlist: state.playlist
-    }
-    
-    let popularities = state.tracks.map(track => { return track.track?.popularity ?? 0 })
-    let popularity = popularities.reduce(function(a, b) {
-      return a + b
-    })
-    menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
-    menuData.playlist.popularity = (popularity / state.tracks.length).toFixed(2)    
-    menuData.playlist.likesStats = state.dataLikes
-    menuDataReactive.value = menuData
-    isMenuOpened.value = true
-  }
-
-  const onRemoveTrack = async (value) => {
-    playlistStore.removeTrack(playlistId.value, value)
-    const trackFound = state.tracks.find(e => e.track.uri === value)?.track?.id
-    if (trackFound) {
-      removeTrackStatistics(trackFound)
-    }
-    await playlistStore.updateTracksPosition(playlistId.value)
-    await getPlaylistTracks()
-    await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
-    sortUserPlaylist(false)
-  }
-
-  const onUpdateMenuOpened = (value) => {
-    isMenuOpened.value = value
-    if (! value) {
-      checkTracksStatistics()
-    }
-  }
-
-  const onRefreshPage = async() => {
-    notify({ title: 'Please, wait', text: 'Loading playlist from Spotify...', type: 'info'})
-    const { data } = await getPlaylist(playlistId.value)
-    await playlistStore.load(data)
-    await getPlaylistTracks(true)
-    sortUserPlaylist(false)
-    await checkTracksStatistics()
-    await getTopArtists()
-    await getTopGenres()
-    state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    notify({ title: 'Alright', text: 'Playlist updated!', type: 'success' })
-  }
-
-  const onOpenStatistics = () => {
-    state.statisticsOpen = !state.statisticsOpen
-    if (! state.statisticsOpen) {
-      isNotificationOpened.value = false
-      state.notificationAction = ''
-      return
-    }
-    mountLikeStatsChart(state.dataLikes)
-    mountPopularityStatsChart()
-    checkToSaveNewStatistics()    
-  }
-
-  const onOpenArtists = () => {
-    state.artistsOpen = !state.artistsOpen
-  }
-
-  const checkToSaveNewStatistics = () => {
-    if (state.dataLikes.length > 1) {
-      let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -2].created_at));
-      console.log(diffDays)
-      if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
-        return
-      }
-    }
-    showNotification(
-      NOTIFICATIONS_TYPE.info,
-      'Hey',
-      'Save new likes statistics for this playlist today ?',
-      true,
-      false
-    )
-    state.notificationAction = NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS
-  }
-
   const addToQueue = async(track) => {
     try {
       const { status } = await addTrackToQueue(track)
@@ -630,8 +327,107 @@
     }
   }
 
-  const updateTracksOrder = async() => {    
-    state.isProcessing = true
+  const removePartFromText = (text) => {
+    const part = "Top artistas:";
+    const indice = text.indexOf(part);
+
+    if (indice !== -1) {
+      text = text.substring(0, indice);
+     }
+
+    return text.trimEnd();
+  }
+
+  const openEditPlaylistDescription = (includeTopArtists = false) => {
+    var description = state.playlist.description
+    if (includeTopArtists) {
+      description = removePartFromText(state.playlist.description)
+        + ' Top artistas: '
+        + state.playlist?.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
+    }
+    state.playlistDescription = description
+    editPlaylistDescription.value = !editPlaylistDescription.value
+    showNotification(
+      NOTIFICATIONS_TYPE.info,
+      'Info',
+      'Save this description on Spotify ?',
+      true,
+      false
+    )
+    notificationAction.value = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
+  }
+
+  const updatePlaylistDescription = async() => {
+    isProcessing.value = true
+    const formData = {
+      'description': state.playlistDescription
+    }
+    try {
+      await updatePlaylist(state.playlist.id, formData)
+      notify({
+        title: 'Awesome',
+        text: 'Playlist description updated successfully!',
+        type: 'success'
+      })
+      editPlaylistDescription.value = false
+    } catch (error) {
+      console.log(error)
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
+    }
+    await handleRefresh()
+    isProcessing.value = false
+  }
+
+  const checkDifferentSort = () => {
+    if (state.playlist?.owner?.display_name != currentUser.value?.display_name) {
+      return
+    }
+    for (let i = 0; i < state.tracks.length; i++) {
+      if (i != state.tracks[i].id) {
+        showNotification(
+          NOTIFICATIONS_TYPE.info,
+          'Info',
+          'Apply this sort on Spotify ?',
+          true,
+          false
+        )
+        differentSort.value = true
+        notificationAction.value = NOTIFICATION_ACTIONS.UPDATE_SORT
+        return;
+      }
+    }
+    differentSort.value = false
+    notificationAction.value = ''
+    isNotificationOpened.value = false
+  }
+
+  const sortUserPlaylist = (increment = true) => {
+    if (increment) {
+      sortPosition.value++
+      if (sortPosition.value >= sortOptions.length) {
+        sortPosition.value = 0
+      }
+    }
+
+    const option = sortOptions[sortPosition.value]
+    if (option === 'top first') {
+      state.tracks.sort((a, b) => b.track?.popularity - a.track?.popularity)
+    } else if (option === 'top last') {
+      state.tracks.sort((a, b) => a.track?.popularity - b.track?.popularity)
+    } else if (option === 'added first') {
+      state.tracks.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
+    } else if (option === 'added last') {
+      state.tracks.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
+    } else {
+      state.tracks.sort((a, b) => a.id - b.id)
+    }
+    checkDifferentSort()
+    buildSlots()
+    currentPage.value = 1
+  }
+
+  const updateTracksOrder = async() => {
+    isProcessing.value = true
     var i = 0
     var changes = 0
     while(i < state.tracks.length) {
@@ -641,7 +437,7 @@
         continue
       }
       changes++
-      showNotification(NOTIFICATIONS_TYPE.info, 'Please, wait', 'Sorting songs... (' + changes + '/' + state.tracks.length + ')')
+      notify({ title: 'Please, wait', text: 'Sorting songs... (' + changes + '/' + state.tracks.length + ')', type: 'info' })
       const formData = {
         'range_start': id,
         'insert_before': i
@@ -657,737 +453,346 @@
       i = 0
     }
 
-    showNotification(NOTIFICATIONS_TYPE.success, 'Alright!', 'Playlist updated with ' + changes + ' changes!')
-    state.sortPosition = 0
-    await onRefreshPage()
-    state.differentSort = false
-    state.isProcessing = false
+    notify({ title: 'Alright!', text: 'Playlist updated with ' + changes + ' changes!', type: 'success' })
+    sortPosition.value = 0
+    await handleRefresh()
+    differentSort.value = false
+    isProcessing.value = false
+    buildSlots()
   }
 
-  const showNotification = (type, title, message, action = false, auto = false) => {
-    let notificationData = {
-      type,
-      title,
-      message,
-      action,
-      auto
-    }
-    notificationDataReactive.value = notificationData
-    isNotificationOpened.value = true
+  const handleRefresh = async () => {
+    await onRefreshPage(() => sortUserPlaylist(false))
+    buildSlots()
   }
 
-  const onNotificationAction = async(value) => {
-    isNotificationOpened.value = false
-    if (value) {
-      switch(state.notificationAction) {
-        case NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS:
-          if (state.dataLikes.length > 0) {
-            let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length -1].created_at));
-            if (diffDays == 0) {
-              showNotification(
-                NOTIFICATIONS_TYPE.warning,
-                'Ops',
-                'Looks like you already have a statistics for today!'
-              )
-              return
-            }
-            await saveStatistics()
-            await saveTracksStatistics()
-            notify({
-              title: 'Alright',
-              text: 'Statistics saved!',
-              type: 'success'
-            })
-          }
-          break
-        case NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS:
-          await saveTracksStatistics()
-          await getPlaylistTracks(true)
-          notify({
-            title: 'Alright',
-            text: 'Statistics saved!',
-            type: 'success'
-          })
-          break
-        case NOTIFICATION_ACTIONS.UPDATE_SORT:
-          updateTracksOrder()
-          break
-        case NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION:
-          updatePlaylistDescription()
-          break
-        case NOTIFICATION_ACTIONS.UPDATE_PLAYLIST:
-            notify({ title: 'Please, wait', text: 'Saving playlist...', type: 'info'})
-            const result = await savePlaylist(state.playlist)
-            if (! result) {
-                notify({
-                    title: 'Ops',
-                    text: 'It´s not possible to save the Playlist at this time.',
-                    type: 'error'
-                })
-            }
-            notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
-            break
-      }
-    }
-    if ((!value) && (state.notificationAction == NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION)) {
-      editPlaylistDescription.value = false
-    }
-    state.notificationAction = ''
-  }
-
-  const handleTouchStart = (currentTrack) => {
-    setTimeout(() => {
-      if (currentTrack.opened) {
-        currentTrack.opened = false
-        return
-      }
-      state.tracks = state.tracks.map(track => ({
-        ...track,
-        opened: track === currentTrack
-      }));  
-    }, 100);
-  }
-
-  const handleMouseOver = (currentTrack) => {
-    state.tracks = state.tracks.map(track => ({
-      ...track,
-      opened: track === currentTrack
-    }));  
-  }
-
-  const moveTrackUp = (track, pos) => {
-    state.tracks.splice(pos, 1)
-    state.tracks.splice(pos - 1, 0, track)
-    checkDifferentSort()
-  }
-
-  const moveTrackDown = (track, pos) => {
-    state.tracks.splice(pos, 1)
-    state.tracks.splice(pos + 1, 0, track)
-    checkDifferentSort()
-  }
-
-  const getTopArtists = async() => {
-    const artistCount = {};
-
-    state.tracks.forEach(track => {
-        track.track.artists.forEach(artist => {
-            const artistId = artist.id;
-            const artistName = artist.name;
-
-            if (artistCount[artistId]) {
-                artistCount[artistId].count++;
-            } else {
-                artistCount[artistId] = { name: artistName, count: 1 };
-            }
-        });
-    });
-
-    const sortedArtists = Object.entries(artistCount)
-        .map(([id, data]) => ({
-            id,
-            name: data.name,
-            count: data.count
-        }))
-        .sort((a, b) => b.count - a.count) // Ordena de forma decrescente pela quantidade de músicas
-        .slice(0, 5); // Pega os 5 primeiros
-
-    const top5ArtistIds = sortedArtists.map(artist => artist.id).join(',');
-    const topArtists = await getArtists(top5ArtistIds);
-
-    const artistCountMap = sortedArtists.reduce((map, artist) => {
-        map[artist.id] = artist.count;
-        return map;
-    }, {});
-
-    topArtists.forEach(artist => {
-        if (artistCountMap[artist.id] !== undefined) {
-            artist.count = artistCountMap[artist.id];
-        }
-    });
-    state.topArtists = topArtists
-    playlistStore.loadTopArtists(state.playlist.id, topArtists)
-  }
-
-  const getTopGenres = async() => {
-    const uniqueArtistIds = new Set();
-
-    // Contagem de artistas e coleta de IDs únicos
-    state.tracks.forEach(track => {
-        track.track.artists.forEach(artist => {
-            const artistId = artist.id;
-            // Adiciona o ID ao conjunto de IDs únicos
-            uniqueArtistIds.add(artistId);
-        });
-    });
-
-    // Converte o conjunto de IDs para array
-    const allArtistIds = Array.from(uniqueArtistIds);
-    
-    // Array para armazenar todos os artistas com detalhes
-    let allArtistsDetails = [];
-    
-    // Processa artistas em lotes de 50 (limite da API do Spotify)
-    for (let i = 0; i < allArtistIds.length; i += 50) {
-        const idsBatch = allArtistIds.slice(i, i + 50).join(',');
-        const artistsBatch = await getArtists(idsBatch);
-        allArtistsDetails = allArtistsDetails.concat(artistsBatch);
-    }
-    
-    const genreCount = {};
-    
-    // Conta a ocorrência de cada gênero
-    allArtistsDetails.forEach(artist => {
-        if (artist.genres && Array.isArray(artist.genres)) {
-            artist.genres.forEach(genre => {
-                genreCount[genre] = (genreCount[genre] || 0) + 1;
-            });
-        }
-    });
-    
-    // Transforma o objeto de contagem em array, ordena e pega os principais
-    const topGenres = Object.entries(genreCount)
-        .map(([genre, count]) => ({ genre, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-    await playlistStore.loadTopGenres(state.playlist.id, topGenres)
-  }
-
-  const circleStyle = (index) => {
-    return {
-      right: `${0 + index * 7}%`,
-    };
-  };
-
-  const openEditPlaylistDescription = (includeTopArtists=false) => {
-    var description = state.playlist.description
-    if (includeTopArtists) {
-      description = removePartFromText(state.playlist.description)
-        + ' Top artistas: ' 
-        + state.playlist?.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
-    }
-    state.playlistDescription = description
-    editPlaylistDescription.value = !editPlaylistDescription.value
-    showNotification(
-      NOTIFICATIONS_TYPE.info,
-      'Info',
-      'Save this description on Spotify ?',
-      true,
-      false
-    )
-    state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
-  }
-
-  const identifyPlaylistChanges = async(data) => {
-    if (await hasChangedFromDatabase(data)) {
-      console.log('Playlist changed from database')
-      showNotification(
-        NOTIFICATIONS_TYPE.info,
-        'Info',
-        'Playlist changes detected, do you want to update it ?',
-        true,
-        false
-      )
-      state.notificationAction = NOTIFICATION_ACTIONS.UPDATE_PLAYLIST
-      return
-    }
-
-    if (await hasSilentChangesFromDatabase(data)) {
-      const result = await savePlaylist(data)
-      console.log(result)
-      if (! result) {
-        notify({
-            title: 'Ops',
-            text: 'It´s not possible to save the Playlist at this time.',
-            type: 'error'
-        })
-      }
-    }
+  callbacks.onUpdateSort = () => updateTracksOrder()
+  callbacks.onUpdateDescription = () => updatePlaylistDescription()
+  callbacks.onCancelDescription = () => {
+    editPlaylistDescription.value = false
   }
 
   onMounted(async () => {
     progress.start()
-    if (! playlistStore.isLoaded) {
-      const playlists = await loadAllFromDatabase()
-      playlistStore.loadAll(playlists)
-    }
-    state.playlist = await playlistStore.getPlaylist(playlistId.value)
-
-    if ((! state.playlist.followers) || (state.playlist.images.length == 0)) {
-      const { data } = await getPlaylist(playlistId.value)
-      await identifyPlaylistChanges(data)
-      playlistStore.load(data)
-      state.playlist = await playlistStore.getPlaylist(playlistId.value)
-    }
-    await getPlaylistTracks()
-    if (! state.chartData.datasets[0]?.data) {
-      getLikesStats(false)
-    }
-    checkTracksStatistics()
+    await init({ topArtistsLimit: 10 })
+    buildSlots()
+    lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     progress.finish()
   })
 
+  onMounted(() => {
+    countdownTimer.value = setInterval(tickCountdown, 1000)
+  })
+
+  onUnmounted(() => {
+    if (countdownTimer.value) {
+      clearInterval(countdownTimer.value)
+    }
+  })
 </script>
 
 <template>
-  <Notification 
+  <Notification
     :open="notificationOpened"
     :data="notificationData"
     @notification-action="onNotificationAction"
   />
-  <FloatMenu 
+  <FloatMenu
     :menu-opened="menuOpened"
     :menu-data="menuData"
     :user-data="currentUser"
-    @update-menu-opened="onUpdateMenuOpened" 
+    @update-menu-opened="onUpdateMenuOpened"
     @remove-track="onRemoveTrack"
-    @refresh-playlist="onRefreshPage"
+    @refresh-playlist="handleRefresh"
     @add-queue="addToQueue"
-    @openStatistics="onOpenStatistics"
-    @openArtists="onOpenArtists"
-    />
-  <div class="page">    
-    <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />
-    <div v-if="state.isProcessing"><p style="color:white"><font-awesome-icon style="color:white" icon="spinner"/>  {{ state.message }}</p></div>
-    <div class="cover">
-      <img class="img-album" :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image" />
-      <div style="display: flex;flex-direction:column;justify-content:space-around">
-        <h3 class="playlist-title">{{state.playlist?.name}}</h3>
-        <div class="top-3-artists">
-          <div v-if="state.playlist?.topArtists?.length>0" class="circle-container" :style="circleStyle(0)"><img :src="state.playlist?.topArtists[0]?.images[0]?.url" class="music-cover"/></div>
-          <div v-if="state.playlist?.topArtists?.length>1" class="circle-container" :style="circleStyle(1)"><img :src="state.playlist?.topArtists[1]?.images[0]?.url" class="music-cover"/></div>
-          <div v-if="state.playlist?.topArtists?.length>2" class="circle-container" :style="circleStyle(2)"><img :src="state.playlist?.topArtists[2]?.images[0]?.url" class="music-cover"/></div>
-          <div v-if="state.playlist?.topArtists?.length>3" class="circle-container" :style="circleStyle(3)"><img :src="state.playlist?.topArtists[3]?.images[0]?.url" class="music-cover"/></div>
-          <div v-if="state.playlist?.topArtists?.length>4" class="circle-container" :style="circleStyle(4)"><img :src="state.playlist?.topArtists[4]?.images[0]?.url" class="music-cover"/></div>          
-        </div>
-      </div>
+    @open-statistics="onOpenStatistics"
+    @open-artists="onOpenArtists"
+  />
+  <div class="page px-gutter md:px-lg py-md space-y-lg">
+    <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
+      <font-awesome-icon icon="spinner" spin class="text-primary" />
+      <span>Processing...</span>
     </div>
-    <div class="playlist-header">      
-      <div class="playlist-description">
-        <p class="playlist-subtitle" v-if="!editPlaylistDescription" @click="openEditPlaylistDescription()">{{state.playlist?.description || 'Edit description...'}} </p>
-        <textarea class="input-playlist-description" type="text" v-if="editPlaylistDescription" v-model="state.playlistDescription"/>
-        <p class="playlist-subtitle" @click="openEditPlaylistDescription(true)">Top artists: {{state.playlist?.topArtists?.slice(0, 5).map(artist => artist.name).join(', ')}} </p>
-        <p class="playlist-subtitle">Top Genres: {{state.playlist?.genres?.map(genre => genre.genre).join(', ')}} </p>
-      </div>
-    </div>
-    <div class="playlist-sub">
-      <button class="button-spotify">
-        <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" style="vertical-align:middle;margin-left:3px;" @click="executeUserPlaylist()" />
-      </button>
-      <div class="playlist-details">
-        <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="openMenuPlaylist()"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-        <div style="display: flex;flex-direction: column;justify-content: center;">
-          <p class="playlist-subtitle" style="margin:0px">{{state.playlist?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-          <p style="margin:0px" v-if="state.dataLikes[state.dataLikes?.length - 2] && ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) != 0)"
-            :class="{
-              'playlist-subtitle' : true,
-              'icon-popularity-bad' : ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) < 0), 
-              'icon-popularity-good' : ((state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count) > 0)
-            }"
-          >
-            <font-awesome-icon v-if="(state.playlist?.followers?.total < state.dataLikes[state.dataLikes?.length - 2]?.likes_count)" class="icon-popularity-bad" icon="arrow-down"/>
-            <font-awesome-icon v-if="(state.playlist?.followers?.total > state.dataLikes[state.dataLikes?.length - 2]?.likes_count)" class="icon-popularity-good" icon="arrow-up"/>
-            {{(state.playlist?.followers?.total - state.dataLikes[state.dataLikes?.length - 2]?.likes_count)}}
-          </p>
-        </div>
-        <p @click="teste" class="playlist-subtitle" style="margin-top:10px">{{state.tracks?.length}} items</p>
-        <p class="playlist-subtitle" style="margin-top:10px;cursor: pointer;" @click="sortUserPlaylist()">{{sortOptions[state.sortPosition]}} <font-awesome-icon icon="sort" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-      </div>
-    </div>    
-    <div class="statistics" v-if="state.statisticsOpen">
-      <p style="font-size: 20px;text-align:end;" @click="onOpenStatistics">
-        <font-awesome-icon icon="times" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-      </p>
-      <h3 style="color: #fff;text-align:center">Likes statistics:</h3>
-      <Line
-        id="chart-likes"
-        v-if="state.chartData.datasets.length > 0"
-        :options="state.chartOptions"
-        :data="state.chartData"
-      />      
-      <h3 style="color: #fff;text-align:center">Popularity statistics:</h3>
-      <Pie
-        id="chart-popularity"
-        v-if="state.chartDataPopularity.datasets.length > 0"
-        :options="state.chartOptions"
-        :data="state.chartDataPopularity"
-      />      
-    </div>
-    <div class="statistics" v-if="state.artistsOpen">
-      <p style="font-size: 20px;text-align:end;" @click="onOpenArtists">
-        <font-awesome-icon icon="times" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-      </p>
-      <h3 style="color: #fff;text-align:center">Top artists:</h3>
-      <ul class="list">
-        <li :id="artist?.id" 
-          v-for="(artist, i) in state.topArtists" 
-          class="list-item"
-          :key="artist"
-        >
-          <div class="list-item-div" style="height: 80px">
-            <div class="list-item-position">
-              {{i + 1}}
-              <p v-if="state.differentSort && artist.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
-            </div>
-            <div class="circle-container">
-              <img :src="artist.images[artist.images.length - 1]?.url" class="music-cover"/>
-            </div>
-            <div class="list-item-content">                
-              <div class="list-item-title" style="font-size:large">
-                {{artist.name}}
-              </div>
-              <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ artist.genres.map(genre => genre).join(', ') }}</div>
-                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >{{ artist.count }} tracks on this playlist</div>
-              </div>
-            </div>
-            <div style="display: flex;flex-direction: column;justify-content: space-between;">
-              <div class="list-item-popularity">
-                <font-awesome-icon v-if="(artist?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
-                <font-awesome-icon v-else-if="(artist?.popularity > 40 && artist.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
-                <font-awesome-icon v-else-if="(artist?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
-                {{artist?.popularity}}%                
-              </div>
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
-    <div class="list-list" v-if="(!state.statisticsOpen) && (!state.artistsOpen)">
-      <ul class="list">
-        <li :id="track.track?.id" 
-          v-for="(track, i) in state.tracks" 
-          class="list-item"
-          :class="{'unavailable' : ! track.track?.available_markets.includes('BR')}"
-          :key="track"
-        >
-          <div class="list-item-div" :class="{'opened' : track.opened}" style="cursor: pointer;" @mouseover="handleMouseOver(track)"><!---->
-            <div class="list-item-position">
-              {{track.id + 1}}
-              <p v-if="state.differentSort && track.id != i" style="font-size:60%;margin:0;color:rgb(30, 215, 96)">{{i+1}}</p>
-            </div>
-            <img :src="track.track?.album.images[track.track?.album.images.length - 1]?.url" class="music-cover"/>
-            <div class="list-item-content">                
-              <div :class="track.track?.uri === currentPlaying?.item?.uri ? 'list-item-title-playing' : 'list-item-title'">
-                <font-awesome-icon v-if="track.track?.tracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);;" />
-                {{track.track?.name}}
-              </div>
-              <div style="display:flex;flex-direction:column;width:100%;justify-content: space-between;">
-                <div class="list-item-subtitle">{{ track.track?.artists.map(artist => artist.name).join(', ') }}</div>
-                <div class="list-item-subtitle" style="color: rgb(124, 123, 123);font-size:10px;" >Added {{ new Date(track.added_at).toLocaleDateString() }}</div>
-              </div>
-            </div>
-            <div style="display: flex;flex-direction: column;justify-content: space-between;">
-              <div class="list-item-popularity">
-                <font-awesome-icon v-if="(track.track?.popularity <= 40)" class="icon-popularity-bad" icon="chart-line"/>
-                <font-awesome-icon v-else-if="(track.track?.popularity > 40 && track.track.popularity <= 70)" class="icon-popularity-medium" icon="chart-line"/>
-                <font-awesome-icon v-else-if="(track.track?.popularity > 70)" class="icon-popularity-good" icon="chart-line"/>
-                {{track.track?.popularity}}%                
-              </div>
 
-              <div v-if=" ((track.track?.popularity - track.track?.popularity_old) != 0)" style="margin-top: 2px;" 
-                :class="{
-                  'list-item-popularity' : true, 
-                  'icon-popularity-bad' : ((track.track?.popularity - track.track?.popularity_old) < 0), 
-                  'icon-popularity-good' : ((track.track?.popularity - track.track?.popularity_old) > 0)
-                }">
-                <font-awesome-icon v-if="(track.track?.popularity < track.track?.popularity_old)" class="icon-popularity-bad" icon="arrow-down"/>
-                <font-awesome-icon v-if="(track.track?.popularity > track.track?.popularity_old)" class="icon-popularity-good" icon="arrow-up"/>
-                {{(track.track?.popularity - track.track?.popularity_old)}}
-              </div>
+    <!-- Header Section: Playlist Profile -->
+    <section class="relative flex flex-col md:flex-row gap-lg items-end pb-xl">
+      <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+      <div class="relative group shrink-0">
+        <div class="w-40 h-40 md:w-64 md:h-64 shadow-2xl rounded-xl overflow-hidden bg-surface-container">
+          <img
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image"
+          />
+        </div>
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl cursor-pointer" @click="openEditPlaylistDescription()">
+          <font-awesome-icon icon="edit" class="text-primary text-[48px]" />
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col gap-sm pb-2">
+        <div v-if="state.playlist?.tracked" class="flex items-center gap-2 text-primary uppercase tracking-widest text-label-sm">
+          <font-awesome-icon icon="check-circle" class="text-[16px]" />
+          Playlist Verificada
+        </div>
+        <h1 class="text-headline-lg md:text-display-lg text-on-surface">{{ state.playlist?.name }}</h1>
+        <p v-if="!editPlaylistDescription" class="text-on-surface-variant max-w-2xl text-body-md cursor-pointer" @click="openEditPlaylistDescription()">
+          {{ state.playlist?.description || 'Edit description...' }}
+        </p>
+        <textarea
+          v-else
+          v-model="state.playlistDescription"
+          class="max-w-2xl rounded-xl bg-surface-container-high p-3 text-on-surface text-body-md outline-none resize-none focus:ring-2 focus:ring-primary"
+          rows="3"
+        />
+        <div class="flex flex-wrap items-center gap-xl mt-4">
+          <div class="flex flex-col">
+            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
+            <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Crescimento (30d)</span>
+            <span class="text-headline-md text-primary">{{ details.growth }}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
+            <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Faturamento Mensal</span>
+            <span class="text-headline-md text-on-surface">{{ details.monthlyRevenue }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4 self-center md:self-end items-end">
+        <div class="flex gap-2">
+          <button
+            class="w-12 h-12 bg-surface-container-high rounded-full text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+            @click="executeUserPlaylist(currentPlaying)"
+          >
+            <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" />
+          </button>
+          <button
+            class="bg-primary-container text-on-primary-container px-8 py-3 rounded-full text-headline-sm font-headline-sm flex items-center gap-3 hover:scale-105 transition-all shadow-lg hover:shadow-primary/20"
+            @click="onSellPosition"
+          >
+            <font-awesome-icon icon="plus-circle" />
+            Vender Nova Posição
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Estatísticas" @click="onOpenStatistics">
+            <font-awesome-icon icon="chart-bar" />
+          </button>
+          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Compartilhar" @click="sharePlaylist">
+            <font-awesome-icon icon="share" />
+          </button>
+          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Mais opções" @click="openMenuPlaylist">
+            <font-awesome-icon icon="ellipsis-v" />
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table Section -->
+    <section class="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 shadow-xl">
+      <div class="p-6 border-b border-outline-variant/10 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-6">
+          <span class="text-on-surface text-headline-sm">Gerenciamento de Músicas</span>
+          <nav class="flex gap-2 flex-wrap">
+            <button
+              v-for="tab in ['Todas', 'Expira em breve', 'Pendentes']"
+              :key="tab"
+              class="px-4 py-1.5 rounded-full text-label-sm transition-colors"
+              :class="activeTab === tab
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'hover:bg-surface-container-high text-on-surface-variant'"
+              @click="activeTab = tab"
+            >
+              {{ tab }}
+            </button>
+          </nav>
+        </div>
+        <div class="flex items-center gap-4">
+          <button
+            class="flex items-center gap-2 rounded-full bg-surface-container-high px-4 py-1.5 text-label-sm text-on-surface-variant hover:text-on-surface transition-colors"
+            :title="sortOptions[sortPosition]"
+            @click="sortUserPlaylist()"
+          >
+            <font-awesome-icon icon="sort" />
+            {{ sortOptions[sortPosition] }}
+          </button>
+          <div class="text-on-surface-variant text-body-sm italic">
+            Última atualização: {{ lastUpdatedLabel }}
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+          <thead>
+            <tr class="bg-surface-container-low/50">
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider"># Pos</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10">
+            <tr
+              v-for="(track, i) in pagedTracks"
+              :key="track.track?.uri"
+              class="hover:bg-surface-container-high/30 transition-colors group cursor-pointer"
+              :class="{ 'opacity-40': track.track?.available_markets && !track.track.available_markets.includes('BR') }"
+              @click="trackInfo(track)"
+            >
+              <td class="px-6 py-4">
+                <div
+                  class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
+                  :class="track.id === 0 && activeTab === 'Todas'
+                    ? 'bg-primary/20 border border-primary/40 text-primary'
+                    : 'bg-surface-container-high text-on-surface-variant'"
+                >
+                  {{ track.id + 1 }}
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-4">
+                  <img class="w-10 h-10 rounded-lg object-cover" :src="track.track?.album?.images?.[0]?.url" />
+                  <div class="flex flex-col">
+                    <span class="text-on-surface text-body-md" :class="{ 'text-primary': track.track?.uri === currentPlaying?.item?.uri }">
+                      <font-awesome-icon v-if="track.track?.tracked" icon="heart" class="text-primary mr-1" />
+                      {{ track.track?.name }}
+                    </span>
+                    <span class="text-on-surface-variant text-body-sm">{{ track.track?.artists?.map(artist => artist.name).join(', ') }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
+              <td class="px-6 py-4 text-center">
+                <div class="flex flex-col items-center" :class="{ 'animate-pulse': expirationInfo(track._slot).urgent }">
+                  <span class="text-label-md" :class="expirationInfo(track._slot).urgent ? 'text-error' : (track._slot?.status === 'Aguardando' ? 'text-on-surface-variant' : 'text-primary')">
+                    {{ expirationInfo(track._slot).value }}
+                  </span>
+                  <span class="text-[10px] uppercase" :class="expirationInfo(track._slot).urgent ? 'text-error' : 'text-on-surface-variant'">
+                    {{ expirationInfo(track._slot).label }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest" :class="statusPill(track._slot).cls">
+                  {{ statusPill(track._slot).label }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2 bg-surface-container-low/50 p-1 rounded-lg" @click.stop>
+                  <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
+                    <font-awesome-icon icon="sort" />
+                  </button>
+                  <button class="p-2 hover:bg-error/20 hover:text-error rounded-lg transition-colors text-on-surface-variant" title="Remover" @click="removeInlineTrack(track)">
+                    <font-awesome-icon icon="trash" />
+                  </button>
+                  <button class="p-2 hover:bg-secondary/20 hover:text-secondary rounded-lg transition-colors text-on-surface-variant" title="Ver Detalhes" @click="trackInfo(track)">
+                    <font-awesome-icon icon="eye" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="pagedTracks.length === 0">
+              <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+                Nenhuma música nesta categoria.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-6 bg-surface-container-low flex items-center justify-between">
+        <span class="text-body-sm text-on-surface-variant">
+          Mostrando {{ state.tracks.length }} de {{ details.filledPositions }} posições ocupadas
+        </span>
+        <div class="flex items-center gap-2">
+          <button
+            class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-on-surface disabled:opacity-30 transition-colors"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            <font-awesome-icon icon="chevron-left" />
+          </button>
+          <span class="text-label-sm text-on-surface-variant px-2">{{ currentPage }} / {{ totalPages }}</span>
+          <button
+            class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-on-surface disabled:opacity-30 transition-colors"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++"
+          >
+            <font-awesome-icon icon="chevron-right" />
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Side Insights / Analytics Grid -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-lg mt-4">
+      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-headline-sm text-on-surface">Audiência</h3>
+          <font-awesome-icon icon="users" class="text-primary" />
+        </div>
+        <div class="space-y-4">
+          <template v-for="item in audience" :key="item.label">
+            <div class="flex justify-between items-center text-body-sm">
+              <span class="text-on-surface-variant">{{ item.label }}</span>
+              <span class="text-on-surface text-label-md">{{ item.value }}%</span>
             </div>
-            <p @click="handleTouchStart(track)" class="playlist-subtitle" style="margin-top:10px;cursor: pointer;"><font-awesome-icon icon="ellipsis-v" style="vertical-align:middle;margin:0px 5px;color: #b3b3b3;" /></p>
-          </div>
-          <div v-if="track.opened" class="list-item-div opened bordered-down"><!---->
-            <button class="button-options" @click="executeTrack(track)">
-              <font-awesome-icon icon="play" style="vertical-align:middle;margin-left:3px;" />
-              <p>Play</p>
-            </button>
-            <button class="button-options" @click="trackInfo(track)">
-              <font-awesome-icon icon="info" style="vertical-align:middle;margin-left:3px;" />
-              <p>Info</p>
-            </button>
-            <button class="button-options" @click="trackInfo(track, true)">
-              <font-awesome-icon icon="plus" style="vertical-align:middle;margin-left:3px;" />
-              <p>Add</p>
-            </button>
-            <button class="button-options" @click="openMovePositionMenu(track, i)" v-if="state.playlist.owner.display_name == currentUser.display_name">
-              <font-awesome-icon icon="sort" style="vertical-align:middle;margin-left:3px;" />
-              <p>Position</p>
-            </button>
-          </div>
-        </li>
-      </ul>
-    </div>
-    <div style="color:#1c1c1c">
-      {{ removeTrack }}
-    </div>
+            <div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full" :class="item.tone === 'primary' ? 'bg-primary' : 'bg-secondary'" :style="{ width: item.value + '%' }"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-headline-sm text-on-surface">Tags de Gênero</h3>
+          <font-awesome-icon icon="tags" class="text-primary" />
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="genre in genres"
+            :key="genre.genre"
+            class="px-3 py-1 bg-surface-container-high rounded text-label-sm text-on-surface-variant"
+          >
+            {{ genre.genre }}
+          </span>
+          <span v-if="genres.length === 0" class="text-body-sm text-on-surface-variant">
+            Nenhum gênero disponível ainda.
+          </span>
+        </div>
+      </div>
+
+      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10 relative overflow-hidden group">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-headline-sm text-on-surface">Auto-Curation</h3>
+          <font-awesome-icon icon="magic" class="text-primary" />
+        </div>
+        <p class="text-body-sm text-on-surface-variant mb-4">
+          A inteligência SONIC sugere novas músicas baseadas no perfil dos seus seguidores.
+        </p>
+        <button
+          class="w-full py-2 bg-primary/10 text-primary rounded-xl text-label-sm font-bold hover:bg-primary/20 transition-colors"
+          @click="onSellPosition"
+        >
+          Ver Sugestões AI
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-}
-.button-spotify {
-  border-radius: 33px;
-  padding: 0px 15px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 19px;
-  outline: none;
-  cursor: pointer;
-  background: rgb(30, 215, 96);
-  color: black;
-  border: 1px solid rgb(30, 215, 96);
-  height: 50px;
-  width: 50px;
-}
-.button-spotify-noborder {
-  padding: 0px 15px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 19px;
-  outline: none;
-  cursor: pointer;
-  background: none;
-  color: #fff;
-  border: none;
-  height: 50px;
-  width: 50px;
-}
-.button-options {
-  border-radius: 3px;
-  padding: 0px 15px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 19px;
-  outline: none;
-  cursor: pointer;
-  background: #232424;
-  color: #999797;
-  border: 0px solid #999797;
-  height: 50px;
-  width: auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.button-options > p {
-  font-size: 0.7rem;
-  margin-top: 5px;
-  margin-bottom: 0;
-}
-.img-album {
-  width: 100px;
-  height: auto;
-  padding: 10px
-}
-.playlist-header {
-  display:flex; 
-  flex-direction:row;
-  margin-top: 10px;
-}
-.playlist-description {
-  width: 100%;
-  display:flex;
-  flex-direction:column;
-  margin-left:5px
-}
-.input-playlist-description {
-  width: 95%;
-  height: 80px;
-  background-color: #232424;
-  border: 0px;
-  border-radius: 5px;
-  padding: 10px;
-  color: #fff;
-  resize: none;
-  font-size: 150%;
-  vertical-align: top;
-}
-.playlist-title {
-  color:#fff;
-  margin: 0px;
-  width: 75%;
-}
-.playlist-subtitle {
-  margin-top: 0px;
-  color:#999797;
-  font-size:12px;
-}
-.playlist-sub {
-  height: 50px;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-.playlist-details {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-evenly;
-  min-width: 300px;
-  margin-top: 10px;
-}
-.statistics {
-  height: auto;
-  padding: 5px 15px;
-  margin-top: 10px;
-}
-#chart-likes {
-  margin-bottom: 50px;
-}
-#chart-popularity {
-  margin-bottom: 100px;
-}
-.music-cover {
-  width: 50px; 
-  height: 50px;
-  margin-right: 7px;
-}
-.list-list {
-  margin-bottom: 80px;
-  padding: 5px;
-}
-.list {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  padding: 0px;
-}
-.list-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  width: 100%;
-  height: auto;
-  cursor: grab;
-  user-select: none;
-}
-.list-item-div {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  width: 100%;
-  height: 65px;
-}
-.opened {
-  background-color: #232424;
-}
-.bordered-down {
-  border-radius: 0px 0px 15px 15px;
-}
-.list-item-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  margin: auto;
-  flex: 90%;
-  overflow: hidden;
-}
-.list-item-title {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  color: #fff;
-  width: 100%;
-  white-space: nowrap;
-}
-.list-item-title-playing {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  color: rgb(30, 215, 96);
-  width: 100%;
-}
-.list-item-popularity{
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: flex-end;
-  color: #fff;
-  font-size: 11px;
-  margin-left: 5px;
-}
-.list-item-position{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  color: #616161;
-  width: 15%;
-  font-size: 24px;
-}
-.icon-popularity-bad{
-  color: rgb(255, 23, 23);
-  margin-right: 3px;
-  margin: 0px 3px;
-}
-.icon-popularity-medium{
-  color: rgb(255, 240, 30);
-  margin: 0px 3px;
-}
-.icon-popularity-good{
-  color: rgb(117, 255, 24);
-  margin: 0px 3px;
-}
-.list-item-subtitle {
-  display: flex;
-  flex-direction: column;
-  align-items: baseline;
-  justify-content: flex-start;
-  color: #999;
-  font-size: 11px;
-  text-align: left;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.circle-container {
-  width: 100px;
-  height: 65px;
-  overflow: hidden;
-  border-radius: 50%;
-  margin-right: 15px;
-}
-
-.circle-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.cover {
-  height: auto;
-  display: flex;
-  flex-direction: row;
-}
-.cover .circle-container {
-  width: 60px;
-  height: 60px;
-  overflow: hidden;
-  border-radius: 50%;
-  /*top: 40%;*/
-  position: relative;
-}
-.top-3-artists {
-  display: flex;
-}
-.unavailable {
-  opacity: .3;
-}
 </style>

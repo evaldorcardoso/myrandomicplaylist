@@ -49,7 +49,25 @@ import {
     faInfo,
     faPlus,
     faCopy,
-    faList
+    faList,
+    faCheckCircle,
+    faShare,
+    faEdit,
+    faUsers,
+    faTags,
+    faMagic,
+    faEye,
+    faClock,
+    faDollarSign,
+    faPlusCircle,
+    faExternalLinkAlt,
+    faCalendarAlt,
+    faDatabase,
+    faTrophy,
+    faFire,
+    faChartArea,
+    faBolt,
+    faCog
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -103,7 +121,25 @@ library.add(
     faInfo,
     faPlus,
     faCopy,
-    faList
+    faList,
+    faCheckCircle,
+    faShare,
+    faEdit,
+    faUsers,
+    faTags,
+    faMagic,
+    faEye,
+    faClock,
+    faDollarSign,
+    faPlusCircle,
+    faExternalLinkAlt,
+    faCalendarAlt,
+    faDatabase,
+    faTrophy,
+    faFire,
+    faChartArea,
+    faBolt,
+    faCog
 )
 
 const updateSW = registerSW({

@@ -1,7 +1,18 @@
 const mockAvgValues = ['R$ 180,00', 'R$ 150,00', 'R$ 250,00', 'R$ 120,00']
 
+const getTrackCount = (playlist = {}, fallbackLength = 0) => {
+  for (const value of [playlist.items, playlist.tracks]) {
+    if (value == null) continue
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (Array.isArray(value)) return value.length
+    if (typeof value.total === 'number' && Number.isFinite(value.total)) return value.total
+    if (Array.isArray(value.items)) return value.items.length
+  }
+  return fallbackLength
+}
+
 const mapPlaylist = (playlist, index) => {
-  const totalPositions = playlist.items ?? playlist.tracks?.total ?? playlist.tracks?.length ?? 0
+  const totalPositions = getTrackCount(playlist, playlist.tracks?.items?.length ?? 0)
   const filledPositions = Math.min(totalPositions, Math.round(totalPositions * 0.8))
 
   return {
