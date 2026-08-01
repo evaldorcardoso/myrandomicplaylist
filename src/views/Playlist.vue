@@ -11,6 +11,7 @@
   import { PlaylistService } from '@/services/PlaylistService'
   import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
   import { PlaylistDetailsService } from '@/services/PlaylistDetailsService'
+  import { TrackRequestService } from '@/services/TrackRequestService'
 
   const route = useRoute()
   const router = useRouter()
@@ -21,6 +22,7 @@
   const { addTrackToQueue } = useProfile()
   const { updatePlaylistTotalTracks, getGenres } = PlaylistService()
   const { getPlaylistDetails, getAudience, getTrackSlot } = PlaylistDetailsService()
+  const { getTrackRequests } = TrackRequestService()
 
   const PAGE_SIZE = 20
 
@@ -84,6 +86,8 @@
   const isProcessing = ref(false)
   const lastUpdatedLabel = ref('')
   const countdownTimer = ref(null)
+  const trackRequests = ref([])
+  const isLoading = ref(true)
 
   const currentUser = computed(() => userStore.getUser)
   const currentPlaying = computed(() => props.currentData)
@@ -96,10 +100,10 @@
 
   const filteredTracks = computed(() => {
     if (activeTab.value === 'Expira em breve') {
-      return state.tracks.filter(t => t._slot?.status === 'Comprada' && t._slot?.urgent)
+      return state.tracks.filter(t => t._slot?.status && t._slot.status !== 'free' && t._slot?.urgent)
     }
     if (activeTab.value === 'Pendentes') {
-      return state.tracks.filter(t => t._slot?.status === 'Aguardando')
+      return state.tracks.filter(t => t._slot?.status === 'pending')
     }
     return state.tracks
   })
@@ -141,9 +145,15 @@
   }
 
   const buildSlots = () => {
+    const requestsByTrackId = new Map(trackRequests.value.map(request => [request.track_id, request]))
     state.tracks.forEach((track, index) => {
-      track._slot = getTrackSlot(track, index)
+      track._slot = getTrackSlot(track, index, requestsByTrackId.get(track?.track?.id))
     })
+  }
+
+  const loadTrackRequests = async () => {
+    trackRequests.value = await getTrackRequests(playlistId.value)
+    buildSlots()
   }
 
   const tickCountdown = () => {
@@ -155,21 +165,27 @@
   }
 
   const statusPill = (slot) => {
-    if (!slot || slot.status === 'Orgânica') {
-      return { label: 'Orgânica', cls: 'bg-surface-container-highest text-on-surface-variant border border-outline-variant/20' }
+    if (!slot || slot.status === 'free') {
+      return { label: 'free', cls: 'bg-surface-container-highest text-on-surface-variant border border-outline-variant/20' }
     }
-    if (slot.status === 'Aguardando') {
-      return { label: 'Aguardando', cls: 'bg-secondary-container/20 text-secondary border border-secondary/20' }
+    if (slot.status === 'pending') {
+      return { label: 'pending', cls: 'bg-secondary-container/20 text-secondary border border-secondary/20' }
     }
-    return { label: 'Comprada', cls: 'bg-primary/10 text-primary border border-primary/20' }
+    return { label: 'paid', cls: 'bg-primary/10 text-primary border border-primary/20' }
   }
 
   const expirationInfo = (slot) => {
-    if (!slot || slot.status === 'Orgânica') {
+    if (!slot || slot.status === 'free') {
       return { value: '--:--:--', label: 'Permanente', urgent: false }
     }
-    if (slot.status === 'Aguardando') {
-      return { value: formatDays(slot.secondsLeft), label: 'Dias', urgent: false }
+    if (slot.secondsLeft == null) {
+      return { value: '--:--:--', label: 'Sem prazo', urgent: false }
+    }
+    if (slot.secondsLeft <= 0) {
+      return { value: 'Expirado', label: 'Vencido', urgent: true }
+    }
+    if (slot.status === 'pending') {
+      return { value: formatDays(slot.secondsLeft), label: 'Dias', urgent: slot.urgent }
     }
     return {
       value: formatCountdown(slot.secondsLeft),
@@ -462,8 +478,13 @@
   }
 
   const handleRefresh = async () => {
-    await onRefreshPage(() => sortUserPlaylist(false))
-    buildSlots()
+    isLoading.value = true
+    try {
+      await onRefreshPage(() => sortUserPlaylist(false))
+      await loadTrackRequests()
+    } finally {
+      isLoading.value = false
+    }
   }
 
   callbacks.onUpdateSort = () => updateTracksOrder()
@@ -474,10 +495,14 @@
 
   onMounted(async () => {
     progress.start()
-    await init({ topArtistsLimit: 10 })
-    buildSlots()
-    lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    progress.finish()
+    try {
+      await init({ topArtistsLimit: 10 })
+      await loadTrackRequests()
+      lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    } finally {
+      isLoading.value = false
+      progress.finish()
+    }
   })
 
   onMounted(() => {
@@ -675,7 +700,7 @@
               <td class="px-6 py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
               <td class="px-6 py-4 text-center">
                 <div class="flex flex-col items-center" :class="{ 'animate-pulse': expirationInfo(track._slot).urgent }">
-                  <span class="text-label-md" :class="expirationInfo(track._slot).urgent ? 'text-error' : (track._slot?.status === 'Aguardando' ? 'text-on-surface-variant' : 'text-primary')">
+                  <span class="text-label-md" :class="expirationInfo(track._slot).urgent ? 'text-error' : (track._slot?.status === 'pending' ? 'text-on-surface-variant' : 'text-primary')">
                     {{ expirationInfo(track._slot).value }}
                   </span>
                   <span class="text-[10px] uppercase" :class="expirationInfo(track._slot).urgent ? 'text-error' : 'text-on-surface-variant'">
@@ -703,7 +728,15 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="pagedTracks.length === 0">
+            <tr v-if="isLoading && state.tracks.length === 0">
+              <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+                <div class="flex items-center justify-center gap-3">
+                  <font-awesome-icon icon="spinner" spin class="text-primary" />
+                  <span>Carregando músicas...</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="pagedTracks.length === 0">
               <td colspan="7" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 Nenhuma música nesta categoria.
               </td>

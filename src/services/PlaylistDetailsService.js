@@ -1,32 +1,29 @@
 const SECONDS_PER_HOUR = 3600
 const SECONDS_PER_DAY = 86400
-const TRACK_SLOT_VALUES = ['R$ 120,00', 'R$ 65,00', 'R$ 80,00', 'R$ 46,00', 'R$ 26,00']
+const DUE_DATE_DEADLINE_HOUR = 9
+const TIMEZONE_OFFSET = '-03:00'
 
-const hashString = (value) => {
-  let hash = 0
-  for (let i = 0; i < value.length; i++) {
-    hash = ((hash << 5) - hash + value.charCodeAt(i)) >>> 0
-  }
-  return hash
+const formatCurrency = (value) => {
+  if (value == null) return '-'
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
-const getTrackSlot = (track, index) => {
-  const uri = track?.track?.uri ?? track?.uri ?? String(index)
-  const roll = hashString(uri) % 10
-  const status = roll < 6 ? 'Comprada' : roll < 8 ? 'Aguardando' : 'Orgânica'
+const getTrackSlot = (track, index, request = null) => {
+  if (!request) {
+    return { value: '-', status: 'free', secondsLeft: null, urgent: false }
+  }
 
   let secondsLeft = null
-  if (status === 'Comprada') {
-    secondsLeft = ((hashString(uri + ':expires') % 48) + 1) * SECONDS_PER_HOUR
-  } else if (status === 'Aguardando') {
-    secondsLeft = ((hashString(uri + ':pending') % 30) + 2) * SECONDS_PER_DAY
+  if (request.due_date) {
+    const deadline = new Date(`${request.due_date}T${String(DUE_DATE_DEADLINE_HOUR).padStart(2, '0')}:00:00${TIMEZONE_OFFSET}`)
+    secondsLeft = Math.floor((deadline.getTime() - Date.now()) / 1000)
   }
 
   return {
-    value: status === 'Orgânica' ? '-' : TRACK_SLOT_VALUES[index % TRACK_SLOT_VALUES.length],
-    status,
+    value: formatCurrency(request.value),
+    status: request.status,
     secondsLeft,
-    urgent: status === 'Comprada' && secondsLeft < 24 * SECONDS_PER_HOUR
+    urgent: secondsLeft != null && secondsLeft <= 24 * SECONDS_PER_HOUR
   }
 }
 
