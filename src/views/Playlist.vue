@@ -211,11 +211,11 @@
       return { value: 'Expirado', label: 'Vencido', urgent: true }
     }
     if (slot.status === 'pending') {
-      return { value: Math.floor(slot.secondsLeft / 86400), label: 'Dias', urgent: slot.urgent }
+      return { value: Math.ceil(slot.secondsLeft / 86400), label: 'Dias', urgent: slot.urgent }
     }
     if (slot.secondsLeft > 86400) {
       return {
-        value: Math.floor(slot.secondsLeft / 86400),
+        value: Math.ceil(slot.secondsLeft / 86400),
         label: slot.urgent ? 'Expirando' : 'Dias Restantes',
         urgent: slot.urgent
       }
