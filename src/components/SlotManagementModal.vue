@@ -289,6 +289,10 @@
       <div class="relative w-full max-w-4xl bg-surface-container-lowest border border-outline-variant/20 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col md:flex-row max-h-[90vh] overflow-y-auto md:overflow-y-visible">
         <!-- Left Panel: Track Context -->
         <div class="w-full md:w-5/12 bg-surface-container-low p-8 md:p-10 flex flex-col items-center justify-center gap-8 border-b md:border-b-0 md:border-r border-outline-variant/10">
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Posição</span>
+            <span class="w-20 h-20 flex items-center justify-center rounded-full bg-primary/10 border-2 border-primary/40 text-display-lg text-primary font-bold leading-none shadow-xl">{{ position }}</span>
+          </div>
           <div class="relative group">
             <div class="absolute -inset-4 bg-primary/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
             <div class="relative w-52 h-52 md:w-64 md:h-64 rounded-full border-8 border-surface-container-highest shadow-2xl overflow-hidden animate-[spin_20s_linear_infinite]">
@@ -313,7 +317,6 @@
                 {{ isPending ? 'PENDENTE' : 'PAGA' }}
               </span>
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
-              <span class="text-label-sm px-3 py-1 bg-primary/10 border border-primary/30 rounded-full text-primary font-bold">#{{ position }}</span>
             </div>
           </div>
         </div>
