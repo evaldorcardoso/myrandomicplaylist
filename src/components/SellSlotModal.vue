@@ -53,6 +53,17 @@
     return new Date(trackData.value.duration_ms).toISOString().slice(14, 19)
   })
 
+  const popularityDiff = computed(() => {
+    const current = trackData.value?.popularity ?? 0
+    return current - (trackData.value?.popularity_old ?? current)
+  })
+
+  const popularityIcon = (popularity) => {
+    if (popularity <= 40) return 'text-[#ff1717]'
+    if (popularity > 40 && popularity <= 70) return 'text-[#fff01e]'
+    return 'text-[#75ff18]'
+  }
+
   const position = computed(() => (props.track?.id ?? 0) + 1)
 
   const calcDueDateISO = (days) => {
@@ -243,6 +254,16 @@
             <div class="flex items-center justify-center gap-3 mt-4">
               <span class="text-label-sm px-3 py-1 bg-primary/10 border border-primary/30 rounded-full text-primary font-bold">FREE</span>
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
+            </div>
+            <div class="mt-4 flex flex-col items-center gap-1">
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularidade</span>
+              <div class="flex items-center gap-1 text-label-md text-on-surface">
+                <font-awesome-icon icon="chart-line" :class="popularityIcon(trackData?.popularity)" />
+                {{ trackData?.popularity }}%
+                <span v-if="popularityDiff !== 0" class="flex items-center gap-0" :class="popularityDiff < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
+                  (<font-awesome-icon :icon="popularityDiff < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff }})
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -890,15 +890,12 @@
                 <span v-else class="text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</span>
               </td>
               <td class="px-6 py-4">
-                <div class="flex flex-col items-center gap-0.5">
-                  <div class="flex items-center gap-1 text-label-md text-on-surface">
-                    <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
-                    {{ track.track?.popularity }}%
-                  </div>
-                  <div v-if="popularityDiff(track) !== 0" class="flex items-center gap-1" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
-                    <font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />
-                    {{ popularityDiff(track) }}
-                  </div>
+                <div class="flex items-center gap-1 text-label-md text-on-surface">
+                  <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
+                  {{ track.track?.popularity }}%
+                  <span v-if="popularityDiff(track) !== 0" class="flex items-center gap-0" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
+                    (<font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff(track) }})
+                  </span>
                 </div>
               </td>
               <td class="px-6 py-4">
