@@ -7,14 +7,18 @@ export function TrackRequestService() {
     const getTrackRequests = async (playlistId) => {
         const { data, error } = await supabase
             .from(TRACK_REQUESTS_TABLE)
-            .select('*')
+            .select('*, requesters(name, curator)')
             .eq('playlist_id', playlistId)
 
         if (error) {
             console.error(error.message)
             return []
         }
-        return data ?? []
+        return (data ?? []).map(request => ({
+            ...request,
+            requester_name: request.requesters?.name ?? null,
+            curator: request.requesters?.curator ?? null
+        }))
     }
 
     const createTrackRequest = async (payload) => {
@@ -22,6 +26,33 @@ export function TrackRequestService() {
             .from(TRACK_REQUESTS_TABLE)
             .insert(payload)
             .select()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
+    const updateTrackRequest = async (id, payload) => {
+        const { data, error } = await supabase
+            .from(TRACK_REQUESTS_TABLE)
+            .update(payload)
+            .eq('id', id)
+            .select()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
+    const deleteTrackRequest = async (id) => {
+        const { data, error } = await supabase
+            .from(TRACK_REQUESTS_TABLE)
+            .delete()
+            .eq('id', id)
 
         if (error) {
             console.error(error.message)
@@ -75,6 +106,8 @@ export function TrackRequestService() {
     return {
         getTrackRequests,
         createTrackRequest,
+        updateTrackRequest,
+        deleteTrackRequest,
         getRequesters,
         getOrCreateRequester
     }

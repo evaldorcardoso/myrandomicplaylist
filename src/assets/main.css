@@ -105,6 +105,13 @@
   ::-webkit-scrollbar {
     display: none;
   }
+
+  @media (hover: hover) and (pointer: fine) {
+    button:not(:disabled),
+    [role="button"]:not(:disabled) {
+      cursor: pointer;
+    }
+  }
 }
 
 .material-symbols-outlined {

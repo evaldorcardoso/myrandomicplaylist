@@ -21,6 +21,10 @@
     playlist: {
       type: Object,
       default: null
+    },
+    selectPlaylist: {
+      type: Boolean,
+      default: false
     }
   })
 
@@ -217,14 +221,17 @@
             <!-- Playlist Selection -->
             <div class="space-y-3">
               <label class="text-label-md text-primary uppercase tracking-wider">Playlist Alvo</label>
-              <div class="relative">
+              <div v-if="selectPlaylist" class="relative">
                 <select
                   v-model="selectedPlaylist"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
+                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
                 >
                   <option :value="playlistId">{{ playlist?.name ?? 'Playlist atual' }}</option>
                 </select>
                 <font-awesome-icon icon="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[14px]" />
+              </div>
+              <div v-else class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-5 py-2 text-body-md text-on-surface-variant">
+                {{ playlist?.name ?? 'Playlist atual' }}
               </div>
             </div>
 
@@ -236,7 +243,7 @@
                   v-model="requesterName"
                   type="text"
                   placeholder="Nome do solicitante"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                   @input="onRequesterInput"
                   @blur="onRequesterBlur"
                 />
@@ -259,7 +266,7 @@
                   v-model="curator"
                   type="text"
                   placeholder="Nome do curator"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                 />
               </div>
             </div>
@@ -271,7 +278,7 @@
                 <div class="relative">
                   <select
                     v-model="permanenceDays"
-                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
+                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
                   >
                     <option :value="30">30 Dias</option>
                     <option :value="60">60 Dias</option>
@@ -287,7 +294,7 @@
                   type="text"
                   inputmode="decimal"
                   placeholder="0,00"
-                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                 />
               </div>
               <div class="space-y-3">
@@ -296,7 +303,7 @@
                   <input
                     v-model="dueDateInput"
                     type="date"
-                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-4 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                   />
                   <font-awesome-icon icon="calendar-alt" class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[20px]" />
                 </div>

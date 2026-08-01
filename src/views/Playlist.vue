@@ -7,6 +7,7 @@
   import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
+  import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
@@ -21,9 +22,9 @@
   const progress = inject("progress")
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
   const { addTrackToQueue } = useProfile()
-  const { updatePlaylistTotalTracks, getGenres } = PlaylistService()
+  const { updatePlaylistTotalTracks } = PlaylistService()
   const { getPlaylistDetails, getAudience, getTrackSlot, getGrowth } = PlaylistDetailsService()
-  const { getTrackRequests } = TrackRequestService()
+  const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
 
   const PAGE_SIZE = 20
 
@@ -92,6 +93,9 @@
   const isLoading = ref(true)
   const sellSlotOpened = ref(false)
   const sellSlotTrack = ref(null)
+  const slotManagementOpened = ref(false)
+  const slotManagementTrack = ref(null)
+  const slotManagementRequest = ref(null)
 
   const followersReady = computed(() => state.playlist?.followers != null)
   const growthReady = computed(() => state.dataLikes.length > 0)
@@ -356,22 +360,73 @@
     isMenuOpened.value = true
   }
 
-  const trackInfo = async (track, addToAnotherPlaylist = false) => {
-    const topGenres = await getGenres(track.track.artists)
+  const findTrackRequest = (track) => {
+    return trackRequests.value.find(r => r.track_id === track.track?.id) ?? null
+  }
 
-    track['playlist'] = {
-      id: state.playlist.id,
-      owner: state.playlist.owner.display_name
+  const openTrackSlotModal = (track) => {
+    const status = track._slot?.status ?? 'free'
+    if (status === 'free') {
+      openSellSlot(track)
+      return
     }
+    slotManagementTrack.value = track
+    slotManagementRequest.value = findTrackRequest(track)
+    slotManagementOpened.value = true
+  }
 
-    let menuData = {
-      type: 'track',
-      track,
-      listPlaylists: addToAnotherPlaylist,
-      genres: topGenres
+  const closeSlotManagement = () => {
+    slotManagementOpened.value = false
+    slotManagementTrack.value = null
+    slotManagementRequest.value = null
+  }
+
+  const reloadSlots = async () => {
+    trackRequestsLoaded.value = false
+    state.tracks.forEach(track => {
+      track._slot = null
+    })
+    await loadTrackRequests()
+  }
+
+  const onSlotUpdated = async (type) => {
+    closeSlotManagement()
+    try {
+      await reloadSlots()
+      const messages = {
+        paid: { title: 'Alright', text: 'Pagamento confirmado!' },
+        renewed: { title: 'Alright', text: 'Posição renovada!' },
+        'made-free': { title: 'Alright', text: 'Posição liberada como gratuita!' }
+      }
+      const message = messages[type] ?? { title: 'Alright', text: 'Posição atualizada!' }
+      notify({ title: message.title, text: message.text, type: 'success' })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao atualizar as posições!',
+        type: 'error'
+      })
     }
-    menuDataReactive.value = menuData
-    isMenuOpened.value = true
+  }
+
+  const onSlotRemoveTrack = async ({ request, track }) => {
+    closeSlotManagement()
+    try {
+      if (request?.id) {
+        const { error } = await deleteTrackRequest(request.id)
+        if (error) throw error
+      }
+      await removeInlineTrack(track)
+      await reloadSlots()
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao remover a música!',
+        type: 'error'
+      })
+    }
   }
 
   const openMovePositionMenu = (track, index) => {
@@ -606,8 +661,20 @@
     :track="sellSlotTrack"
     :playlist-id="playlistId"
     :playlist="state.playlist"
+    :select-playlist="false"
     @close="closeSellSlot"
     @confirm="onConfirmSellSlot"
+  />
+  <SlotManagementModal
+    :open="slotManagementOpened"
+    :track="slotManagementTrack"
+    :request="slotManagementRequest"
+    :playlist-id="playlistId"
+    :playlist="state.playlist"
+    :select-playlist="false"
+    @close="closeSlotManagement"
+    @updated="onSlotUpdated"
+    @remove-track="onSlotRemoveTrack"
   />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
@@ -766,7 +833,7 @@
               :key="track.track?.uri"
               class="hover:bg-surface-container-high/30 transition-colors group cursor-pointer"
               :class="{ 'opacity-40': track.track?.available_markets && !track.track.available_markets.includes('BR') }"
-              @click="trackInfo(track)"
+              @click="openTrackSlotModal(track)"
             >
               <td class="px-6 py-4">
                 <div
@@ -842,7 +909,7 @@
                   <button class="p-2 hover:bg-error/20 hover:text-error rounded-lg transition-colors text-on-surface-variant" title="Remover" @click="removeInlineTrack(track)">
                     <font-awesome-icon icon="trash" />
                   </button>
-                  <button class="p-2 hover:bg-secondary/20 hover:text-secondary rounded-lg transition-colors text-on-surface-variant" title="Ver Detalhes" @click="trackInfo(track)">
+                  <button class="p-2 hover:bg-secondary/20 hover:text-secondary rounded-lg transition-colors text-on-surface-variant" title="Ver Detalhes" @click="openTrackSlotModal(track)">
                     <font-awesome-icon icon="eye" />
                   </button>
                 </div>
