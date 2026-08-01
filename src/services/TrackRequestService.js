@@ -1,4 +1,5 @@
 import { supabase } from '@/support/supabaseClient'
+import { setCurator, getCachedCurator } from '@/support/requesterCuratorCache'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
 const REQUESTERS_TABLE = 'requesters'
@@ -15,11 +16,17 @@ export function TrackRequestService() {
             console.error(error.message)
             return []
         }
-        return (data ?? []).map(request => ({
+        const requests = (data ?? []).map(request => ({
             ...request,
             requester_name: request.requesters?.name ?? null,
             curator: request.requesters?.curator ?? null
         }))
+        for (const request of requests) {
+            if (request.requester_name) {
+                setCurator(request.requester_name, request.curator)
+            }
+        }
+        return requests
     }
 
     const createTrackRequest = async (payload) => {
@@ -74,10 +81,18 @@ export function TrackRequestService() {
             console.error(error.message)
             return []
         }
+        for (const requester of data ?? []) {
+            setCurator(requester.name, requester.curator)
+        }
         return data ?? []
     }
 
     const getRequesterByName = async (name) => {
+        const cached = getCachedCurator(name)
+        if (cached.cached) {
+            return { data: { name: String(name ?? '').trim(), curator: cached.curator }, error: null }
+        }
+
         const { data, error } = await supabase
             .from(REQUESTERS_TABLE)
             .select('*')
@@ -87,6 +102,9 @@ export function TrackRequestService() {
         if (error) {
             console.error(error.message)
             return { data: null, error }
+        }
+        if (data) {
+            setCurator(data.name, data.curator)
         }
         return { data, error: null }
     }
@@ -157,6 +175,7 @@ export function TrackRequestService() {
             return { data: null, error: foundError }
         }
         if (found?.length) {
+            setCurator(found[0].name, found[0].curator)
             return { data: found[0], error: null }
         }
 
@@ -169,6 +188,7 @@ export function TrackRequestService() {
             console.error(error.message)
             return { data: null, error }
         }
+        setCurator(created[0].name, created[0].curator)
         return { data: created[0], error: null }
     }
 
