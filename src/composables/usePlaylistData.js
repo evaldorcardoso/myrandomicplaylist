@@ -562,7 +562,7 @@ export function usePlaylistData(callbacks = {}) {
       await checkTracksStatistics()
     }
     if (options.topArtistsLimit && (!Array.isArray(state.playlist?.topArtists) || state.playlist.topArtists.length === 0)) {
-      await getTopArtists(options.topArtistsLimit)
+      getTopArtists(options.topArtistsLimit).catch((error) => console.error(error))
     }
     progress.finish()
   }

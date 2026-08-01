@@ -87,7 +87,14 @@
   const lastUpdatedLabel = ref('')
   const countdownTimer = ref(null)
   const trackRequests = ref([])
+  const trackRequestsLoaded = ref(false)
   const isLoading = ref(true)
+
+  const followersReady = computed(() => state.playlist?.followers != null)
+  const growthReady = computed(() => state.dataLikes.length > 0)
+  const slotsReady = computed(() =>
+    trackRequestsLoaded.value && (state.tracks.length > 0 || !isLoading.value)
+  )
 
   const currentUser = computed(() => userStore.getUser)
   const currentPlaying = computed(() => props.currentData)
@@ -156,6 +163,7 @@
 
   const loadTrackRequests = async () => {
     trackRequests.value = await getTrackRequests(playlistId.value)
+    trackRequestsLoaded.value = true
     buildSlots()
   }
 
@@ -490,8 +498,11 @@
   const handleRefresh = async () => {
     isLoading.value = true
     try {
-      await onRefreshPage(() => sortUserPlaylist(false))
-      await loadTrackRequests()
+      await Promise.all([
+        onRefreshPage(() => sortUserPlaylist(false)),
+        loadTrackRequests()
+      ])
+      buildSlots()
     } finally {
       isLoading.value = false
     }
@@ -506,8 +517,11 @@
   onMounted(async () => {
     progress.start()
     try {
-      await init({ topArtistsLimit: 10 })
-      await loadTrackRequests()
+      await Promise.all([
+        init({ topArtistsLimit: 10 }),
+        loadTrackRequests()
+      ])
+      buildSlots()
       lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     } finally {
       isLoading.value = false
@@ -581,7 +595,7 @@
           rows="3"
         />
         <div class="flex flex-wrap items-center gap-xl mt-4">
-          <div v-if="isLoading" class="flex flex-col gap-1">
+          <div v-if="!followersReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
@@ -589,7 +603,7 @@
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
             <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
           </div>
-          <div v-if="isLoading" class="flex flex-col gap-1">
+          <div v-if="!growthReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
@@ -597,7 +611,7 @@
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
             <span class="text-headline-md text-primary">{{ details.growth.value }}</span>
           </div>
-          <div v-if="isLoading" class="flex flex-col gap-1">
+          <div v-if="!slotsReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
@@ -605,7 +619,7 @@
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
             <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
           </div>
-          <div v-if="isLoading" class="flex flex-col gap-1">
+          <div v-if="!slotsReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
@@ -725,7 +739,11 @@
               </td>
               <td class="px-6 py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
               <td class="px-6 py-4 text-center">
-                <div class="flex flex-col items-center" :class="{ 'animate-pulse': expirationInfo(track._slot).urgent }">
+                <div v-if="!track._slot" class="flex flex-col items-center gap-1">
+                  <div class="animate-pulse h-3 w-16 rounded bg-surface-container-high"></div>
+                  <div class="animate-pulse h-2 w-10 rounded bg-surface-container-high"></div>
+                </div>
+                <div v-else class="flex flex-col items-center" :class="{ 'animate-pulse': expirationInfo(track._slot).urgent }">
                   <span class="text-label-md" :class="expirationInfo(track._slot).urgent ? 'text-error' : (track._slot?.status === 'pending' ? 'text-on-surface-variant' : 'text-primary')">
                     {{ expirationInfo(track._slot).value }}
                   </span>
@@ -735,8 +753,9 @@
                 </div>
               </td>
               <td class="px-6 py-4">
+                <div v-if="!track._slot" class="animate-pulse h-5 w-16 rounded-full bg-surface-container-high"></div>
                 <button
-                  v-if="!track._slot || track._slot.status === 'free'"
+                  v-else-if="track._slot.status === 'free'"
                   class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/80 text-black"
                 >
                   Sell slot
@@ -745,7 +764,10 @@
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</td>
+              <td class="px-6 py-4">
+                <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
+                <span v-else class="text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</span>
+              </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2 bg-surface-container-low/50 p-1 rounded-lg" @click.stop>
                   <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
@@ -779,7 +801,8 @@
 
       <div class="p-6 bg-surface-container-low flex items-center justify-between">
         <span class="text-body-sm text-on-surface-variant">
-          Mostrando {{ state.tracks.length }} de {{ details.filledPositions }} posições ocupadas
+          <template v-if="!slotsReady">Mostrando {{ state.tracks.length }} músicas</template>
+          <template v-else>Mostrando {{ state.tracks.length }} de {{ details.filledPositions }} posições ocupadas</template>
         </span>
         <div class="flex items-center gap-2">
           <button
