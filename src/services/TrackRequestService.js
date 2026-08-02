@@ -1,5 +1,6 @@
 import { supabase } from '@/support/supabaseClient'
 import { setRequester, getCachedRequester } from '@/support/requesterCuratorCache'
+import { invalidateOccupancy } from '@/support/occupancyCache'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
 const REQUESTERS_TABLE = 'requesters'
@@ -39,6 +40,7 @@ export function TrackRequestService() {
             console.error(error.message)
             return { data: null, error }
         }
+        invalidateOccupancy()
         return { data, error: null }
     }
 
@@ -53,6 +55,7 @@ export function TrackRequestService() {
             console.error(error.message)
             return { data: null, error }
         }
+        invalidateOccupancy()
         return { data, error: null }
     }
 
@@ -66,6 +69,7 @@ export function TrackRequestService() {
             console.error(error.message)
             return { data: null, error }
         }
+        invalidateOccupancy()
         return { data, error: null }
     }
 

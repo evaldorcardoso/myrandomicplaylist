@@ -6,7 +6,7 @@
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
 
-  const { getDashboardData } = DashboardService()
+  const { getDashboardData, loadOccupancy } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
@@ -40,7 +40,7 @@
       const playlists = await loadAllFromDatabase()
       playlistStore.loadAll(playlists)
     }
-    state.data = await getDashboardData(playlistStore.playlists)
+    state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy())
     countdownInterval = setInterval(() => {
       state.data.expirations.forEach(expiration => {
         expiration.secondsLeft = Math.max(0, expiration.secondsLeft - 1)

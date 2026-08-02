@@ -1,4 +1,14 @@
-const mockAvgValues = ['R$ 180,00', 'R$ 150,00', 'R$ 250,00', 'R$ 120,00']
+import { useGeneral } from '@/support/spotifyApi'
+import { usePlaylistStore } from '@/stores/playlist'
+import { supabase } from '@/support/supabaseClient'
+import { getCachedOccupancy, setOccupancy } from '@/support/occupancyCache'
+
+const TRACK_REQUESTS_TABLE = 'track_requests'
+
+const formatCurrency = (value) => {
+  if (value == null) return '-'
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+}
 
 const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   for (const value of [playlist.items, playlist.tracks]) {
@@ -11,9 +21,19 @@ const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   return fallbackLength
 }
 
-const mapPlaylist = (playlist, index) => {
+const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
+  const loaded = await playlistStore.getTracks(playlist.id)
+  if (Array.isArray(loaded) && loaded.length > 0) {
+    return new Set(loaded.map(track => track.track?.id).filter(Boolean))
+  }
+  const spotifyTracks = await getTracks(playlist.id)
+  return new Set(spotifyTracks.map(item => item.track?.id).filter(Boolean))
+}
+
+const mapPlaylist = (playlist, occupancy = {}) => {
   const totalPositions = getTrackCount(playlist, playlist.tracks?.items?.length ?? 0)
-  const filledPositions = Math.min(totalPositions, Math.round(totalPositions * 0.8))
+  const entry = occupancy[playlist.id] ?? {}
+  const filledPositions = Math.min(entry.filled ?? 0, totalPositions)
 
   return {
     id: playlist.id,
@@ -23,7 +43,7 @@ const mapPlaylist = (playlist, index) => {
     image: playlist.images?.length > 0 ? playlist.images[0].url : (playlist.image || ''),
     totalPositions,
     filledPositions,
-    avgValue: mockAvgValues[index % mockAvgValues.length]
+    avgValue: formatCurrency(entry.avgValue)
   }
 }
 
@@ -32,8 +52,8 @@ const dashboardData = {
     monthlyEarnings: 'R$ 12.450',
     earningsDelta: '+12.4%',
     earningsDeltaLabel: 'vs mês anterior',
-    activePositions: 142,
-    occupancyLabel: '88% de ocupação total',
+    activePositions: 0,
+    occupancyLabel: '0% de ocupação total',
     expiringSoon: 8,
     expiringLabel: 'Ação imediata necessária'
   },
@@ -78,14 +98,72 @@ const dashboardData = {
 }
 
 export function DashboardService() {
-  const getDashboardData = async (playlists = []) => {
+  const playlistStore = usePlaylistStore()
+  const { getTracks } = useGeneral()
+
+  const loadOccupancy = async () => {
+    const cached = getCachedOccupancy()
+    if (cached) {
+      return cached
+    }
+
+    const { data, error } = await supabase
+      .from(TRACK_REQUESTS_TABLE)
+      .select('playlist_id, track_id, value')
+
+    const byPlaylist = {}
+    if (error) {
+      console.error(error.message)
+      setOccupancy(byPlaylist)
+      return byPlaylist
+    }
+
+    const requestsByPlaylist = {}
+    for (const request of data ?? []) {
+      if (!request.playlist_id) continue
+      if (!requestsByPlaylist[request.playlist_id]) {
+        requestsByPlaylist[request.playlist_id] = []
+      }
+      requestsByPlaylist[request.playlist_id].push(request)
+    }
+
+    for (const playlist of playlistStore.playlists) {
+      const requests = requestsByPlaylist[playlist.id]
+      if (!requests || requests.length === 0) {
+        byPlaylist[playlist.id] = { filled: 0, avgValue: null }
+        continue
+      }
+      const trackIds = await getCurrentTrackIds(playlist, playlistStore, getTracks)
+      const matching = requests.filter(request => request.track_id && trackIds.has(request.track_id))
+      const avgValue = matching.length
+        ? matching.reduce((sum, request) => sum + (request.value ?? 0), 0) / matching.length
+        : null
+      byPlaylist[playlist.id] = { filled: matching.length, avgValue }
+    }
+
+    setOccupancy(byPlaylist)
+    return byPlaylist
+  }
+
+  const getDashboardData = async (playlists = [], occupancy = {}) => {
+    const mappedPlaylists = playlists.map(playlist => mapPlaylist(playlist, occupancy))
+    const totalPositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.totalPositions, 0)
+    const activePositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.filledPositions, 0)
+    const occupancyPercent = totalPositions ? Math.round((activePositions / totalPositions) * 100) : 0
+
     return {
       ...dashboardData,
-      playlists: playlists.map(mapPlaylist)
+      stats: {
+        ...dashboardData.stats,
+        activePositions,
+        occupancyLabel: `${occupancyPercent}% de ocupação total`
+      },
+      playlists: mappedPlaylists
     }
   }
 
   return {
-    getDashboardData
+    getDashboardData,
+    loadOccupancy
   }
 }
