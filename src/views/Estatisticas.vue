@@ -102,14 +102,6 @@
     }
   }))
 
-  const gaugeEnd = computed(() => {
-    const pct = Math.min(100, Math.max(0, avgPopularity.value || 0))
-    const theta = ((180 - (pct / 100) * 180) * Math.PI) / 180
-    const bx = 100 + 70 * Math.cos(theta)
-    const by = 90 - 70 * Math.sin(theta)
-    return `M 20 90 A 70 70 0 0 1 ${bx.toFixed(2)} ${by.toFixed(2)}`
-  })
-
   const genreMix = computed(() => {
     const total = genres.value.reduce((sum, g) => sum + (g.count ?? 0), 0)
     if (!total) return []
@@ -318,56 +310,6 @@
           </div>
         </div>
 
-        <!-- Popularity Gauge + Top Genre Mix -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
-          <div class="bg-surface-container p-lg rounded-xl">
-            <h3 class="text-headline-sm text-on-surface mb-8">Popularity Distribution</h3>
-            <div class="relative w-full aspect-[2/1] flex flex-col items-center justify-end overflow-hidden pt-8">
-              <svg class="absolute inset-0 w-full h-full" viewBox="0 0 200 100">
-                <path d="M 20 90 A 70 70 0 0 1 180 90" fill="none" stroke="#2a2a2a" stroke-linecap="round" stroke-width="20"></path>
-                <path :d="gaugeEnd" fill="none" stroke="url(#gaugeGradient)" stroke-linecap="round" stroke-width="20"></path>
-                <defs>
-                  <linearGradient id="gaugeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                    <stop offset="0%" stop-color="#ffb4ab"></stop>
-                    <stop offset="50%" stop-color="#53e076"></stop>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div class="relative z-10 text-center -mb-2">
-                <span class="text-headline-lg text-on-surface">{{ avgPopularity }}%</span>
-                <p class="text-label-sm text-on-surface-variant uppercase">Global Index</p>
-              </div>
-            </div>
-            <div class="flex justify-between mt-8">
-              <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full bg-error"></div>
-                <span class="text-label-sm text-on-surface-variant">Low (0-40%)</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full bg-primary"></div>
-                <span class="text-label-sm text-on-surface-variant">Viral (70%+)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-surface-container p-lg rounded-xl flex flex-col">
-            <h3 class="text-headline-sm text-on-surface mb-6">Top Genre Mix</h3>
-            <div class="flex flex-col gap-4">
-              <div v-for="genre in genreMix" :key="genre.name" class="space-y-1">
-                <div class="flex justify-between text-label-sm">
-                  <span class="text-on-surface">{{ genre.name }}</span>
-                  <span class="text-primary">{{ genre.pct }}%</span>
-                </div>
-                <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-                  <div class="bg-primary h-full rounded-full" :style="{ width: genre.pct + '%' }"></div>
-                </div>
-              </div>
-              <p v-if="genreMix.length === 0" class="text-body-sm text-on-surface-variant">
-                Nenhum gênero disponível ainda.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Right Column: Actions & Widgets -->
@@ -417,6 +359,25 @@
               <font-awesome-icon icon="bolt" class="text-[14px]" />
               Real-time tracking active
             </div>
+          </div>
+        </div>
+
+        <!-- Top Genre Mix -->
+        <div class="bg-surface-container p-lg rounded-xl flex flex-col">
+          <h3 class="text-headline-sm text-on-surface mb-6">Top Genre Mix</h3>
+          <div class="flex flex-col gap-4">
+            <div v-for="genre in genreMix" :key="genre.name" class="space-y-1">
+              <div class="flex justify-between text-label-sm">
+                <span class="text-on-surface">{{ genre.name }}</span>
+                <span class="text-primary">{{ genre.pct }}%</span>
+              </div>
+              <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+                <div class="bg-primary h-full rounded-full" :style="{ width: genre.pct + '%' }"></div>
+              </div>
+            </div>
+            <p v-if="genreMix.length === 0" class="text-body-sm text-on-surface-variant">
+              Nenhum gênero disponível ainda.
+            </p>
           </div>
         </div>
       </div>
