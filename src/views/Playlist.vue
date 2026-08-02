@@ -56,6 +56,8 @@
     'added last'
   ]
 
+  const TABS = ['Todas', 'Expira em breve', 'Expiradas', 'Disponíveis', 'Pendentes']
+
   const callbacks = {}
   const pd = usePlaylistData(callbacks)
 
@@ -135,7 +137,22 @@
   const filteredTracks = computed(() => {
     slotsVersion.value
     if (activeTab.value === 'Expira em breve') {
-      return state.tracks.filter(t => t._slot?.status && t._slot.status !== 'free' && t._slot.dueTs != null && (t._slot.dueTs - now.value) <= 86400000)
+      return state.tracks.filter(t =>
+        t._slot?.dueTs != null &&
+        t._slot.dueTs > now.value &&
+        (t._slot.dueTs - now.value) <= 86400000
+      )
+    }
+    if (activeTab.value === 'Expiradas') {
+      return state.tracks.filter(t =>
+        t._slot?.status &&
+        t._slot.status !== 'free' &&
+        t._slot.dueTs != null &&
+        t._slot.dueTs <= now.value
+      )
+    }
+    if (activeTab.value === 'Disponíveis') {
+      return state.tracks.filter(t => t._slot?.status === 'free')
     }
     if (activeTab.value === 'Pendentes') {
       return state.tracks.filter(t => t._slot?.status === 'pending')
@@ -146,6 +163,9 @@
   const totalPages = computed(() => Math.max(1, Math.ceil(filteredTracks.value.length / PAGE_SIZE)))
 
   const pagedTracks = computed(() => {
+    if (activeTab.value !== 'Todas') {
+      return filteredTracks.value
+    }
     const start = (currentPage.value - 1) * PAGE_SIZE
     return filteredTracks.value.slice(start, start + PAGE_SIZE)
   })
@@ -774,7 +794,7 @@
           <span class="text-on-surface text-headline-sm">Gerenciamento de Músicas</span>
           <nav class="flex gap-2 flex-wrap">
             <button
-              v-for="tab in ['Todas', 'Expira em breve', 'Pendentes']"
+              v-for="tab in TABS"
               :key="tab"
               class="px-4 py-1.5 rounded-full text-label-sm transition-colors"
               :class="activeTab === tab
@@ -960,7 +980,7 @@
           <template v-if="!slotsReady">Mostrando {{ state.tracks.length }} músicas</template>
           <template v-else>Mostrando {{ state.tracks.length }} de {{ details.filledPositions }} posições ocupadas</template>
         </span>
-        <div class="flex items-center gap-2">
+        <div v-if="activeTab === 'Todas'" class="flex items-center gap-2">
           <button
             class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-on-surface disabled:opacity-30 transition-colors"
             :disabled="currentPage === 1"
