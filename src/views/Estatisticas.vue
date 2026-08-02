@@ -42,7 +42,7 @@
   })
 
   const currentPlaying = computed(() => props.currentData)
-  const likesRange = ref('90D')
+  const likesRange = ref('7D')
 
   const formatNumber = (value) => {
     if (value == null) return '0'
@@ -175,7 +175,7 @@
         <div class="flex-1 flex flex-col pt-4">
           <div class="flex flex-wrap items-center gap-3 mb-2">
             <span class="text-on-surface-variant text-label-sm">
-              • {{ state.playlist?.public ? 'Public Visibility' : 'Private Visibility' }}
+              • {{ state.playlist?.public ? 'Visibilidade Pública' : 'Visibilidade Privada' }}
             </span>
           </div>
           <h1 class="text-headline-lg md:text-display-lg text-on-surface mb-6 leading-none">{{ state.playlist?.name }}</h1>
@@ -204,7 +204,7 @@
                 {{ state.playlist?.description }}
               </p>
               <p v-if="topArtists.length" class="text-body-sm text-on-surface-variant mt-2">
-                Top artists:
+                Top artistas:
                 <span class="text-on-surface font-semibold">{{ topArtists.slice(0, 3).map(a => a.name).join(', ') }}</span>
               </p>
             </div>
@@ -212,7 +212,7 @@
 
           <div class="flex flex-wrap gap-8 py-6 border-t border-outline-variant/10">
             <div class="flex flex-col">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Total Reach</span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Alcance total</span>
               <span class="text-headline-lg text-primary">
                 {{ formatNumber(state.playlist?.followers?.total) }}
                 <span v-if="followersTrend !== 0" class="text-headline-sm" :class="followersTrend > 0 ? 'text-primary-fixed-dim/60' : 'text-tertiary'">
@@ -221,14 +221,14 @@
               </span>
             </div>
             <div class="flex flex-col">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Items</span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Itens</span>
               <span class="text-headline-lg text-on-surface">
                 {{ state.tracks.length }}
-                <span class="text-headline-sm text-on-surface-variant/40">Tracks</span>
+                <span class="text-headline-sm text-on-surface-variant/40">músicas</span>
               </span>
             </div>
             <div class="flex flex-col">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Popularity Score</span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Média de popularidade</span>
               <span class="text-headline-lg text-on-surface">
                 {{ avgPopularity }}
                 <span class="text-headline-sm text-on-surface-variant/40">%</span>
@@ -247,12 +247,12 @@
         <div class="bg-surface-container p-lg rounded-xl flex flex-col gap-md">
           <div class="flex flex-wrap justify-between items-center gap-4">
             <div class="flex flex-col">
-              <h3 class="text-headline-sm text-on-surface">Likes Statistics</h3>
-              <p class="text-body-sm text-on-surface-variant">Growth performance over the last 90 days</p>
+              <h3 class="text-headline-sm text-on-surface">Estatísticas de curtidas</h3>
+              <p class="text-body-sm text-on-surface-variant">Desempenho de crescimento nos últimos {{ rangeDays }} dias</p>
             </div>
             <div class="flex gap-2 bg-surface-container-lowest p-1 rounded-lg">
               <button
-                v-for="range in ['90D', '30D', '7D']"
+                v-for="range in ['7D', '30D', '90D']"
                 :key="range"
                 class="px-4 py-2 rounded-md text-label-sm transition-colors"
                 :class="likesRange === range ? 'bg-surface-container-high text-on-surface' : 'hover:bg-surface-container-high text-on-surface-variant'"
@@ -307,13 +307,13 @@
         <div class="bg-surface-container-high p-lg rounded-xl border border-primary/10 shadow-xl">
           <div class="flex items-center gap-3 mb-8">
             <font-awesome-icon icon="cog" class="text-primary" />
-            <h3 class="text-headline-sm text-on-surface">Management</h3>
+            <h3 class="text-headline-sm text-on-surface">Gerenciamento</h3>
           </div>
           <div class="flex flex-col gap-3">
             <button class="w-full group bg-primary text-on-primary px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" :disabled="hasTodayStatistics" @click="saveLikesStatistics">
               <div class="flex items-center gap-4">
                 <font-awesome-icon icon="save" class="group-hover:rotate-180 transition-transform duration-500" />
-                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística de likes' }}</span>
+                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística de curtidas' }}</span>
               </div>
               <font-awesome-icon icon="chevron-right" />
             </button>
@@ -321,7 +321,7 @@
             <button class="w-full group bg-secondary-container/20 text-secondary border border-secondary/20 px-6 py-4 rounded-xl flex items-center justify-between hover:bg-secondary-container/30 transition-all" @click="onExternalAnalytics">
               <div class="flex items-center gap-4">
                 <font-awesome-icon icon="chart-line" />
-                <span class="text-body-md">External Analytics</span>
+                <span class="text-body-md">Abrir análise externa</span>
               </div>
               <font-awesome-icon icon="external-link-alt" class="text-sm" />
             </button>
@@ -330,7 +330,7 @@
 
         <!-- Top Genre Mix -->
         <div class="bg-surface-container p-lg rounded-xl flex flex-col">
-          <h3 class="text-headline-sm text-on-surface mb-6">Top Genre Mix</h3>
+          <h3 class="text-headline-sm text-on-surface mb-6">Top Gêneros principais</h3>
           <div class="flex flex-col gap-4">
             <div v-for="genre in genreMix" :key="genre.name" class="space-y-1">
               <div class="flex justify-between text-label-sm">
