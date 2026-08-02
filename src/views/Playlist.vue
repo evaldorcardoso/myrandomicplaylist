@@ -131,6 +131,13 @@
     return state.tracks.filter(track => track._slot?.positionMismatch).length
   })
 
+  const hasSoldSlots = computed(() => {
+    slotsVersion.value
+    return state.tracks.some(track => track._slot?.status && track._slot.status !== 'free')
+  })
+
+  const tableColumns = computed(() => hasSoldSlots.value ? 8 : 6)
+
   const filteredTracks = computed(() => {
     slotsVersion.value
     if (activeTab.value === 'Expira em breve') {
@@ -857,9 +864,9 @@
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider"># Pos</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
+              <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
+              <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
             </tr>
@@ -903,7 +910,7 @@
                 </div>
               </td>
               <td class="px-6 py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
-              <td class="px-6 py-4 text-center">
+              <td v-if="hasSoldSlots" class="px-6 py-4 text-center">
                 <div v-if="!track._slot" class="flex flex-col items-center gap-1">
                   <div class="animate-pulse h-3 w-16 rounded bg-surface-container-high"></div>
                   <div class="animate-pulse h-2 w-10 rounded bg-surface-container-high"></div>
@@ -930,7 +937,7 @@
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-              <td class="px-6 py-4">
+              <td v-if="hasSoldSlots" class="px-6 py-4">
                 <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
                 <span v-else class="text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</span>
               </td>
@@ -961,7 +968,7 @@
               </td>
             </tr>
             <tr v-if="isLoading && state.tracks.length === 0">
-              <td colspan="8" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+              <td :colspan="tableColumns" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 <div class="flex items-center justify-center gap-3">
                   <font-awesome-icon icon="spinner" spin class="text-primary" />
                   <span>Carregando músicas...</span>
@@ -969,7 +976,7 @@
               </td>
             </tr>
             <tr v-else-if="pagedTracks.length === 0">
-              <td colspan="8" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
+              <td :colspan="tableColumns" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 Nenhuma música nesta categoria.
               </td>
             </tr>
