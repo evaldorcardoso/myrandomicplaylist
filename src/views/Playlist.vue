@@ -22,7 +22,7 @@
   const progress = inject("progress")
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist } = PlaylistService()
-  const { getPlaylistDetails, getAudience, getTrackSlot, getGrowth } = PlaylistDetailsService()
+  const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
 
   const PAGE_SIZE = 20
@@ -75,8 +75,7 @@
     executeUserPlaylist,
     getPlaylistTracks,
     checkTracksStatistics,
-    removeTrackStatistics,
-    genres
+    removeTrackStatistics
   } = pd
 
   const isMenuOpened = ref(null)
@@ -126,8 +125,6 @@
     const days = details.growth?.days
     return `Crescimento dos seguidores comparado com a última estatística salva${days ? ` (${days} dias atrás)` : ''}.`
   })
-
-  const audience = computed(() => getAudience())
 
   const positionMismatchCount = computed(() => {
     slotsVersion.value
@@ -290,14 +287,6 @@
       return
     }
     notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
-  }
-
-  const onSellPosition = () => {
-    notify({
-      title: 'Em breve',
-      text: 'Venda de posições estará disponível em breve!',
-      type: 'info'
-    })
   }
 
   const onFixPositionMismatch = () => {
@@ -1014,62 +1003,6 @@
             <font-awesome-icon icon="chevron-right" />
           </button>
         </div>
-      </div>
-    </section>
-
-    <!-- Side Insights / Analytics Grid -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-lg mt-4">
-      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-headline-sm text-on-surface">Audiência</h3>
-          <font-awesome-icon icon="users" class="text-primary" />
-        </div>
-        <div class="space-y-4">
-          <template v-for="item in audience" :key="item.label">
-            <div class="flex justify-between items-center text-body-sm">
-              <span class="text-on-surface-variant">{{ item.label }}</span>
-              <span class="text-on-surface text-label-md">{{ item.value }}%</span>
-            </div>
-            <div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
-              <div class="h-full rounded-full" :class="item.tone === 'primary' ? 'bg-primary' : 'bg-secondary'" :style="{ width: item.value + '%' }"></div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-headline-sm text-on-surface">Tags de Gênero</h3>
-          <font-awesome-icon icon="tags" class="text-primary" />
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="genre in genres"
-            :key="genre.genre"
-            class="px-3 py-1 bg-surface-container-high rounded text-label-sm text-on-surface-variant"
-          >
-            {{ genre.genre }}
-          </span>
-          <span v-if="genres.length === 0" class="text-body-sm text-on-surface-variant">
-            Nenhum gênero disponível ainda.
-          </span>
-        </div>
-      </div>
-
-      <div class="bg-surface-container rounded-2xl p-6 border border-outline-variant/10 relative overflow-hidden group">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-headline-sm text-on-surface">Auto-Curation</h3>
-          <font-awesome-icon icon="magic" class="text-primary" />
-        </div>
-        <p class="text-body-sm text-on-surface-variant mb-4">
-          A inteligência SONIC sugere novas músicas baseadas no perfil dos seus seguidores.
-        </p>
-        <button
-          class="w-full py-2 bg-primary/10 text-primary rounded-xl text-label-sm font-bold hover:bg-primary/20 transition-colors"
-          @click="onSellPosition"
-        >
-          Ver Sugestões AI
-        </button>
       </div>
     </section>
   </div>

@@ -274,7 +274,7 @@
         </div>
 
         <!-- Top 5 Artistas -->
-        <div id="top-artists" class="bg-surface-container p-lg rounded-xl flex flex-col gap-md mt-lg">
+        <div id="top-artists" class="bg-surface-container p-lg rounded-xl flex flex-col gap-md">
           <div class="flex flex-col mb-4">
               <h3 class="text-headline-sm text-on-surface">Top 5 Artistas</h3>
             <p class="text-body-sm text-on-surface-variant">Artistas mais frequentes nesta playlist</p>
@@ -344,6 +344,26 @@
             <p v-if="genreMix.length === 0" class="text-body-sm text-on-surface-variant">
               Nenhum gênero disponível ainda.
             </p>
+          </div>
+        </div>
+
+        <!-- Tags de Gênero -->
+        <div class="bg-surface-container p-lg rounded-xl flex flex-col">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-headline-sm text-on-surface">Tags de Gênero</h3>
+            <font-awesome-icon icon="tags" class="text-primary" />
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="genre in genres"
+              :key="genre.genre"
+              class="px-3 py-1 bg-surface-container-high rounded text-label-sm text-on-surface-variant"
+            >
+              {{ genre.genre }}
+            </span>
+            <span v-if="genres.length === 0" class="text-body-sm text-on-surface-variant">
+              Nenhum gênero disponível ainda.
+            </span>
           </div>
         </div>
       </div>
