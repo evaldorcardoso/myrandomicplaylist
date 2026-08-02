@@ -1,9 +1,14 @@
 import { useGeneral } from '@/support/spotifyApi'
 import { usePlaylistStore } from '@/stores/playlist'
 import { supabase } from '@/support/supabaseClient'
-import { getCachedOccupancy, setOccupancy, getCachedEarnings, setEarnings } from '@/support/occupancyCache'
+import { getCachedOccupancy, setOccupancy, getCachedEarnings, setEarnings, getCachedExpirationItems, setCachedExpirationItems } from '@/support/occupancyCache'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
+
+const SECONDS_PER_DAY = 86400
+const MAX_EXPIRATIONS = 5
+const DUE_DATE_DEADLINE_HOUR = 9
+const TIMEZONE_OFFSET = '-03:00'
 
 const formatCurrency = (value) => {
   if (value == null) return '-'
@@ -21,13 +26,24 @@ const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   return fallbackLength
 }
 
-const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
+const getCurrentTracksMap = async (playlist, playlistStore, getTracks) => {
   const loaded = await playlistStore.getTracks(playlist.id)
-  if (Array.isArray(loaded) && loaded.length > 0) {
-    return new Set(loaded.map(track => track.track?.id).filter(Boolean))
+  const source = (Array.isArray(loaded) && loaded.length > 0) ? loaded : await getTracks(playlist.id)
+  const tracksMap = new Map()
+  for (const item of source ?? []) {
+    const track = item?.track
+    if (!track?.id) continue
+    tracksMap.set(track.id, {
+      name: track.name ?? null,
+      artist: track.artists?.[0]?.name ?? null
+    })
   }
-  const spotifyTracks = await getTracks(playlist.id)
-  return new Set(spotifyTracks.map(item => item.track?.id).filter(Boolean))
+  return tracksMap
+}
+
+const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
+  const tracksMap = await getCurrentTracksMap(playlist, playlistStore, getTracks)
+  return new Set(tracksMap.keys())
 }
 
 const getMonthStart = (year, month) => new Date(year, month, 1)
@@ -202,7 +218,120 @@ export function DashboardService() {
     return earnings
   }
 
-  const getDashboardData = async (playlists = [], occupancy = {}, earnings = {}) => {
+  const getDueTs = (dueDate) => {
+    if (!dueDate) return null
+    const deadline = new Date(`${dueDate}T${String(DUE_DATE_DEADLINE_HOUR).padStart(2, '0')}:00:00${TIMEZONE_OFFSET}`)
+    const ts = deadline.getTime()
+    return Number.isNaN(ts) ? null : ts
+  }
+
+  const enrichExpirationItems = (items = []) => {
+    const now = Date.now()
+    return items
+      .filter(expiration => expiration?.dueTs != null)
+      .map(expiration => {
+        const secondsLeft = Math.max(0, Math.floor((expiration.dueTs - now) / 1000))
+        return {
+          ...expiration,
+          secondsLeft,
+          urgent: secondsLeft <= SECONDS_PER_DAY
+        }
+      })
+      .sort((a, b) => a.dueTs - b.dueTs)
+  }
+
+  const buildExpirationItems = (items = []) => {
+    const enriched = enrichExpirationItems(items)
+    const urgentOnly = enriched.filter(expiration => expiration.secondsLeft <= SECONDS_PER_DAY)
+    const count = urgentOnly.length
+    return {
+      stats: {
+        expiringSoon: count,
+        expiringLabel: count === 0
+          ? 'Nenhuma expiração iminente'
+          : (count === 1 ? '1 expiração iminente' : `${count} expirações iminentes`)
+      },
+      expirations: urgentOnly.slice(0, MAX_EXPIRATIONS)
+    }
+  }
+
+  const buildUpcomingExpirations = (items = [], limit = 3) => {
+    return enrichExpirationItems(items)
+      .filter(expiration => expiration.secondsLeft > SECONDS_PER_DAY)
+      .slice(0, limit)
+  }
+
+  const fetchExpirationItems = async () => {
+    const { data, error } = await supabase
+      .from(TRACK_REQUESTS_TABLE)
+      .select('id, playlist_id, track_id, name, due_date, status, requesters(name, curator)')
+
+    if (error) {
+      console.error(error.message)
+      return []
+    }
+
+    const activeRequests = []
+    const playlistIds = new Set()
+
+    for (const request of data ?? []) {
+      if (request.status !== 'pending' && request.status !== 'paid') continue
+      const dueTs = getDueTs(request.due_date)
+      if (dueTs == null) continue
+      activeRequests.push({ ...request, dueTs })
+      playlistIds.add(request.playlist_id)
+    }
+
+    const playlistsById = new Map(playlistStore.playlists.map(playlist => [playlist.id, playlist]))
+    const tracksByPlaylist = {}
+
+    await Promise.all([...playlistIds].map(async (playlistId) => {
+      const playlist = playlistsById.get(playlistId)
+      if (!playlist) return
+      tracksByPlaylist[playlistId] = await getCurrentTracksMap(playlist, playlistStore, getTracks)
+    }))
+
+    const items = []
+    for (const request of activeRequests) {
+      const tracksMap = tracksByPlaylist[request.playlist_id]
+      if (!tracksMap || !tracksMap.has(request.track_id)) continue
+      const trackInfo = tracksMap.get(request.track_id)
+      const requesterName = request.requesters?.name ?? null
+      const curator = request.requesters?.curator ?? null
+      const trackName = request.name ?? trackInfo.name
+      const title = trackInfo.artist ? `${trackName} — ${trackInfo.artist}` : (trackName ?? 'Faixa')
+      const subtitle = curator ? `${requesterName} by ${curator}` : (requesterName ?? '')
+      items.push({
+        id: String(request.id),
+        icon: 'priority_high',
+        title,
+        subtitle,
+        dueTs: request.dueTs
+      })
+    }
+
+    return items
+  }
+
+  const loadExpirationItems = async () => {
+    const cached = getCachedExpirationItems()
+    if (cached) {
+      return cached
+    }
+    const items = await fetchExpirationItems()
+    setCachedExpirationItems(items)
+    return items
+  }
+
+  const loadExpirations = async () => {
+    return buildExpirationItems(await loadExpirationItems())
+  }
+
+  const loadUpcomingExpirations = async () => {
+    return buildUpcomingExpirations(await loadExpirationItems())
+  }
+
+  const getDashboardData = async (playlists = [], occupancy = {}, earnings = {}, expirations = {}, upcomingExpirations = []) => {
     const mappedPlaylists = playlists.map(playlist => mapPlaylist(playlist, occupancy))
     const totalPositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.totalPositions, 0)
     const activePositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.filledPositions, 0)
@@ -213,9 +342,12 @@ export function DashboardService() {
       stats: {
         ...dashboardData.stats,
         ...earnings,
+        ...(expirations.stats ?? {}),
         activePositions,
         occupancyLabel: `${occupancyPercent}% de ocupação total`
       },
+      expirations: expirations.expirations ?? dashboardData.expirations,
+      upcomingExpirations,
       playlists: mappedPlaylists
     }
   }
@@ -223,6 +355,8 @@ export function DashboardService() {
   return {
     getDashboardData,
     loadOccupancy,
-    loadEarnings
+    loadEarnings,
+    loadExpirations,
+    loadUpcomingExpirations
   }
 }

@@ -6,7 +6,7 @@
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
 
-  const { getDashboardData, loadOccupancy, loadEarnings } = DashboardService()
+  const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
@@ -27,6 +27,13 @@
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
   }
 
+  const formatExpiration = (secondsLeft) => {
+    if (secondsLeft > 86400) {
+      return { value: Math.ceil(secondsLeft / 86400), label: 'Dias Restantes' }
+    }
+    return { value: formatCountdown(secondsLeft), label: 'Restantes' }
+  }
+
   const occupancyPercent = (playlist) => {
     return Math.round((playlist.filledPositions / playlist.totalPositions) * 100)
   }
@@ -40,10 +47,12 @@
       const playlists = await loadAllFromDatabase()
       playlistStore.loadAll(playlists)
     }
-    state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy(), await loadEarnings())
+    state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy(), await loadEarnings(), await loadExpirations(), await loadUpcomingExpirations())
     countdownInterval = setInterval(() => {
+      const now = Date.now()
       state.data.expirations.forEach(expiration => {
-        expiration.secondsLeft = Math.max(0, expiration.secondsLeft - 1)
+        expiration.secondsLeft = Math.max(0, Math.floor((expiration.dueTs - now) / 1000))
+        expiration.urgent = expiration.secondsLeft <= 86400
       })
     }, 1000)
   })
@@ -243,7 +252,7 @@
         <!-- Right Column: Alerts & Side Widgets (4 Cols) -->
         <div class="col-span-12 lg:col-span-4 flex flex-col gap-lg">
           <!-- Expiration Widget -->
-          <div class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
+          <div v-if="state.data.expirations.length > 0" class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
             <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-error">notification_important</span>
               <h3 class="text-headline-sm font-display text-on-surface">Alerta de Expiração</h3>
@@ -272,8 +281,8 @@
                     <span
                       class="text-label-sm font-mono tracking-tighter"
                       :class="expiration.urgent ? 'text-error' : 'text-on-surface'"
-                    >{{ formatCountdown(expiration.secondsLeft) }}</span>
-                    <span class="text-[10px] text-on-surface-variant uppercase">Restantes</span>
+                    >{{ formatExpiration(expiration.secondsLeft).value }}</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">{{ formatExpiration(expiration.secondsLeft).label }}</span>
                   </div>
                 </div>
                 <div class="flex gap-2 pt-2">
@@ -300,6 +309,39 @@
               </div>
             </div>
             <a class="text-center text-label-sm text-primary hover:underline mt-2" href="#">Ver todas as {{ state.data.stats.expiringSoon }} expirações</a>
+          </div>
+
+          <!-- Upcoming Expirations Widget -->
+          <div v-if="state.data.upcomingExpirations.length > 0" class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-secondary">event_upcoming</span>
+              <h3 class="text-headline-sm font-display text-on-surface">Próximas Expirações</h3>
+            </div>
+            <div class="flex flex-col gap-4">
+              <div
+                v-for="expiration in state.data.upcomingExpirations"
+                :key="expiration.id"
+                class="p-4 bg-surface-container rounded-xl flex flex-col gap-3 transition-all hover:bg-surface-container-high border border-outline-variant/10"
+              >
+                <div class="flex justify-between items-start gap-3">
+                  <div class="flex gap-3 min-w-0">
+                    <div
+                      class="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 bg-on-surface-variant/10 text-on-surface-variant"
+                    >
+                      <span class="material-symbols-outlined font-bold">{{ expiration.icon }}</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                      <span class="text-body-md font-bold text-on-surface truncate">{{ expiration.title }}</span>
+                      <span class="text-label-sm text-on-surface-variant truncate">{{ expiration.subtitle }}</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-end flex-shrink-0">
+                    <span class="text-label-sm font-mono tracking-tighter text-on-surface">{{ formatExpiration(expiration.secondsLeft).value }}</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">{{ formatExpiration(expiration.secondsLeft).label }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Visualization: Earnings Curve -->
