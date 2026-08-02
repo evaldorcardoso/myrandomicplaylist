@@ -110,7 +110,8 @@ export function usePlaylistData(callbacks = {}) {
   const getPlaylistTracks = async(force = false) => {
     state.tracks = (await playlistStore.getTracks(playlistId.value)) ?? []
     if ((state.tracks.length === 0) || force) {
-      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+      const spotifyTracks = await getTracks(playlistId.value)
+      playlistStore.loadTracks(playlistId.value, spotifyTracks)
       state.tracks = (await playlistStore.getTracks(playlistId.value)) ?? []
     }
   }
@@ -118,9 +119,11 @@ export function usePlaylistData(callbacks = {}) {
   const checkTracksStatistics = async() => {
     var newTracks = false
     state.databaseTracks = userStore.getTracks()
+    const databaseTracksById = new Map(state.databaseTracks.map(track => [track.track_id, track]))
     for (const track of state.tracks) {
-      track.track.popularity_old = userStore.getTrack(track.track.id)?.popularity ?? track.track.popularity
-      track.track.tracked = userStore.getTrack(track.track.id)
+      const tracked = databaseTracksById.get(track.track.id)
+      track.track.popularity_old = tracked?.popularity ?? track.track.popularity
+      track.track.tracked = tracked
       if ((!track.track.tracked) && (state.playlist?.tracked)) {
         newTracks = true
       }

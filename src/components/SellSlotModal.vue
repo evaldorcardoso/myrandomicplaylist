@@ -193,6 +193,7 @@
         requester_id: requester.id,
         status: paid.value ? 'paid' : 'pending'
       }
+
       const trackRequestPromise = createTrackRequest(payload)
       const pricePositionPromise = !pricePositionExists.value
         ? createPricePosition({

@@ -156,6 +156,20 @@ notify({ type: 'success', title: 'Message' })
 - Development uses `/` as base path
 - No linting or tests configured - ensure code quality manually before commits
 
+## Performance Rules
+
+These rules exist because the app froze for ~30s on playlist entry. Cause: writing properties into deeply-reactive objects stored in Pinia (e.g. Spotify track objects) is extremely slow (up to ~180ms per write in some browsers). Always follow the pattern below.
+
+### Never do this
+- Mutate properties on track objects coming from the store while they are deep-reactive. This applies to any loop that writes into reactive objects: `track.id = index`, `track._slot = ...`, `track.track.popularity_old = ...`, `track.track.tracked = ...`. These caused 8-16s stalls per loop.
+- Add temporary debug instrumentation to the committed code: `setInterval` heartbeats, `performance.now()` step logging, or CONTROL experiments (e.g. comparing against `JSON.parse(JSON.stringify(...))` copies).
+- Rely on reactivity of mutated non-reactive data for UI updates.
+
+### Always do this
+- Store Spotify track objects as raw (non-reactive) data in the store: `this.playlists[index].tracks = tracks.map(track => markRaw(track))` (import `markRaw` from `'vue'`). All subsequent writes to those objects become cheap and direct.
+- When you mutate that raw data (e.g. `_slot`, `popularity_old`) and need the UI to refresh, bump an explicit render trigger: a `ref(0)` version counter read by computeds and incremented after each mutation (`const bumpSlots = () => slotsVersion.value++`).
+- Keep loops over track arrays focused on reads only, or on raw writes. If you need to store computed per-track data, attach it to the raw track or keep it in a separate reactive structure.
+
 ## Font Awesome Icons
 
 To use an icon in a component, you need to add it in two places in `main.js`:

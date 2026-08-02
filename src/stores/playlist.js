@@ -1,4 +1,5 @@
 import { defineStore } from "pinia"
+import { markRaw } from "vue"
 
 export const usePlaylistStore = defineStore('playlist', {
     state: () => ({
@@ -29,7 +30,7 @@ export const usePlaylistStore = defineStore('playlist', {
                 return
             }
 
-            this.playlists[index].tracks = tracks
+            this.playlists[index].tracks = tracks.map(track => markRaw(track))
             this.playlists[index].tracks.forEach((track, index) => {
                 track.id = index
             })

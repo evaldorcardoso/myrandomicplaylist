@@ -1,4 +1,3 @@
-const SECONDS_PER_HOUR = 3600
 const SECONDS_PER_DAY = 86400
 const DUE_DATE_DEADLINE_HOUR = 9
 const TIMEZONE_OFFSET = '-03:00'
@@ -11,20 +10,19 @@ const formatCurrency = (value) => {
 
 const getTrackSlot = (track, index, request = null) => {
   if (!request) {
-    return { value: '-', status: 'free', secondsLeft: null, urgent: false }
+    return { value: '-', status: 'free', dueTs: null }
   }
 
-  let secondsLeft = null
+  let dueTs = null
   if (request.due_date) {
     const deadline = new Date(`${request.due_date}T${String(DUE_DATE_DEADLINE_HOUR).padStart(2, '0')}:00:00${TIMEZONE_OFFSET}`)
-    secondsLeft = Math.floor((deadline.getTime() - Date.now()) / 1000)
+    dueTs = deadline.getTime()
   }
 
   return {
     value: formatCurrency(request.value),
     status: request.status,
-    secondsLeft,
-    urgent: secondsLeft != null && secondsLeft <= 24 * SECONDS_PER_HOUR
+    dueTs
   }
 }
 

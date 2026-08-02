@@ -88,6 +88,8 @@
   const isProcessing = ref(false)
   const lastUpdatedLabel = ref('')
   const countdownTimer = ref(null)
+  const now = ref(Date.now())
+  const countdownActive = ref(false)
   const trackRequests = ref([])
   const trackRequestsLoaded = ref(false)
   const isLoading = ref(true)
@@ -96,6 +98,8 @@
   const slotManagementOpened = ref(false)
   const slotManagementTrack = ref(null)
   const slotManagementRequest = ref(null)
+  const slotsVersion = ref(0)
+  const bumpSlots = () => slotsVersion.value++
 
   const followersReady = computed(() => state.playlist?.followers != null)
   const growthReady = computed(() => state.dataLikes.length > 0)
@@ -124,8 +128,9 @@
   const audience = computed(() => getAudience())
 
   const filteredTracks = computed(() => {
+    slotsVersion.value
     if (activeTab.value === 'Expira em breve') {
-      return state.tracks.filter(t => t._slot?.status && t._slot.status !== 'free' && t._slot?.urgent)
+      return state.tracks.filter(t => t._slot?.status && t._slot.status !== 'free' && t._slot.dueTs != null && (t._slot.dueTs - now.value) <= 86400000)
     }
     if (activeTab.value === 'Pendentes') {
       return state.tracks.filter(t => t._slot?.status === 'pending')
@@ -174,20 +179,14 @@
     state.tracks.forEach((track, index) => {
       track._slot = getTrackSlot(track, index, requestsByTrackId.get(track?.track?.id))
     })
+    countdownActive.value = state.tracks.some(track => track._slot?.dueTs != null)
+    bumpSlots()
   }
 
   const loadTrackRequests = async () => {
     trackRequests.value = await getTrackRequests(playlistId.value)
     trackRequestsLoaded.value = true
     buildSlots()
-  }
-
-  const tickCountdown = () => {
-    state.tracks.forEach(track => {
-      if (track._slot?.secondsLeft != null && track._slot.secondsLeft > 0) {
-        track._slot.secondsLeft--
-      }
-    })
   }
 
   const statusPill = (slot) => {
@@ -204,26 +203,28 @@
     if (!slot || slot.status === 'free') {
       return { value: '--:--:--', label: 'Permanente', urgent: false }
     }
-    if (slot.secondsLeft == null) {
+    if (slot.dueTs == null) {
       return { value: '--:--:--', label: 'Sem prazo', urgent: false }
     }
-    if (slot.secondsLeft <= 0) {
+    const secondsLeft = Math.max(0, Math.floor((slot.dueTs - now.value) / 1000))
+    const urgent = secondsLeft <= 86400
+    if (secondsLeft <= 0) {
       return { value: 'Expirado', label: 'Vencido', urgent: true }
     }
     if (slot.status === 'pending') {
-      return { value: Math.ceil(slot.secondsLeft / 86400), label: 'Dias', urgent: slot.urgent }
+      return { value: Math.ceil(secondsLeft / 86400), label: 'Dias', urgent }
     }
-    if (slot.secondsLeft > 86400) {
+    if (secondsLeft > 86400) {
       return {
-        value: Math.ceil(slot.secondsLeft / 86400),
-        label: slot.urgent ? 'Expirando' : 'Dias Restantes',
-        urgent: slot.urgent
+        value: Math.ceil(secondsLeft / 86400),
+        label: urgent ? 'Expirando' : 'Dias Restantes',
+        urgent
       }
     }
     return {
-      value: formatCountdown(slot.secondsLeft),
-      label: slot.urgent ? 'Expirando' : 'Tempo Restante',
-      urgent: slot.urgent
+      value: formatCountdown(secondsLeft),
+      label: urgent ? 'Expirando' : 'Tempo Restante',
+      urgent
     }
   }
 
@@ -293,10 +294,11 @@
     router.push(`/playlist/${playlistId.value}/stats`)
   }
 
-  const onUpdateMenuOpened = (value) => {
+  const onUpdateMenuOpened = async (value) => {
     isMenuOpened.value = value
     if (!value) {
-      checkTracksStatistics()
+      await checkTracksStatistics()
+      bumpSlots()
     }
   }
 
@@ -629,7 +631,11 @@
   })
 
   onMounted(() => {
-    countdownTimer.value = setInterval(tickCountdown, 1000)
+    countdownTimer.value = setInterval(() => {
+      if (countdownActive.value) {
+        now.value = Date.now()
+      }
+    }, 1000)
   })
 
   onUnmounted(() => {
