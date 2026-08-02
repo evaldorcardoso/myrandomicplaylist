@@ -617,6 +617,7 @@
         loadTrackRequests()
       ])
       buildSlots()
+      lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     } finally {
       isLoading.value = false
     }
@@ -819,8 +820,18 @@
             <font-awesome-icon icon="sort" />
             {{ sortOptions[sortPosition] }}
           </button>
-          <div class="text-on-surface-variant text-body-sm italic">
-            Última atualização: {{ lastUpdatedLabel }}
+          <div class="flex items-center gap-4">
+            <div class="text-on-surface-variant text-body-sm italic">
+              Última atualização: {{ lastUpdatedLabel }}
+            </div>
+            <button
+              class="flex items-center gap-1.5 text-primary hover:underline text-label-sm font-medium transition-colors"
+              :disabled="isLoading"
+              @click="handleRefresh"
+            >
+              <font-awesome-icon icon="sync" :spin="isLoading" />
+              Atualizar do Spotify
+            </button>
           </div>
         </div>
       </div>

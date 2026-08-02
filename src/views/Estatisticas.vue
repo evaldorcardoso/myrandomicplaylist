@@ -18,8 +18,6 @@
     notificationData,
     onNotificationAction,
     init,
-    onRefreshPage,
-    openPlaylistApp,
     executeUserPlaylist,
     avgPopularity,
     topArtists,
@@ -45,8 +43,6 @@
 
   const currentPlaying = computed(() => props.currentData)
   const likesRange = ref('90D')
-  const isRefreshing = ref(false)
-  const lastSyncLabel = ref('agora mesmo')
 
   const formatNumber = (value) => {
     if (value == null) return '0'
@@ -82,6 +78,16 @@
         }
       ]
     }
+  })
+
+  const followersTrend = computed(() => {
+    const now = new Date()
+    const cutoff = new Date(now.getTime() - rangeDays.value * 86400000)
+    const rows = state.dataLikes.filter(row => new Date(row.created_at) >= cutoff)
+    if (rows.length < 2) return 0
+    const first = rows[0]?.likes_count ?? 0
+    const last = rows[rows.length - 1]?.likes_count ?? 0
+    return Number(last) - Number(first)
   })
 
   const chartOptions = computed(() => ({
@@ -120,17 +126,6 @@
 
   const backToPlaylist = () => {
     router.push(`/playlist/${playlistId.value}`)
-  }
-
-  const onRefresh = async () => {
-    isRefreshing.value = true
-    await onRefreshPage()
-    lastSyncLabel.value = 'agora mesmo'
-    isRefreshing.value = false
-  }
-
-  const onShowTopArtists = () => {
-    document.getElementById('top-artists')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const onExternalAnalytics = () => {
@@ -179,9 +174,6 @@
 
         <div class="flex-1 flex flex-col pt-4">
           <div class="flex flex-wrap items-center gap-3 mb-2">
-            <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-label-sm border border-primary/20 uppercase tracking-widest">
-              Featured Playlist
-            </span>
             <span class="text-on-surface-variant text-label-sm">
               • {{ state.playlist?.public ? 'Public Visibility' : 'Private Visibility' }}
             </span>
@@ -223,7 +215,9 @@
               <span class="text-label-sm text-on-surface-variant uppercase tracking-tighter">Total Reach</span>
               <span class="text-headline-lg text-primary">
                 {{ formatNumber(state.playlist?.followers?.total) }}
-                <span class="text-headline-sm text-primary-fixed-dim/60">↑7</span>
+                <span v-if="followersTrend !== 0" class="text-headline-sm" :class="followersTrend > 0 ? 'text-primary-fixed-dim/60' : 'text-tertiary'">
+                  {{ followersTrend > 0 ? '↑' : '↓' }}{{ formatNumber(Math.abs(followersTrend)) }}
+                </span>
               </span>
             </div>
             <div class="flex flex-col">
@@ -280,16 +274,11 @@
           </div>
         </div>
 
-        <!-- Top 10 Artistas -->
+        <!-- Top 5 Artistas -->
         <div id="top-artists" class="bg-surface-container p-lg rounded-xl flex flex-col gap-md mt-lg">
-          <div class="flex justify-between items-center mb-4">
-            <div class="flex flex-col">
-              <h3 class="text-headline-sm text-on-surface">Top 10 Artistas</h3>
-              <p class="text-body-sm text-on-surface-variant">Artistas mais frequentes nesta playlist</p>
-            </div>
-            <button class="text-primary text-label-sm hover:underline" @click="openPlaylistApp(playlistId)">
-              Ver todos
-            </button>
+          <div class="flex flex-col mb-4">
+              <h3 class="text-headline-sm text-on-surface">Top 5 Artistas</h3>
+            <p class="text-body-sm text-on-surface-variant">Artistas mais frequentes nesta playlist</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
@@ -321,25 +310,12 @@
             <h3 class="text-headline-sm text-on-surface">Management</h3>
           </div>
           <div class="flex flex-col gap-3">
-            <button class="w-full group bg-primary-container text-on-primary-container px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold" :disabled="isRefreshing" @click="onRefresh">
-              <div class="flex items-center gap-4">
-                <font-awesome-icon icon="sync" :spin="isRefreshing" class="group-hover:rotate-180 transition-transform duration-500" />
-                <span class="text-body-md">{{ isRefreshing ? 'Atualizando...' : 'Refresh from Spotify' }}</span>
-              </div>
-              <font-awesome-icon icon="chevron-right" />
-            </button>
             <button class="w-full group bg-primary text-on-primary px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" :disabled="hasTodayStatistics" @click="saveLikesStatistics">
               <div class="flex items-center gap-4">
                 <font-awesome-icon icon="save" class="group-hover:rotate-180 transition-transform duration-500" />
-                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística' }}</span>
+                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística de likes' }}</span>
               </div>
               <font-awesome-icon icon="chevron-right" />
-            </button>
-            <button class="w-full group bg-surface-container-lowest text-on-surface px-6 py-4 rounded-xl flex items-center justify-between hover:bg-surface-container-highest transition-all" @click="onShowTopArtists">
-              <div class="flex items-center gap-4">
-                <font-awesome-icon icon="users" class="text-primary" />
-                <span class="text-body-md">Show Top Artists</span>
-              </div>
             </button>
             <div class="my-4 border-t border-outline-variant/10"></div>
             <button class="w-full group bg-secondary-container/20 text-secondary border border-secondary/20 px-6 py-4 rounded-xl flex items-center justify-between hover:bg-secondary-container/30 transition-all" @click="onExternalAnalytics">
@@ -349,16 +325,6 @@
               </div>
               <font-awesome-icon icon="external-link-alt" class="text-sm" />
             </button>
-          </div>
-          <div class="mt-8 p-4 bg-surface-container rounded-lg flex flex-col gap-2">
-            <div class="flex items-center gap-2 text-label-sm text-on-surface-variant">
-              <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-              Last sync: {{ lastSyncLabel }}
-            </div>
-            <div class="flex items-center gap-2 text-label-sm text-on-surface-variant">
-              <font-awesome-icon icon="bolt" class="text-[14px]" />
-              Real-time tracking active
-            </div>
           </div>
         </div>
 
