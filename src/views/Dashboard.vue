@@ -135,14 +135,6 @@
               <h2 class="text-headline-md font-display text-on-surface">Gestão de Playlists</h2>
               <span class="px-2 py-0.5 bg-surface-container-high rounded text-label-sm text-on-surface-variant">{{ state.data.playlists.length }} Playlists</span>
             </div>
-            <div class="flex gap-2">
-              <button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                <span class="material-symbols-outlined">filter_list</span>
-              </button>
-              <button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                <span class="material-symbols-outlined">download</span>
-              </button>
-            </div>
           </div>
 
           <div class="bg-surface-container-low rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
