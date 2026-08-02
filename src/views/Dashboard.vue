@@ -6,7 +6,7 @@
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
 
-  const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations } = DashboardService()
+  const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
@@ -47,7 +47,7 @@
       const playlists = await loadAllFromDatabase()
       playlistStore.loadAll(playlists)
     }
-    state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy(), await loadEarnings(), await loadExpirations(), await loadUpcomingExpirations())
+    state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy(), await loadEarnings(), await loadExpirations(), await loadUpcomingExpirations(), await loadRecentOrders())
     countdownInterval = setInterval(() => {
       const now = Date.now()
       state.data.expirations.forEach(expiration => {
@@ -208,37 +208,6 @@
             </div>
           </div>
 
-          <!-- Recent Orders Section -->
-          <div class="flex flex-col gap-4 mt-4">
-            <h3 class="text-headline-sm font-display text-on-surface">Pedidos Recentes</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
-                v-for="order in state.data.recentOrders"
-                :key="order.id"
-                class="bg-surface-container-low p-4 rounded-xl flex items-center justify-between border border-outline-variant/10 hover:border-primary/30 transition-all cursor-pointer"
-              >
-                <div class="flex items-center gap-3 min-w-0">
-                  <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    :class="order.tone === 'primary' ? 'bg-primary/10 text-primary' : 'bg-tertiary-container/10 text-tertiary'"
-                  >
-                    <span class="material-symbols-outlined">{{ order.icon }}</span>
-                  </div>
-                  <div class="flex flex-col min-w-0">
-                    <span class="text-body-md font-bold text-on-surface line-clamp-1">{{ order.title }}</span>
-                    <span class="text-label-sm text-on-surface-variant line-clamp-1">{{ order.subtitle }}</span>
-                  </div>
-                </div>
-                <div class="flex flex-col items-end flex-shrink-0 ml-3">
-                  <span
-                    class="text-label-sm px-2 py-0.5 rounded-full"
-                    :class="order.tone === 'primary' ? 'text-primary bg-primary/10' : 'text-on-tertiary-container bg-tertiary-container/10'"
-                  >{{ order.status }}</span>
-                  <span class="text-[10px] text-on-surface-variant mt-1">{{ order.time }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Right Column: Alerts & Side Widgets (4 Cols) -->
@@ -336,42 +305,38 @@
             </div>
           </div>
 
-          <!-- Visualization: Earnings Curve -->
+          <!-- Recent Orders Widget -->
           <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
             <div class="flex items-center justify-between">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Performance Semanal</span>
-              <div class="flex gap-1">
-                <span class="w-2 h-2 rounded-full bg-primary"></span>
-                <span class="w-2 h-2 rounded-full bg-surface-container-highest"></span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Pedidos Recentes</span>
+            </div>
+            <div class="flex flex-col gap-3">
+              <div
+                v-for="order in state.data.recentOrders"
+                :key="order.id"
+                class="flex items-center justify-between gap-3 p-3 bg-surface-container rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all"
+              >
+                <div class="flex items-center gap-3 min-w-0">
+                  <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                    :class="order.tone === 'primary' ? 'bg-primary/10 text-primary' : 'bg-tertiary-container/10 text-tertiary'"
+                  >
+                    <span class="material-symbols-outlined">{{ order.icon }}</span>
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-body-md font-bold text-on-surface line-clamp-1">{{ order.title }}</span>
+                    <span class="text-label-sm text-on-surface-variant line-clamp-1">{{ order.subtitle }}</span>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end flex-shrink-0">
+                  <span
+                    class="text-label-sm px-2 py-0.5 rounded-full"
+                    :class="order.tone === 'primary' ? 'text-primary bg-primary/10' : 'text-on-tertiary-container bg-tertiary-container/10'"
+                  >{{ order.status }}</span>
+                  <span class="text-[10px] text-on-surface-variant mt-1">{{ order.time }}</span>
+                </div>
               </div>
             </div>
-            <div class="h-32 w-full mt-2">
-              <svg class="w-full h-full text-primary drop-shadow-[0_0_8px_rgba(83,224,118,0.3)]" fill="none" preserveAspectRatio="none" viewBox="0 0 400 100">
-                <path d="M0 80 Q 50 20 100 60 T 200 40 T 300 10 T 400 30" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
-                <path d="M0 80 Q 50 20 100 60 T 200 40 T 300 10 T 400 30 L 400 100 L 0 100 Z" fill="url(#gradient-primary)" opacity="0.1"></path>
-                <defs>
-                  <linearGradient id="gradient-primary" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stop-color="currentColor"></stop>
-                    <stop offset="100%" stop-color="transparent"></stop>
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <div class="flex justify-between text-[10px] text-on-surface-variant font-mono">
-              <span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span><span>DOM</span>
-            </div>
-          </div>
-
-          <!-- Marketplace Activity Micro-widget -->
-          <div class="bg-secondary-container/5 rounded-xl p-lg border border-secondary/10 flex flex-col gap-3">
-            <div class="flex items-center gap-2 text-secondary">
-              <span class="material-symbols-outlined text-[20px]">bolt</span>
-              <span class="text-label-sm font-bold uppercase tracking-widest">Sonic Insights</span>
-            </div>
-            <p class="text-body-sm text-on-surface/80 leading-relaxed">
-              Sua playlist <span class="text-secondary font-bold">BRAZILIAN BASS</span> está com demanda <span class="text-primary font-bold">alta</span>. Considere aumentar o valor médio da posição em 15%.
-            </p>
-            <button class="text-label-sm text-secondary hover:underline self-start">Ajustar Preços</button>
           </div>
         </div>
       </div>

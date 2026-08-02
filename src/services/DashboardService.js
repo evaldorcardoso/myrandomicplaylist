@@ -15,6 +15,19 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
+const timeAgo = (value) => {
+  const at = new Date(value)
+  if (Number.isNaN(at.getTime())) return ''
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - at.getTime()) / 1000))
+  const minutes = Math.floor(diffSeconds / 60)
+  if (minutes < 1) return 'agora mesmo'
+  if (minutes < 60) return `há ${minutes} minuto${minutes === 1 ? '' : 's'}`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `há ${hours} hora${hours === 1 ? '' : 's'}`
+  const days = Math.floor(hours / 24)
+  return `há ${days} dia${days === 1 ? '' : 's'}`
+}
+
 const getTrackCount = (playlist = {}, fallbackLength = 0) => {
   for (const value of [playlist.items, playlist.tracks]) {
     if (value == null) continue
@@ -86,26 +99,6 @@ const dashboardData = {
     expiringSoon: 8,
     expiringLabel: 'Ação imediata necessária'
   },
-  recentOrders: [
-    {
-      id: 'order-1',
-      icon: 'radio',
-      title: 'Song: Breathless',
-      subtitle: 'Monrabeatz by scheid',
-      status: 'PAGO',
-      tone: 'primary',
-      time: 'há 2 horas'
-    },
-    {
-      id: 'order-2',
-      icon: 'pending',
-      title: 'Song: Midnight City',
-      subtitle: 'DJ Luane by scheid',
-      status: 'PENDENTE',
-      tone: 'tertiary',
-      time: 'há 5 horas'
-    }
-  ],
   expirations: [
     {
       id: 'exp-1',
@@ -331,7 +324,35 @@ export function DashboardService() {
     return buildUpcomingExpirations(await loadExpirationItems())
   }
 
-  const getDashboardData = async (playlists = [], occupancy = {}, earnings = {}, expirations = {}, upcomingExpirations = []) => {
+  const loadRecentOrders = async () => {
+    const { data, error } = await supabase
+      .from(TRACK_REQUESTS_TABLE)
+      .select('id, created_at, status, name, requesters(name, curator)')
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    if (error) {
+      console.error(error.message)
+      return []
+    }
+
+    return (data ?? []).map(request => {
+      const requesterName = request.requesters?.name ?? null
+      const curator = request.requesters?.curator ?? null
+      const paid = request.status === 'paid'
+      return {
+        id: String(request.id),
+        icon: paid ? 'radio' : 'pending',
+        title: request.name ?? 'Faixa',
+        subtitle: curator ? `${requesterName} by ${curator}` : (requesterName ?? ''),
+        status: paid ? 'PAGO' : 'PENDENTE',
+        tone: paid ? 'primary' : 'tertiary',
+        time: timeAgo(request.created_at)
+      }
+    })
+  }
+
+  const getDashboardData = async (playlists = [], occupancy = {}, earnings = {}, expirations = {}, upcomingExpirations = [], recentOrders = []) => {
     const mappedPlaylists = playlists.map(playlist => mapPlaylist(playlist, occupancy))
     const totalPositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.totalPositions, 0)
     const activePositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.filledPositions, 0)
@@ -348,6 +369,7 @@ export function DashboardService() {
       },
       expirations: expirations.expirations ?? dashboardData.expirations,
       upcomingExpirations,
+      recentOrders,
       playlists: mappedPlaylists
     }
   }
@@ -357,6 +379,7 @@ export function DashboardService() {
     loadOccupancy,
     loadEarnings,
     loadExpirations,
-    loadUpcomingExpirations
+    loadUpcomingExpirations,
+    loadRecentOrders
   }
 }
