@@ -50,9 +50,9 @@ const formatPercent = (percent) => {
   return `${sign}${percent.toFixed(decimals)}%`
 }
 
-const getGrowth = (likesHistory = []) => {
-  if (!Array.isArray(likesHistory) || likesHistory.length < 2) {
-    return { days: 0, value: '+0(+0.0%)' }
+const getGrowth = (likesHistory = [], currentLikes = 0) => {
+  if (!Array.isArray(likesHistory) || likesHistory.length === 0) {
+    return { days: 0, value: '+0' }
   }
   const now = Date.now()
   const entries = likesHistory
@@ -60,20 +60,20 @@ const getGrowth = (likesHistory = []) => {
     .filter(e => Number.isFinite(e.time))
     .sort((a, b) => a.time - b.time)
 
-  const current = entries[entries.length - 1]
-  const baseline = entries[entries.length - 2]
-
+  const baseline = entries[entries.length - 1]
+  const current = currentLikes ?? baseline.likes
   const days = Math.max(1, Math.round((now - baseline.time) / DAY_IN_MS))
-  const delta = current.likes - baseline.likes
+  const delta = current - baseline.likes
   const sign = delta >= 0 ? '+' : ''
   const percent = baseline.likes ? (delta / baseline.likes) * 100 : 0
+  const percentText = delta === 0 ? '' : `(${formatPercent(percent)})`
   return {
     days,
-    value: `${sign}${Math.round(delta)}(${formatPercent(percent)})`
+    value: `${sign}${Math.round(delta)}${percentText}`
   }
 }
 
-const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCount = 0, monthlyRevenue = 0, growth = { days: 0, value: '+0(+0.0%)' }) => {
+const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCount = 0, monthlyRevenue = 0, growth = { days: 0, value: '+0' }) => {
   playlist = playlist ?? {}
   const totalPositions = getTrackCount(playlist, tracksLength)
 

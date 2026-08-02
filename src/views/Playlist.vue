@@ -120,7 +120,7 @@
     const requests = trackRequests.value.filter(r => r.track_id && trackIds.has(r.track_id))
     const filledPositions = requests.length
     const monthlyRevenue = requests.reduce((sum, r) => sum + (r.value ?? 0), 0)
-    return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue, getGrowth(state.dataLikes))
+    return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue, getGrowth(state.dataLikes, state.playlist?.followers?.total))
   })
   const growthHint = computed(() => {
     const days = details.growth?.days
@@ -361,6 +361,7 @@
     }
     await playlistStore.updateTracksPosition(playlistId.value)
     await getPlaylistTracks()
+    state.playlist.items = state.tracks.length
     await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
     sortUserPlaylist(false)
     buildSlots()
