@@ -2,8 +2,10 @@
 import { onMounted, onBeforeUnmount, computed, reactive, watch } from "vue";
 import { useRoute } from 'vue-router'
 import { useProfile } from '@/support/spotifyApi'
+import { useUserStore } from '@/stores/user'
 
 const { startResumePlayback, pausePlayback } = useProfile()
+const userStore = useUserStore()
 var intervalProgress;
 
 const route = useRoute()
@@ -24,6 +26,10 @@ const props = defineProps({
 const currentPlaying = computed(() => {
     return props.currentData;
 });
+
+const isTracked = computed(() => {
+    return !!userStore.getTrack(currentPlaying.value?.item?.id)
+})
 
 const formatTime = (ms) => {
     if (!ms || ms < 0) return '0:00'
@@ -104,11 +110,11 @@ onBeforeUnmount(() => {
     <div class="fixed bottom-0 left-0 lg:left-72 right-0 z-30" v-if="currentPlaying && route.name != 'Player'">
         <div class="relative h-20 bg-surface-container-lowest/95 backdrop-blur-2xl border-t border-outline-variant/10 px-gutter md:px-10 flex items-center justify-between gap-4">
             <div class="flex items-center gap-4 w-1/3 min-w-0">
-                <router-link to="/player" class="w-12 h-12 rounded bg-surface-container-highest overflow-hidden flex-shrink-0 border border-outline-variant/20">
+                <router-link to="/player" class="h-20 w-20 rounded bg-surface-container-highest overflow-hidden flex-shrink-0 border border-outline-variant/20">
                     <img class="w-full h-full object-cover" v-bind:src="currentPlaying.item?.album.images[0].url" />
                 </router-link>
                 <router-link to="/player" class="flex flex-col min-w-0">
-                    <h3 class="text-body-md font-bold text-on-surface truncate leading-tight">{{ currentPlaying.item?.name }}</h3>
+                    <h3 class="text-body-md font-bold text-on-surface truncate leading-tight"><font-awesome-icon v-if="isTracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);" />{{ currentPlaying.item?.name }}</h3>
                     <span class="text-label-sm text-on-surface-variant truncate leading-tight">{{ currentPlaying.item?.artists.map(artist => artist.name).join(', ') }}</span>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="text-[10px] text-primary font-bold uppercase tracking-widest">Popularity: {{ currentPlaying.item?.popularity }}</span>
