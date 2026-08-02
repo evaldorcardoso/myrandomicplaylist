@@ -1,4 +1,5 @@
 const CACHE_KEY = 'dashboard_occupancy'
+const EARNINGS_CACHE_KEY = 'dashboard_earnings'
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 const readCache = () => {
@@ -31,12 +32,37 @@ const setOccupancy = (byPlaylist) => {
   }
 }
 
-const invalidateOccupancy = () => {
+const getCachedEarnings = () => {
   try {
-    localStorage.removeItem(CACHE_KEY)
+    const raw = localStorage.getItem(EARNINGS_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed.updatedAt !== 'number') return null
+    if (Date.now() - parsed.updatedAt >= CACHE_TTL_MS) return null
+    return parsed.earnings ?? null
+  } catch (error) {
+    return null
+  }
+}
+
+const setEarnings = (earnings) => {
+  try {
+    localStorage.setItem(EARNINGS_CACHE_KEY, JSON.stringify({
+      updatedAt: Date.now(),
+      earnings: earnings ?? {}
+    }))
   } catch (error) {
     console.error(error)
   }
 }
 
-export { getCachedOccupancy, setOccupancy, invalidateOccupancy }
+const invalidateOccupancy = () => {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+    localStorage.removeItem(EARNINGS_CACHE_KEY)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export { getCachedOccupancy, setOccupancy, getCachedEarnings, setEarnings, invalidateOccupancy }

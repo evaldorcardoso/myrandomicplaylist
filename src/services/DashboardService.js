@@ -1,7 +1,7 @@
 import { useGeneral } from '@/support/spotifyApi'
 import { usePlaylistStore } from '@/stores/playlist'
 import { supabase } from '@/support/supabaseClient'
-import { getCachedOccupancy, setOccupancy } from '@/support/occupancyCache'
+import { getCachedOccupancy, setOccupancy, getCachedEarnings, setEarnings } from '@/support/occupancyCache'
 
 const TRACK_REQUESTS_TABLE = 'track_requests'
 
@@ -28,6 +28,19 @@ const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
   }
   const spotifyTracks = await getTracks(playlist.id)
   return new Set(spotifyTracks.map(item => item.track?.id).filter(Boolean))
+}
+
+const getMonthStart = (year, month) => new Date(year, month, 1)
+
+const sumEarnings = (rows, start, end) => {
+  let total = 0
+  for (const row of rows) {
+    if (row.status !== 'paid' || row.value == null) continue
+    const at = new Date(row.created_at)
+    if (Number.isNaN(at.getTime())) continue
+    if (at >= start && at < end) total += row.value
+  }
+  return total
 }
 
 const mapPlaylist = (playlist, occupancy = {}) => {
@@ -145,7 +158,51 @@ export function DashboardService() {
     return byPlaylist
   }
 
-  const getDashboardData = async (playlists = [], occupancy = {}) => {
+  const loadEarnings = async () => {
+    const cached = getCachedEarnings()
+    if (cached) {
+      return cached
+    }
+
+    const now = new Date()
+    const currentStart = getMonthStart(now.getFullYear(), now.getMonth())
+    const nextStart = getMonthStart(now.getFullYear(), now.getMonth() + 1)
+    const prevStart = getMonthStart(now.getFullYear(), now.getMonth() - 1)
+
+    const { data, error } = await supabase
+      .from(TRACK_REQUESTS_TABLE)
+      .select('value, status, created_at')
+      .gte('created_at', prevStart.toISOString())
+
+    if (error) {
+      console.error(error.message)
+      return null
+    }
+
+    const rows = data ?? []
+    const currentTotal = sumEarnings(rows, currentStart, nextStart)
+    const previousTotal = sumEarnings(rows, prevStart, currentStart)
+
+    const earnings = {
+      monthlyEarnings: formatCurrency(currentTotal),
+      earningsDelta: '—',
+      earningsDeltaLabel: 'vs mês anterior'
+    }
+
+    if (previousTotal > 0) {
+      const delta = ((currentTotal - previousTotal) / previousTotal) * 100
+      const sign = delta >= 0 ? '+' : ''
+      earnings.earningsDelta = `${sign}${delta.toFixed(1)}%`
+    } else if (currentTotal > 0) {
+      earnings.earningsDelta = '—'
+      earnings.earningsDeltaLabel = 'primeiro mês com ganhos'
+    }
+
+    setEarnings(earnings)
+    return earnings
+  }
+
+  const getDashboardData = async (playlists = [], occupancy = {}, earnings = {}) => {
     const mappedPlaylists = playlists.map(playlist => mapPlaylist(playlist, occupancy))
     const totalPositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.totalPositions, 0)
     const activePositions = mappedPlaylists.reduce((sum, playlist) => sum + playlist.filledPositions, 0)
@@ -155,6 +212,7 @@ export function DashboardService() {
       ...dashboardData,
       stats: {
         ...dashboardData.stats,
+        ...earnings,
         activePositions,
         occupancyLabel: `${occupancyPercent}% de ocupação total`
       },
@@ -164,6 +222,7 @@ export function DashboardService() {
 
   return {
     getDashboardData,
-    loadOccupancy
+    loadOccupancy,
+    loadEarnings
   }
 }
