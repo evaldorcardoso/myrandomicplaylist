@@ -1,275 +1,184 @@
 <script setup>
-  import { onMounted, computed, reactive, ref, inject, nextTick } from 'vue'
+  import { onMounted, computed, reactive, ref, inject } from 'vue'
+  import { useRouter } from 'vue-router'
   import { useProfile } from '@/support/spotifyApi'
-  import { onBeforeRouteLeave, useRouter } from 'vue-router'
   import helpers from '../support/helpers'
   import { LOCALSTORAGE_KEYS } from '../support/helpers'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '../stores/user'
   import { PlaylistService } from '../services/PlaylistService'
-  import { notify } from "@kyvg/vue3-notification";
 
   const { getPlaylists } = useProfile()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const { loadAllFromDatabase } = PlaylistService()
-  const msg = ref('Your library')
-  const progress = inject("progress");
-  const playlistContainer = ref(null);
+  const progress = inject("progress")
+
+  const FILTERS = [
+    { key: 'all', label: 'Todas' },
+    { key: 'minhas', label: 'Minhas' },
+    { key: 'public', label: 'Públicas' },
+    { key: 'private', label: 'Privadas' },
+    { key: 'curadoria', label: 'Curadoria' }
+  ]
+
+  const state = reactive({
+    playlistsOriginal: [],
+    playlists: [],
+    trackedIds: []
+  })
+
+  const activeFilter = ref('all')
+  const isLoading = ref(true)
 
   const currentUser = computed(() => {
     return userStore.getUser
-  });
-
-  const state = reactive({
-    playlistsOriginal:[],
-    playlists: [],
-    savedPlaylists: [],
-    filters: ['all'],
-    devices: [],
-    tracks: [],
-    scrollPosition: 0
   })
+
+  const isOwnPlaylist = (playlist) => {
+    return playlist.owner?.display_name === currentUser.value?.display_name
+  }
+
+  const filterPlaylists = (value = 'all') => {
+    activeFilter.value = value
+    helpers.setLocalStorage(LOCALSTORAGE_KEYS.filterLibrary, value)
+
+    let list = state.playlistsOriginal
+    if (value === 'minhas') {
+      list = state.playlistsOriginal.filter(isOwnPlaylist)
+    } else if (value === 'public') {
+      list = state.playlistsOriginal.filter(playlist => playlist.public !== false)
+    } else if (value === 'private') {
+      list = state.playlistsOriginal.filter(playlist => playlist.public === false)
+    } else if (value === 'curadoria') {
+      list = state.playlistsOriginal.filter(playlist => isOwnPlaylist(playlist) && playlist.tracked)
+    }
+    state.playlists = list
+  }
 
   const openPlaylist = (playlistId) => {
     router.push('/playlist/' + playlistId)
   }
 
-  const filterPLaylists = (value = 'all') => {
-    helpers.setLocalStorage(LOCALSTORAGE_KEYS.filterLibrary, value)
-    state.filters = [value]
-
-    state.filters.map(item => {
-      switch (item) {
-        case 'all':
-          state.playlists = state.playlistsOriginal
-          break
-
-        case 'liked':
-          filterPrivatePlaylists(false)
-          break
-
-        case 'private':
-          filterPrivatePlaylists(true)
-          break
-      
-        default:
-          break
-      }
+  const sortPlaylists = (playlists) => {
+    return playlists.sort((a, b) => {
+      if (a.order === null || a.order === undefined) return 1
+      if (b.order === null || b.order === undefined) return -1
+      return a.order - b.order
     })
   }
 
-  const filterPrivatePlaylists = async (value = true) => {
-    if (value) {
-      state.playlists = state.playlistsOriginal.filter(
-        playlist => playlist.owner.display_name == currentUser.value.display_name          
-      )
-      return
+  const loadLibrary = async () => {
+    const dbPlaylists = await loadAllFromDatabase()
+    if (!playlistStore.isLoaded) {
+      playlistStore.loadAll(dbPlaylists)
     }
+    state.trackedIds = dbPlaylists.map(playlist => playlist.id)
+    const trackedSet = new Set(state.trackedIds)
 
-    state.playlists = state.playlistsOriginal.filter(
-      playlist => playlist.owner.display_name != currentUser.value.display_name
-    )
-  }
+    const spotifyPlaylists = (await getPlaylists()).filter(Boolean)
+    state.playlistsOriginal = sortPlaylists(spotifyPlaylists.map(playlist => ({
+      ...playlist,
+      tracked: trackedSet.has(playlist.id)
+    })))
 
-  const doRefresh = async() => {
-    const data = await getPlaylists()
-    const filteredItems = data.filter(Boolean)
-    playlistStore.loadAll(filteredItems)
-    state.playlistsOriginal = playlistStore.playlists
     const { filterLibrary } = helpers.getLocalStorage()
-    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)
-    notify({ title: 'Alright', text: 'Playlists updated!', type: 'success' })
+    filterPlaylists(filterLibrary === null ? 'all' : filterLibrary)
   }
 
   onMounted(async () => {
     progress.start()
-    if (! playlistStore.isLoaded) {
-      const playlists = await loadAllFromDatabase()
-      state.savedPlaylists = playlists
-      playlistStore.loadAll(playlists)
+    try {
+      await loadLibrary()
+    } catch (error) {
+      console.error(error)
+      state.playlistsOriginal = sortPlaylists([...playlistStore.playlists])
+      state.playlists = state.playlistsOriginal
+    } finally {
+      isLoading.value = false
+      progress.finish()
     }
-    state.savedPlaylists = playlistStore.playlists
-    state.playlistsOriginal = playlistStore.playlists
-    state.playlistsOriginal.sort((a, b) => {
-      // Se algum dos valores for null, coloca-o por último
-      if (a.order === null) return 1;
-      if (b.order === null) return -1;
-      
-      // Ordenação crescente normal
-      return a.order - b.order;
-    });
-    const { filterLibrary } = helpers.getLocalStorage()
-    filterPLaylists(filterLibrary === null ? 'private' : filterLibrary)    
-    progress.finish()
-
-    const savedScrollPos = sessionStorage.getItem('playlistScrollPos');
-    if (savedScrollPos && playlistContainer.value) {
-      nextTick(() => {
-        playlistContainer.value.scrollTop = parseInt(savedScrollPos);
-      });
-    }
-  });
-  
-  onBeforeRouteLeave(() => {
-    if (playlistContainer.value) {
-      sessionStorage.setItem('playlistScrollPos', playlistContainer.value.scrollTop.toString());
-    }
-  });
-
+  })
 </script>
 
 <template>
-  <div class="page" style="height: 82%;" ref="playlistContainer">
-    <div style="display: flex;justify-content: center" >
-      <img :src="currentUser?.images[0]?.url" style="width: 100px; height: 100px;border-radius: 50%;" />
-    </div>
-    <div style="display: flex;flex-direction:column" >
-      <h2 style="padding-top: 15px;color:#fff;text-align:center;margin:0">{{ msg }}</h2>
-      <div class="playlist-sub">
-        <div class="playlist-details">
-          <p class="playlist-subtitle" style="cursor:pointer;margin-right: 20px;" @click="doRefresh()"><font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
-          <p class="playlist-subtitle">{{currentUser?.followers?.total}} <font-awesome-icon icon="heart" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" /></p>
+  <div class="page px-gutter md:px-lg py-md space-y-lg">
+    <!-- Header Section -->
+    <section class="relative flex flex-col gap-md pt-2 pb-sm">
+      <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-4 relative">
+        <div class="flex items-center gap-3">
+          <h1 class="text-headline-lg md:text-display-lg text-on-surface">Biblioteca</h1>
+          <span class="px-2 py-0.5 bg-surface-container-high rounded text-label-sm text-on-surface-variant">
+            {{ state.playlists.length }} Playlists
+          </span>
         </div>
+        <nav class="flex gap-2 flex-wrap">
+          <button
+            v-for="filter in FILTERS"
+            :key="filter.key"
+            class="px-4 py-1.5 rounded-full text-label-sm transition-colors"
+            :class="activeFilter === filter.key
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : 'hover:bg-surface-container-high text-on-surface-variant'"
+            @click="filterPlaylists(filter.key)"
+          >
+            {{ filter.label }}
+          </button>
+        </nav>
       </div>
-    </div>
-    <div class="playlist-filters">
-      <button 
-        class="button-spotify-clear-filter button-light" 
-        v-if="!state.filters.includes('all')"
-        @click="filterPLaylists('all')"
-      >
-      X
-      </button>
-      <button 
-        class="button-spotify" 
-        :class="{ 'button-dark': state.filters.includes('private'), 'button-light': !state.filters.includes('private') }"
-        @click="filterPLaylists('private')"
-      >
-      My playlists
-      </button>
-      <button 
-        class="button-spotify" 
-        :class="{ 'button-dark': state.filters.includes('liked'), 'button-light': !state.filters.includes('liked') }" 
-        @click="filterPLaylists('liked')"
-      >
-      Liked
-      </button>
-    </div>
-    <div class="playlists">
-      <ul>
-        <li v-for="playlist in state.playlists" :key="playlist.id" @click="openPlaylist(playlist.id)">
-            <img :src="playlist.images?.length > 0 ? playlist.images[0]?.url : playlist.image" />
-            <h4 :class="{'title-new': state.savedPlaylists.filter(item => item.id == playlist.id).length == 0 }">
-              {{ playlist.name }}
-            </h4>
-            <h5>By: {{ playlist.owner.display_name }}</h5>
-            <h5>{{ playlist.tracks ? (playlist.tracks.total || playlist.tracks.length) : playlist.items }} itens</h5>
-            <!-- <p>{{ playlist.description ? playlist.description : 'By ' + playlist.owner.display_name }}</p> -->
-        </li>
-      </ul>
-    </div>
+    </section>
+
+    <!-- Playlists Grid -->
+    <section>
+      <div v-if="isLoading" class="flex items-center justify-center gap-3 py-20 text-on-surface-variant text-body-sm">
+        <font-awesome-icon icon="spinner" spin class="text-primary" />
+        <span>Carregando playlists...</span>
+      </div>
+      <div v-else-if="state.playlists.length === 0" class="py-20 text-center text-on-surface-variant text-body-sm">
+        Nenhuma playlist nesta categoria.
+      </div>
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-gutter md:gap-md">
+        <article
+          v-for="playlist in state.playlists"
+          :key="playlist.id"
+          class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm hover:bg-surface-container hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          @click="openPlaylist(playlist.id)"
+        >
+          <div class="relative aspect-square overflow-hidden bg-surface-container">
+            <img
+              v-if="playlist.images?.length > 0 ? playlist.images[0]?.url : playlist.image"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              :src="playlist.images?.length > 0 ? playlist.images[0]?.url : playlist.image"
+            />
+            <div v-else class="w-full h-full bg-gradient-to-br from-primary-container to-secondary-container opacity-40"></div>
+            <div
+              class="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
+              :class="playlist.tracked ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant/60'"
+              :title="playlist.tracked ? 'Trackeada no Supabase' : 'Não trackeada'"
+            >
+              <font-awesome-icon :icon="playlist.tracked ? 'check-circle' : 'circle'" class="text-[16px]" />
+            </div>
+          </div>
+          <div class="p-3 md:p-4 flex flex-col gap-1">
+            <h3 class="text-body-md font-bold text-on-surface truncate">{{ playlist.name }}</h3>
+            <p class="text-label-sm text-on-surface-variant truncate">by @{{ playlist.owner?.display_name }}</p>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-label-sm text-on-surface-variant">{{ playlist.tracks ? (playlist.tracks.total || playlist.tracks.length) : playlist.items }} músicas</span>
+              <font-awesome-icon
+                :icon="playlist.public === false ? 'lock' : 'unlock-alt'"
+                class="text-on-surface-variant/60"
+                :title="playlist.public === false ? 'Privada' : 'Pública'"
+              />
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-
-.playlist-sub {
-  height: 30px;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-.playlist-details {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  min-width: 100%;
-}
-.playlist-subtitle {
-  margin-top:10px;
-  color:#999797;
-  font-size:12px;
-}
-.playlist-filters {
-  margin-top: 12px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.button-spotify {
-  border-radius: 20px;
-  border: none;
-  padding: 10px 25px;
-  letter-spacing: 1px;
-  font-size: 11px;
-  outline: none;
-  margin: 3px;
-  cursor: pointer;
-}
-.button-spotify-clear-filter {
-  border-radius: 20px;
-  border: none;
-  padding: 10px 13px;
-  letter-spacing: 1px;
-  font-size: 11px;
-  outline: none;
-  margin: 3px;
-  cursor: pointer;
-}
-.button-dark {
-  background: rgb(30, 215, 96);
-  color: rgb(255, 255, 255);
-  border: 1px solid rgb(30, 215, 96);
-}
-.button-light {
-  background: none;
-  color: rgb(200, 200, 200);
-  border: 1px solid rgb(200, 200, 200);
-}
-.title-new {
-  color: lime !important;
-}
-.playlists ul{
-    list-style-type: none;
-    padding: 0;   
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
-    gap: 20px;    
-}
-.playlists li{
-    background-color: #333;
-    display: flex;
-    flex-direction: column;
-    border-radius: 5px;
-    cursor: pointer;
-}
-.playlists img{
-    max-width: 230px;
-    border-top-left-radius: 5px;    
-    border-top-right-radius: 5px;    
-}
-.playlists h4{
-    color: #fff;
-    margin: 5px;
-    white-space: wrap;
-    overflow: hidden;
-    font-size: 14px;
-}
-.playlists h5 {
-  margin: 1px 1px 1px 5px;
-  color: rgb(124, 123, 123);
-  font-size: 10px;
-}
-.playlists p{
-    color: rgb(177, 177, 177);
-    margin: 0 5px 5px 5px;    
-    font-size: 12px;
-    line-height: 1.5em;
-    height: 3em;
-    overflow: hidden;
-}
 </style>
