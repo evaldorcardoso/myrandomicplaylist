@@ -1,14 +1,20 @@
 <script setup>
-import { onMounted, onBeforeUnmount, computed, reactive, watch } from "vue";
+import { onMounted, onBeforeUnmount, computed, reactive, watch, ref } from "vue";
 import { useRoute } from 'vue-router'
 import { useProfile } from '@/support/spotifyApi'
 import { useUserStore } from '@/stores/user'
+import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
+import SellSlotModal from '@/components/SellSlotModal.vue'
 
 const { startResumePlayback, pausePlayback } = useProfile()
 const userStore = useUserStore()
 var intervalProgress;
 
 const route = useRoute()
+
+const addToPlaylistOpen = ref(false)
+const sellSlotOpened = ref(false)
+const sellSlotData = ref(null)
 
 const state = reactive({
     progPerc: 0,
@@ -97,6 +103,25 @@ const progress = async() => {
     }, interval)
 };
 
+const openAddToPlaylist = () => {
+    addToPlaylistOpen.value = true
+}
+
+const onCloseAddToPlaylist = () => {
+    addToPlaylistOpen.value = false
+}
+
+const onSellSlot = (data) => {
+    addToPlaylistOpen.value = false
+    sellSlotData.value = data
+    sellSlotOpened.value = true
+}
+
+const onCloseSellSlot = () => {
+    sellSlotOpened.value = false
+    sellSlotData.value = null
+}
+
 onMounted(async () => {    
     progress()
 })
@@ -144,7 +169,7 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="flex items-center justify-end gap-2 w-1/3">
-                <button class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-surface-container-high">
+                <button class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-surface-container-high" @click="openAddToPlaylist">
                     <span class="material-symbols-outlined">playlist_add</span>
                     <span class="text-label-sm font-bold hidden md:inline">Add to Playlist</span>
                 </button>
@@ -154,4 +179,19 @@ onBeforeUnmount(() => {
             </div>
         </div>
     </div>   
+    <AddToPlaylistModal
+        :open="addToPlaylistOpen"
+        :track="currentPlaying?.item"
+        @close="onCloseAddToPlaylist"
+        @sell-slot="onSellSlot"
+    />
+    <SellSlotModal
+        :open="sellSlotOpened"
+        :track="sellSlotData ? { track: sellSlotData.track } : null"
+        :playlist-id="sellSlotData?.playlistId ?? ''"
+        :playlist="sellSlotData?.playlist ?? null"
+        :position="sellSlotData?.position"
+        :select-playlist="false"
+        @close="onCloseSellSlot"
+    />
 </template>

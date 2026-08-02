@@ -7,6 +7,7 @@ import { notify } from "@kyvg/vue3-notification"
 import { supabase } from '@/support/supabaseClient'
 import { useUserStore } from '@/stores/user'
 import { PlaylistService } from "../services/PlaylistService"
+import { convertToGenreMap, getCompatiblePlaylists } from '@/support/playlistCompatibility'
 
 const emit = defineEmits([
     'update-menu-opened',
@@ -660,82 +661,17 @@ const doQueue = (track) => {
 const listPlaylists = async() => {
     state.playlistsOriginal = playlistStore.playlists
 
-    const trackGenres = convertToGenreMap(props.menuData.genres);
-
-    var playlists = state.playlistsOriginal.filter(
-        playlist => playlist.owner.display_name == currentUser.value.display_name
-    )
-
-    var playlists = playlists.filter(
-        playlist => playlist.id !== props.menuData.track.playlist.id
-    )
-
-    playlists = playlists.map(playlist => ({
-        ...playlist,
-        genreMap: convertToGenreMap(playlist.genres),
-    }));
-
-    const compatiblePlaylists = calculateCompatibility(trackGenres, playlists);
-    state.playlists = compatiblePlaylists;
-    state.playlists.sort((a, b) => {
-      // Se algum dos valores for null, coloca-o por último
-      // if (a.order === null) return 1;
-      // if (b.order === null) return -1;
-      
-      // Ordenação crescente normal
-      // return a.order - b.order;
-
-        //Ordenação por compatibilidade de gêneros
-        return b.compatibilityScore - a.compatibilityScore
-    });
-    state.playlistsOpened = true
-}
-
-// Função para converter o array de gêneros em um objeto
-function convertToGenreMap(genreArray) {
-  if (!genreArray) {
-    return {};
-  }
-  return genreArray.reduce((map, item) => {
-    map[item.genre] = item.count;
-    return map;
-  }, {});
-}
-
-const calcDiffDays = (data1, data2) => {
-    let oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
-    return Math.abs((data1.getTime() - data2.getTime()) / (oneDay));
-  }
-
-// Função para calcular a compatibilidade
-function calculateCompatibility(trackGenres, processedPlaylists) {
-  return processedPlaylists.map(playlist => {
-    // console.log(trackGenres)
-    let compatibilityScore = 0;
-    for (const [genre, trackCount] of Object.entries(trackGenres)) {
-        // console.log(playlist.genreMap, genre)
-      if (playlist.genreMap && playlist.genreMap[genre]) {
-        compatibilityScore += trackCount * playlist.genreMap[genre];
-      }
-    }
-    if (! playlist.genre_compatibility) {
-        compatibilityScore = 0
-    }
-    // console.log(props.menuData.track)
+    const trackGenres = convertToGenreMap(props.menuData.genres)
     const track = props.menuData.track.track ?? props.menuData.track
-    const diffDays = calcDiffDays(new Date(), new Date(track.album.release_date));
-    if (playlist.name.indexOf('Lançamentos') > -1) {
-        // console.log(diffDays)
-        if (diffDays < 7) {
-            compatibilityScore = 999;
-        }
-    }
-    // console.log(playlist.name, compatibilityScore)
-    return {
-      ...playlist,
-      compatibilityScore
-    };
-  });
+
+    state.playlists = getCompatiblePlaylists({
+        playlists: state.playlistsOriginal,
+        currentUser: currentUser.value,
+        excludePlaylistId: props.menuData.track.playlist.id,
+        trackGenres,
+        track
+    })
+    state.playlistsOpened = true
 }
 
 onMounted(async () => {

@@ -26,6 +26,10 @@
     selectPlaylist: {
       type: Boolean,
       default: false
+    },
+    position: {
+      type: Number,
+      default: null
     }
   })
 
@@ -64,7 +68,7 @@
     return 'text-[#75ff18]'
   }
 
-  const position = computed(() => (props.track?.id ?? 0) + 1)
+  const position = computed(() => props.position ?? ((props.track?.id ?? 0) + 1))
 
   const calcDueDateISO = (days) => {
     const date = new Date()
