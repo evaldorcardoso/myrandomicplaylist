@@ -54,7 +54,7 @@
 </script>
 
 <template>
-  <div v-if="state.data" class="h-[calc(100vh-58px)] overflow-y-auto bg-surface text-on-surface">
+  <div v-if="state.data" class="h-full overflow-y-auto bg-surface text-on-surface">
     <div class="max-w-[1400px] mx-auto p-gutter md:p-lg pb-28">
       <!-- Top Stats Row -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter">

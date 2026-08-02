@@ -1,6 +1,7 @@
 <script setup>
     import { ref, computed, onMounted } from 'vue'
-    import Navbar from '@/components/Navbar.vue'
+    import Sidebar from '@/components/Sidebar.vue'
+    import TopBar from '@/components/TopBar.vue'
     import FloatPlayer from '@/components/FloatPlayer.vue'
     import { useProfile } from '@/support/spotifyApi'
     import { useUserStore } from '@/stores/user'
@@ -10,6 +11,7 @@
     
     const user = ref(null)
     const step = ref(0)
+    const menuOpen = ref(false)
     
     const refresh = ref(null)
     const removeTrackRef = ref('')
@@ -63,7 +65,7 @@
     }
 
     const onUpdateMenuData = (value) => {
-        menuData.value = value
+        menuOpen.value = value
     }
 
     setInterval(async () => {
@@ -84,18 +86,27 @@
 </script>
 
 <template>
-    <Navbar 
+    <Sidebar 
+        :open="menuOpen" 
+        @close="menuOpen = false"
+    />
+    <TopBar 
         :step-data="step" 
         @update-step-data="onUpdateStepData"
+        @open-menu="menuOpen = true"
     />
+    <div class="pl-0 lg:pl-72">
+        <main class="pt-20 bg-surface h-screen overflow-y-auto px-gutter md:px-lg py-lg">
+            <router-view 
+                :step-data="step" 
+                :remove-track="removeTrack"
+                :current-data="currentData"
+                @update-step-data="onUpdateStepData" 
+                @update-menu-data="onUpdateMenuData"
+            />
+        </main>
+    </div>
     <FloatPlayer v-if="floatPlayerData" 
         :current-data="currentData"
-    />
-    <router-view 
-        :step-data="step" 
-        :remove-track="removeTrack"
-        :current-data="currentData"
-        @update-step-data="onUpdateStepData" 
-        @update-menu-data="onUpdateMenuData"
     />
 </template>

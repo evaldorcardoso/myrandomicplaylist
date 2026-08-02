@@ -40,19 +40,17 @@
   left: 0;
   right: 0;
   z-index: 10;
-  /*background gradiente*/
   font-family: sans-serif;
-  /*background: linear-gradient(to bottom, #1db954 0%, #0c8d39 100%);*/
-  background-color: #1c1c1c;
+  /*background gradiente*/
+  background-color: #131313;
   height: 100vh;
   font-size: 14px;
+  overflow: hidden;
 }
 .page{
-  background-color: #1c1c1c;
-  height: 90%;
-  padding-bottom: 65px;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  padding: 5px;
+  background-color: #131313;
+  height: auto;
+  padding: 0;
+  overflow: visible;
 }
 </style>
