@@ -23,6 +23,7 @@
     topArtists,
     genres,
     hasTodayStatistics,
+    isSavingLikesStatistics,
     saveLikesStatistics
   } = pd
 
@@ -308,12 +309,13 @@
             <h3 class="text-headline-sm text-on-surface">Gerenciamento</h3>
           </div>
           <div class="flex flex-col gap-3">
-            <button class="w-full group bg-primary text-on-primary px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" :disabled="hasTodayStatistics" @click="saveLikesStatistics">
+            <button class="w-full group bg-primary text-on-primary px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" :disabled="hasTodayStatistics || isSavingLikesStatistics" @click="saveLikesStatistics">
               <div class="flex items-center gap-4">
-                <font-awesome-icon icon="save" class="group-hover:rotate-180 transition-transform duration-500" />
-                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística de curtidas' }}</span>
+                <font-awesome-icon v-if="isSavingLikesStatistics" icon="spinner" spin />
+                <font-awesome-icon v-else icon="save" class="group-hover:rotate-180 transition-transform duration-500" />
+                <span class="text-body-md">{{ isSavingLikesStatistics ? 'Salvando...' : hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística de curtidas' }}</span>
               </div>
-              <font-awesome-icon icon="chevron-right" />
+              <font-awesome-icon v-if="!isSavingLikesStatistics" icon="chevron-right" />
             </button>
             <div class="my-4 border-t border-outline-variant/10"></div>
             <button class="w-full group bg-secondary-container/20 text-secondary border border-secondary/20 px-6 py-4 rounded-xl flex items-center justify-between hover:bg-secondary-container/30 transition-all" @click="onExternalAnalytics">

@@ -75,6 +75,7 @@ export function usePlaylistData(callbacks = {}) {
   const notificationDataReactive = ref(null)
   const notificationAction = ref('')
   const hasTodayStatistics = ref(false)
+  const isSavingLikesStatistics = ref(false)
 
   const notificationOpened = computed(() => {
     return isNotificationOpened.value
@@ -399,15 +400,20 @@ export function usePlaylistData(callbacks = {}) {
   }
 
   const saveLikesStatistics = async() => {
-    if (hasTodayStatistics.value) return
-    await saveStatistics()
-    await saveTracksStatistics()
-    hasTodayStatistics.value = true
-    notify({
-      title: 'Alright',
-      text: 'Statistics saved!',
-      type: 'success'
-    })
+    if (hasTodayStatistics.value || isSavingLikesStatistics.value) return
+    isSavingLikesStatistics.value = true
+    try {
+      await saveStatistics()
+      await saveTracksStatistics()
+      hasTodayStatistics.value = true
+      notify({
+        title: 'Alright',
+        text: 'Statistics saved!',
+        type: 'success'
+      })
+    } finally {
+      isSavingLikesStatistics.value = false
+    }
   }
 
   const executeUserPlaylist = async(currentPlaying) => {
@@ -563,6 +569,7 @@ export function usePlaylistData(callbacks = {}) {
     avgPopularity,
     MAX_STATISTICS_ITEMS_TO_RETAIN,
     hasTodayStatistics,
+    isSavingLikesStatistics,
     init,
     onRefreshPage,
     onNotificationAction,
