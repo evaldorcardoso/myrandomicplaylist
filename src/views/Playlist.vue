@@ -160,6 +160,14 @@
     return state.tracks
   })
 
+  const pendingTotalValue = computed(() => {
+    slotsVersion.value
+    const trackIds = new Set(state.tracks.map(t => t.track?.id))
+    return trackRequests.value
+      .filter(r => r.status === 'pending' && r.track_id && trackIds.has(r.track_id))
+      .reduce((sum, r) => sum + (r.value ?? 0), 0)
+  })
+
   const totalPages = computed(() => Math.max(1, Math.ceil(filteredTracks.value.length / PAGE_SIZE)))
 
   const pagedTracks = computed(() => {
@@ -189,6 +197,10 @@
   const formatNumber = (value) => {
     if (value == null) return '0'
     return new Intl.NumberFormat('pt-BR').format(value)
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
   }
 
   const popularityDiff = (track) => (track.track?.popularity ?? 0) - (track.track?.popularity_old ?? track.track?.popularity ?? 0)
@@ -980,6 +992,10 @@
           <template v-if="!slotsReady">Mostrando {{ state.tracks.length }} músicas</template>
           <template v-else>Mostrando {{ state.tracks.length }} de {{ details.filledPositions }} posições ocupadas</template>
         </span>
+        <div v-if="activeTab === 'Pendentes'" class="flex items-center gap-2">
+          <span class="text-body-sm text-on-surface-variant">Total pendente:</span>
+          <span class="text-label-md font-bold text-secondary">{{ formatCurrency(pendingTotalValue) }}</span>
+        </div>
         <div v-if="activeTab === 'Todas'" class="flex items-center gap-2">
           <button
             class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-on-surface disabled:opacity-30 transition-colors"
