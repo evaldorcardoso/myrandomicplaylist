@@ -19,10 +19,16 @@ const getTrackSlot = (track, index, request = null) => {
     dueTs = deadline.getTime()
   }
 
+  const expectedPosition = (track?.id ?? 0) + 1
+  const storedPosition = request.position ?? null
+
   return {
     value: formatCurrency(request.value),
     status: request.status,
-    dueTs
+    dueTs,
+    expectedPosition,
+    storedPosition,
+    positionMismatch: storedPosition != null && storedPosition !== expectedPosition
   }
 }
 

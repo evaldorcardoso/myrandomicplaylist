@@ -127,6 +127,11 @@
 
   const audience = computed(() => getAudience())
 
+  const positionMismatchCount = computed(() => {
+    slotsVersion.value
+    return state.tracks.filter(track => track._slot?.positionMismatch).length
+  })
+
   const filteredTracks = computed(() => {
     slotsVersion.value
     if (activeTab.value === 'Expira em breve') {
@@ -249,6 +254,14 @@
     notify({
       title: 'Em breve',
       text: 'Venda de posições estará disponível em breve!',
+      type: 'info'
+    })
+  }
+
+  const onFixPositionMismatch = () => {
+    notify({
+      title: 'Em breve',
+      text: 'Correção de posição estará disponível em breve!',
       type: 'info'
     })
   }
@@ -758,17 +771,10 @@
       <div class="flex flex-col gap-4 self-center md:self-end items-end">
         <div class="flex gap-2">
           <button
-            class="w-12 h-12 bg-surface-container-high rounded-full text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+            class="w-12 h-12 bg-primary rounded-full text-on-primary hover:bg-primary-fixed hover:scale-105 transition-all flex items-center justify-center shadow-lg hover:shadow-primary/20"
             @click="executeUserPlaylist(currentPlaying)"
           >
             <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" />
-          </button>
-          <button
-            class="bg-primary-container text-on-primary-container px-8 py-3 rounded-full text-headline-sm font-headline-sm flex items-center gap-3 hover:scale-105 transition-all shadow-lg hover:shadow-primary/20"
-            @click="onSellPosition"
-          >
-            <font-awesome-icon icon="plus-circle" />
-            Vender Nova Posição
           </button>
         </div>
         <div class="flex gap-2">
@@ -819,6 +825,23 @@
         </div>
       </div>
 
+      <div v-if="positionMismatchCount > 0" class="flex flex-wrap items-center justify-between gap-4 bg-tertiary-container/10 border-b border-tertiary-container/30 px-6 py-4">
+        <div class="flex items-center gap-3 text-body-sm text-on-surface-variant">
+          <font-awesome-icon icon="exclamation-triangle" class="text-tertiary text-[18px]" />
+          <span>
+            <strong class="text-tertiary">{{ positionMismatchCount }}</strong>
+            {{ positionMismatchCount === 1 ? 'posição divergente' : 'posições divergentes' }} entre o Spotify e o registro de venda.
+          </span>
+        </div>
+        <button
+          class="flex items-center gap-2 rounded-full bg-tertiary-container/10 border border-tertiary-container/40 px-4 py-1.5 text-label-sm font-bold text-tertiary hover:bg-tertiary-container/20 transition-colors"
+          @click="onFixPositionMismatch"
+        >
+          <font-awesome-icon icon="sync" />
+          Corrigir
+        </button>
+      </div>
+
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead>
@@ -842,13 +865,21 @@
               @click="openTrackSlotModal(track)"
             >
               <td class="px-6 py-4">
-                <div
-                  class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
-                  :class="track.id === 0 && activeTab === 'Todas'
-                    ? 'bg-primary/20 border border-primary/40 text-primary'
-                    : 'bg-surface-container-high text-on-surface-variant'"
-                >
-                  {{ track.id + 1 }}
+                <div class="flex items-center gap-2">
+                  <div
+                    class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
+                    :class="track.id === 0 && activeTab === 'Todas'
+                      ? 'bg-primary/20 border border-primary/40 text-primary'
+                      : 'bg-surface-container-high text-on-surface-variant'"
+                  >
+                    {{ track.id + 1 }}
+                  </div>
+                  <font-awesome-icon
+                    v-if="track._slot?.positionMismatch"
+                    icon="exclamation-triangle"
+                    class="text-tertiary text-[16px]"
+                    :title="`Spotify #${track._slot.expectedPosition} · registrado #${track._slot.storedPosition}`"
+                  />
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -906,6 +937,9 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2 bg-surface-container-low/50 p-1 rounded-lg" @click.stop>
+                  <button v-if="track._slot?.positionMismatch" class="p-2 hover:bg-tertiary-container/20 hover:text-tertiary rounded-lg transition-colors text-on-surface-variant" title="Corrigir Posição" @click="onFixPositionMismatch">
+                    <font-awesome-icon icon="sync" />
+                  </button>
                   <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
                     <font-awesome-icon icon="sort" />
                   </button>

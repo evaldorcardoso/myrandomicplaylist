@@ -67,7 +67,8 @@ import {
     faFire,
     faChartArea,
     faBolt,
-    faCog
+    faCog,
+    faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons'
 import {
     faXmarkCircle
@@ -139,7 +140,8 @@ library.add(
     faFire,
     faChartArea,
     faBolt,
-    faCog
+    faCog,
+    faExclamationTriangle
 )
 
 const updateSW = registerSW({
