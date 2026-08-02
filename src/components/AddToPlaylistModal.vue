@@ -44,6 +44,21 @@
     return new Date(trackData.value.duration_ms).toISOString().slice(14, 19)
   })
 
+  const releaseDate = computed(() => {
+    const date = trackData.value?.album?.release_date
+    if (!date) return '—'
+    const [year, month, day] = date.split('-')
+    const parts = []
+    if (day) parts.push(day)
+    if (month) parts.push(month)
+    parts.push(year)
+    return parts.join('/')
+  })
+
+  const isTracked = computed(() => {
+    return !!userStore.getTrack(trackData.value?.id)
+  })
+
   const selectedPlaylist = computed(() => {
     return playlists.value.find(playlist => playlist.id === selectedPlaylistId.value) ?? null
   })
@@ -353,8 +368,9 @@
               </div>
             </div>
             <div class="space-y-1 text-center md:text-left">
-              <h3 class="text-headline-md text-on-surface tracking-tight">{{ trackData?.name }}</h3>
+              <h3 class="text-headline-md text-on-surface tracking-tight"><font-awesome-icon v-if="isTracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);" />{{ trackData?.name }}</h3>
               <p class="text-body-md text-primary font-semibold uppercase tracking-wider">{{ trackData?.artists?.map(artist => artist.name).join(', ') }}</p>
+              <p class="text-label-sm text-on-surface-variant">{{ releaseDate }}</p>
               <div class="flex items-center gap-2 mt-2">
                 <font-awesome-icon icon="chart-line" class="text-primary text-sm" />
                 <span class="text-label-sm text-primary uppercase tracking-widest">Popularidade: {{ trackData?.popularity }}/100</span>
