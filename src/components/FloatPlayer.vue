@@ -25,6 +25,17 @@ const currentPlaying = computed(() => {
     return props.currentData;
 });
 
+const formatTime = (ms) => {
+    if (!ms || ms < 0) return '0:00'
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return minutes + ':' + String(seconds).padStart(2, '0')
+}
+
+const elapsedTime = computed(() => formatTime(state.prog))
+const totalTime = computed(() => formatTime(currentPlaying.value?.item?.duration_ms))
+
 watch(() => props.currentData?.is_playing, (isPlaying) => {
     if (isPlaying) {
         progress()
@@ -91,25 +102,49 @@ onBeforeUnmount(() => {
 
 <template>    
     <div class="fixed bottom-0 left-0 lg:left-72 right-0 z-30" v-if="currentPlaying && route.name != 'Player'">
-        <div class="relative h-24 bg-primary border-t border-on-primary/10 px-gutter md:px-lg flex items-center gap-3">
-            <router-link to="/player" class="flex-shrink-0 h-full -ml-gutter md:-ml-lg">
-                <img class="h-full w-24 object-cover" v-bind:src="currentPlaying.item?.album.images[0].url" />
-            </router-link>
-            <router-link to="/player" class="flex flex-col min-w-0 flex-1 gap-0.5">
-                <h3 class="text-body-md font-bold text-on-primary truncate leading-tight">{{ currentPlaying.item?.name }}</h3>
-                <span class="text-label-sm text-on-primary/70 truncate leading-tight">{{ currentPlaying.item?.artists.map(artist => artist.name).join(', ') }}</span>
-                <span class="text-label-sm text-on-primary/70 truncate leading-tight">Popularidade: {{ currentPlaying.item?.popularity }}</span>
-                <span class="text-label-sm text-on-primary/70 truncate leading-tight">Reproduzindo em: {{ currentPlaying.device?.name }}</span>
-            </router-link>
-            <button
-                class="flex-shrink-0 w-11 h-11 rounded-full bg-surface-variant text-on-surface flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all"
-                :class="currentPlaying.is_playing ? 'opacity-90' : 'opacity-100'"
-                @click="currentPlaying.is_playing ? pauseUserPlayback() : resumeUserPlayback()"
-            >
-                <span class="material-symbols-outlined">{{ currentPlaying.is_playing ? 'pause' : 'play_arrow' }}</span>
-            </button>
-            <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-on-primary/20 overflow-hidden">
-                <div class="h-full bg-surface-variant transition-[width] duration-100" :style="{ width: state.progPerc + '%' }"></div>
+        <div class="relative h-20 bg-surface-container-lowest/95 backdrop-blur-2xl border-t border-outline-variant/10 px-gutter md:px-10 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4 w-1/3 min-w-0">
+                <router-link to="/player" class="w-12 h-12 rounded bg-surface-container-highest overflow-hidden flex-shrink-0 border border-outline-variant/20">
+                    <img class="w-full h-full object-cover" v-bind:src="currentPlaying.item?.album.images[0].url" />
+                </router-link>
+                <router-link to="/player" class="flex flex-col min-w-0">
+                    <h3 class="text-body-md font-bold text-on-surface truncate leading-tight">{{ currentPlaying.item?.name }}</h3>
+                    <span class="text-label-sm text-on-surface-variant truncate leading-tight">{{ currentPlaying.item?.artists.map(artist => artist.name).join(', ') }}</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] text-primary font-bold uppercase tracking-widest">Popularity: {{ currentPlaying.item?.popularity }}</span>
+                        <span class="text-[10px] text-on-surface-variant">•</span>
+                        <span class="text-[10px] text-on-surface-variant truncate">{{ currentPlaying.device?.name }}</span>
+                    </div>
+                </router-link>
+            </div>
+
+            <div class="flex items-center justify-center w-1/3">
+                <div class="flex items-center gap-3 w-full">
+                    <button
+                        class="w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0 hover:scale-105 active:scale-95 transition-all"
+                        :class="currentPlaying.is_playing ? 'opacity-90' : 'opacity-100'"
+                        @click="currentPlaying.is_playing ? pauseUserPlayback() : resumeUserPlayback()"
+                    >
+                        <span class="material-symbols-outlined">{{ currentPlaying.is_playing ? 'pause' : 'play_arrow' }}</span>
+                    </button>
+                    <div class="flex-1 flex items-center gap-2 min-w-0">
+                        <span class="text-[10px] text-on-surface-variant tabular-nums">{{ elapsedTime }}</span>
+                        <div class="flex-1 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+                            <div class="h-full bg-primary transition-[width] duration-100" :style="{ width: state.progPerc + '%' }"></div>
+                        </div>
+                        <span class="text-[10px] text-on-surface-variant tabular-nums">{{ totalTime }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 w-1/3">
+                <button class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-surface-container-high">
+                    <span class="material-symbols-outlined">playlist_add</span>
+                    <span class="text-label-sm font-bold hidden md:inline">Add to Playlist</span>
+                </button>
+                <router-link to="/player" class="text-on-surface-variant hover:text-on-surface transition-colors p-2">
+                    <span class="material-symbols-outlined">open_in_full</span>
+                </router-link>
             </div>
         </div>
     </div>   
