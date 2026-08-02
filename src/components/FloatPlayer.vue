@@ -37,6 +37,17 @@ const isTracked = computed(() => {
     return !!userStore.getTrack(currentPlaying.value?.item?.id)
 })
 
+const releaseDate = computed(() => {
+    const date = currentPlaying.value?.item?.album?.release_date
+    if (!date) return '—'
+    const [year, month, day] = date.split('-')
+    const parts = []
+    if (day) parts.push(day)
+    if (month) parts.push(month)
+    parts.push(year)
+    return parts.join('/')
+})
+
 const formatTime = (ms) => {
     if (!ms || ms < 0) return '0:00'
     const totalSeconds = Math.floor(ms / 1000)
@@ -142,10 +153,9 @@ onBeforeUnmount(() => {
                     <h3 class="text-body-md font-bold text-on-surface truncate leading-tight"><font-awesome-icon v-if="isTracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);" />{{ currentPlaying.item?.name }}</h3>
                     <span class="text-label-sm text-on-surface-variant truncate leading-tight">{{ currentPlaying.item?.artists.map(artist => artist.name).join(', ') }}</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="text-[10px] text-primary font-bold uppercase tracking-widest">Popularity: {{ currentPlaying.item?.popularity }}</span>
-                        <span class="text-[10px] text-on-surface-variant">•</span>
-                        <span class="text-[10px] text-on-surface-variant truncate">{{ currentPlaying.device?.name }}</span>
+                        <span class="flex items-center gap-1 text-[10px] text-primary font-bold uppercase tracking-widest"><font-awesome-icon icon="chart-line" />{{ currentPlaying.item?.popularity }}</span>
                     </div>
+                    <span class="text-label-sm text-on-surface-variant truncate leading-tight">{{ releaseDate }}</span>
                 </router-link>
             </div>
 
