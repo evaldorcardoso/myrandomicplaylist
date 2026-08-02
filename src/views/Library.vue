@@ -101,7 +101,7 @@
       return a.order - b.order;
     });
     const { filterLibrary } = helpers.getLocalStorage()
-    filterPLaylists(filterLibrary === null ? 'all' : filterLibrary)    
+    filterPLaylists(filterLibrary === null ? 'private' : filterLibrary)    
     progress.finish()
 
     const savedScrollPos = sessionStorage.getItem('playlistScrollPos');
@@ -134,7 +134,7 @@
         </div>
       </div>
     </div>
-    <div style="margin-top: 10px;height:30px;line-height:30px;">
+    <div class="playlist-filters">
       <button 
         class="button-spotify-clear-filter button-light" 
         v-if="!state.filters.includes('all')"
@@ -191,6 +191,14 @@
   margin-top:10px;
   color:#999797;
   font-size:12px;
+}
+.playlist-filters {
+  margin-top: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .button-spotify {
   border-radius: 20px;
