@@ -42,7 +42,7 @@
   })
 
   const currentPlaying = computed(() => props.currentData)
-  const likesRange = ref('7D')
+  const likesRange = ref('15D')
 
   const formatNumber = (value) => {
     if (value == null) return '0'
@@ -50,7 +50,7 @@
   }
 
   const rangeDays = computed(() => {
-    const map = { '90D': 90, '30D': 30, '7D': 7 }
+    const map = { '90D': 90, '30D': 30, '15D': 15 }
     return map[likesRange.value] ?? 90
   })
 
@@ -81,13 +81,11 @@
   })
 
   const followersTrend = computed(() => {
-    const now = new Date()
-    const cutoff = new Date(now.getTime() - rangeDays.value * 86400000)
-    const rows = state.dataLikes.filter(row => new Date(row.created_at) >= cutoff)
-    if (rows.length < 2) return 0
-    const first = rows[0]?.likes_count ?? 0
-    const last = rows[rows.length - 1]?.likes_count ?? 0
-    return Number(last) - Number(first)
+    const current = Number(state.playlist?.followers?.total ?? 0)
+    const last = state.dataLikes.length
+      ? Number(state.dataLikes[state.dataLikes.length - 1]?.likes_count ?? 0)
+      : current
+    return current - last
   })
 
   const chartOptions = computed(() => ({
@@ -252,7 +250,7 @@
             </div>
             <div class="flex gap-2 bg-surface-container-lowest p-1 rounded-lg">
               <button
-                v-for="range in ['7D', '30D', '90D']"
+                v-for="range in ['15D', '30D', '90D']"
                 :key="range"
                 class="px-4 py-2 rounded-md text-label-sm transition-colors"
                 :class="likesRange === range ? 'bg-surface-container-high text-on-surface' : 'hover:bg-surface-container-high text-on-surface-variant'"

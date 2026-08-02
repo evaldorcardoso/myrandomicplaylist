@@ -253,12 +253,6 @@ export function usePlaylistData(callbacks = {}) {
           await deleteStatistic(row.id)
         }
       }
-      const parcialData = {
-        created_at: new Date(),
-        id: Date.now(),
-        likes_count: state.playlist?.followers?.total ?? 0
-      }
-      data.push(parcialData)
       state.dataLikes = data
     } catch (error) {
       console.log(error.message)
