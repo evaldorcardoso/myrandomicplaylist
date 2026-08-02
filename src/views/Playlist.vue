@@ -1,7 +1,7 @@
 <script setup>
   import { onMounted, onUnmounted, computed, reactive, ref, inject, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import { useGeneral, useProfile } from '@/support/spotifyApi'
+  import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
   import FloatMenu from '@/components/FloatMenu.vue'
@@ -21,8 +21,7 @@
   const userStore = useUserStore()
   const progress = inject("progress")
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
-  const { addTrackToQueue } = useProfile()
-  const { updatePlaylistTotalTracks } = PlaylistService()
+  const { updatePlaylistTotalTracks, savePlaylist } = PlaylistService()
   const { getPlaylistDetails, getAudience, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
 
@@ -109,6 +108,7 @@
 
   const currentUser = computed(() => userStore.getUser)
   const currentPlaying = computed(() => props.currentData)
+  const playlistSaved = computed(() => state.playlist?.tracked ?? false)
 
   const menuOpened = computed(() => isMenuOpened.value)
   const menuData = computed(() => menuDataReactive.value)
@@ -250,6 +250,16 @@
     openPlaylistApp(playlistId.value)
   }
 
+  const handleSavePlaylist = async () => {
+    notify({ title: 'Please, wait', text: 'Saving playlist...', type: 'info' })
+    const result = await savePlaylist(state.playlist)
+    if (!result) {
+      notify({ title: 'Ops', text: 'It´s not possible to save the Playlist at this time.', type: 'error' })
+      return
+    }
+    notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
+  }
+
   const onSellPosition = () => {
     notify({
       title: 'Em breve',
@@ -303,10 +313,6 @@
     router.push(`/playlist/${playlistId.value}/stats`)
   }
 
-  const onOpenArtists = () => {
-    router.push(`/playlist/${playlistId.value}/stats`)
-  }
-
   const onUpdateMenuOpened = async (value) => {
     isMenuOpened.value = value
     if (!value) {
@@ -356,23 +362,6 @@
         type: 'error'
       })
     }
-  }
-
-  const openMenuPlaylist = async() => {
-    let menuData = {
-      type: 'playlist',
-      playlist: state.playlist
-    }
-
-    let popularities = state.tracks.map(track => { return track.track?.popularity ?? 0 })
-    let popularity = popularities.reduce(function(a, b) {
-      return a + b
-    }, 0)
-    menuData.playlist.isOwner = state.playlist.owner.display_name == currentUser.value.display_name
-    menuData.playlist.popularity = state.tracks.length ? (popularity / state.tracks.length).toFixed(2) : 0
-    menuData.playlist.likesStats = state.dataLikes
-    menuDataReactive.value = menuData
-    isMenuOpened.value = true
   }
 
   const findTrackRequest = (track) => {
@@ -459,20 +448,6 @@
     }
     menuDataReactive.value = menuData
     isMenuOpened.value = true
-  }
-
-  const addToQueue = async(track) => {
-    try {
-      const { status } = await addTrackToQueue(track)
-      notify({
-        title: 'Alright',
-        text: 'Songs added to queue!',
-        type: 'success'
-      })
-    } catch (error) {
-      console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
-    }
   }
 
   const removePartFromText = (text) => {
@@ -670,11 +645,7 @@
     :menu-data="menuData"
     :user-data="currentUser"
     @update-menu-opened="onUpdateMenuOpened"
-    @remove-track="onRemoveTrack"
     @refresh-playlist="handleRefresh"
-    @add-queue="addToQueue"
-    @open-statistics="onOpenStatistics"
-    @open-artists="onOpenArtists"
   />
   <SellSlotModal
     :open="sellSlotOpened"
@@ -785,8 +756,12 @@
           <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Compartilhar" @click="sharePlaylist">
             <font-awesome-icon icon="share" />
           </button>
-          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Mais opções" @click="openMenuPlaylist">
-            <font-awesome-icon icon="ellipsis-v" />
+          <button
+            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors"
+            :title="playlistSaved ? 'Update on Database' : 'Save'"
+            @click="handleSavePlaylist"
+          >
+            <font-awesome-icon icon="save" />
           </button>
         </div>
       </div>

@@ -1,27 +1,21 @@
 <script setup>
-import { onMounted, computed, reactive, ref, watchEffect } from "vue"
+import { computed, reactive, ref } from "vue"
 import { useGeneral, useProfile } from '@/support/spotifyApi'
 import VueBasicAlert from 'vue-basic-alert'
 import { usePlaylistStore } from '@/stores/playlist'
 import { notify } from "@kyvg/vue3-notification"
 import { supabase } from '@/support/supabaseClient'
 import { useUserStore } from '@/stores/user'
-import { PlaylistService } from "../services/PlaylistService"
 import { convertToGenreMap, getCompatiblePlaylists } from '@/support/playlistCompatibility'
 
 const emit = defineEmits([
     'update-menu-opened',
-    'remove-track',
-    'refresh-playlist',
-    'add-queue',
-    'open-statistics',
-    'open-artists'
+    'refresh-playlist'
 ])
-const { addTracksToPlaylist, removeTracksOfPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
+const { addTracksToPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
 const { executePlaylist } = useProfile()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
-const { savePlaylist, updatePlaylistTotalTracks } = PlaylistService()
 
 const ALERT_OPTIONS = { 
     iconSize: 35,
@@ -33,16 +27,10 @@ const alert = ref(null)
 const state = reactive({
     playlistsOriginal:[],
     playlists: [],
-    likesAVG: 0,
     playlistsOpened: false,
     selectedPosition: null,
     pendingRelocation: null,
     playlistToAdd: null,
-    removeMode: 'confirm',
-    removeTargetTrack: null,
-    availableReplacementTracks: [],
-    selectedReplacementTrack: null,
-    replacementSearchQuery: '',
     moveMode: false,
     moveSourcePosition: null,
     moveTargetPosition: null,
@@ -75,20 +63,6 @@ const menuData = computed(() => {
     menuData.type = props.menuData.type
     if (! props.menuData) {
         return
-    }
-    if (menuData.type == 'playlist') {
-        menuData.id = props.menuData.playlist.id
-        menuData.image = props.menuData.playlist.images[0].url
-        menuData.title = props.menuData.playlist.name
-        menuData.subtitle = props.menuData.playlist.description
-        menuData.followers = props.menuData.playlist.followers.total
-        menuData.owner = props.menuData.playlist.owner.display_name
-        menuData.isOwner = currentUser.value ? props.menuData.playlist.owner.display_name == currentUser.value.display_name : true
-        menuData.visibility = props.menuData.playlist.public ? 'Public' : 'Private'
-        menuData.popularity = props.menuData.playlist.popularity
-        menuData.likesStats = props.menuData.playlist.likesStats
-        calcLikesStats()
-        return menuData
     }
     if (menuData.type == 'track') {
         menuData.id = props.menuData.track.track?.uri ?? props.menuData.track.uri
@@ -125,45 +99,6 @@ const menuData = computed(() => {
 const currentUser = computed(() => {
     return props.userData;
 });
-
-const filteredReplacementTracks = computed(() => {
-    if (!state.replacementSearchQuery) return state.availableReplacementTracks
-    const query = state.replacementSearchQuery.toLowerCase()
-    return state.availableReplacementTracks.filter(track => 
-        (track.track?.name ?? track.name).toLowerCase().includes(query) ||
-        (track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ')).toLowerCase().includes(query)
-    )
-})
-
-const playlistSaved = ref(false)
-
-watchEffect(async () => {
-    if (props.menuData) {
-        const data = await playlistStore.getPlaylist(menuData.value.id)
-        playlistSaved.value = data?.tracked ?? false
-        return
-    }
-    return false
-})
-
-const calcLikesStats = () => {
-    const likesStats = props.menuData.playlist.likesStats
-    if (likesStats && likesStats.length > 2) {
-        let beforeLast = likesStats[likesStats.length - 3].likes_count
-        let last = likesStats[likesStats.length - 2].likes_count
-        state.likesAVG = parseInt(last - beforeLast)
-        state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
-        state.likesAVG = state.likesAVG + String((last - beforeLast))
-        return
-    }
-    if (likesStats && likesStats.length > 1) {
-        let last = likesStats[likesStats.length - 2].likes_count
-        state.likesAVG = parseInt(last)
-        state.likesAVG = state.likesAVG >= 0 ? '+' : '-'
-        state.likesAVG = state.likesAVG + String(last)
-    }
-    
-}
 
 const getTrackAtPosition = async(playlistId, position) => {
     let tracks = await playlistStore.getTracks(playlistId)
@@ -462,202 +397,6 @@ const executeTrack = async(track) => {
     }
 }
 
-const removeTrack = async() => {
-    if (! menuData.value.isOwner) {
-        notify({
-            title: 'Ops',
-            text: 'This playlist does not belong to you!',
-            type: 'error'
-        })
-        return
-    }
-    state.removeTargetTrack = {
-        uri: menuData.value.id,
-        name: menuData.value.title,
-        artist: menuData.value.subtitle
-    }
-    state.removeMode = 'confirm'
-}
-
-const removeOnly = async() => {
-    notify({
-        title: 'Please, wait',
-        text: 'Removing track...',
-        type: 'info'
-    })
-    try {
-        const formData = {
-            'tracks': [
-                { 'uri': state.removeTargetTrack.uri }
-            ]
-        }
-        const { status } = await removeTracksOfPlaylist(menuData.value.playlist, formData)
-        if (status === 200) {
-            notify({
-                title: 'Alright',
-                text: 'Song removed!',
-                type: 'success'
-            })
-            emit('remove-track', state.removeTargetTrack.uri)
-            resetRemoveState()
-            closeMenu()
-            return
-        }
-        notify({
-            title: 'Ops',
-            text: 'Status: ' + status + ' not expected!',
-            type: 'error'
-        })
-    }catch(error){
-        console.log(error)
-        notify({
-            title: 'Ops',
-            text: 'An error occurred!',
-            type: 'error'
-        })
-    }
-}
-
-const showReplacementList = async() => {
-    const playlistId = menuData.value.playlist
-    let tracks = await playlistStore.getTracks(playlistId)
-    if (!tracks || tracks.length === 0) {
-        tracks = await getTracks(playlistId)
-        playlistStore.loadTracks(playlistId, tracks)
-    }
-    state.availableReplacementTracks = tracks.filter(
-        t => (t.track?.uri ?? t.uri) !== state.removeTargetTrack.uri
-    )
-    state.removeMode = 'replace'
-}
-
-const selectReplacement = (track) => {
-    state.selectedReplacementTrack = track
-    state.removeMode = 'list'
-}
-
-const backToReplacementList = () => {
-    state.selectedReplacementTrack = null
-    state.removeMode = 'replace'
-}
-
-const confirmReplacement = async() => {
-    const playlistId = menuData.value.playlist
-    const targetUri = state.removeTargetTrack.uri
-    const replacementUri = state.selectedReplacementTrack.track?.uri ?? state.selectedReplacementTrack.uri
-
-    notify({
-        title: 'Please, wait',
-        text: 'Replacing track...',
-        type: 'info'
-    })
-
-    try {
-        const tracks = await getTracks(playlistId)
-        const replacementTrack = tracks.find(t => (t.track?.uri ?? t.uri) === replacementUri)
-        const removalTrack = tracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
-
-        if (!replacementTrack || !removalTrack) {
-            notify({ title: 'Error', text: 'Track not found', type: 'error' })
-            return
-        }
-
-        const moveFormData = {
-            'range_start': replacementTrack.id,
-            'insert_before': removalTrack.id
-        }
-        await updateTracksOfPlaylist(playlistId, moveFormData)
-
-        const updatedTracks = await getTracks(playlistId)
-        const newRemovalTrack = updatedTracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
-
-        if (newRemovalTrack) {
-            const removeFormData = {
-                'tracks': [{ 'uri': targetUri }]
-            }
-            await removeTracksOfPlaylist(playlistId, removeFormData)
-        }
-
-        playlistStore.loadTracks(playlistId, await getTracks(playlistId))
-
-        notify({
-            title: 'Alright',
-            text: 'Track replaced successfully!',
-            type: 'success'
-        })
-        emit('remove-track', targetUri)
-        resetRemoveState()
-        closeMenu()
-    }catch(error){
-        console.log(error)
-        notify({
-            title: 'Ops',
-            text: 'An error occurred!',
-            type: 'error'
-        })
-    }
-}
-
-const cancelRemove = () => {
-    resetRemoveState()
-}
-
-const resetRemoveState = () => {
-    state.removeMode = 'confirm'
-    state.removeTargetTrack = null
-    state.availableReplacementTracks = []
-    state.selectedReplacementTrack = null
-    state.replacementSearchQuery = ''
-}
-
-const saveThisPlaylist = async() => {
-    notify({
-        title: 'Please, wait',
-        text: 'Saving playlist...',
-        type: 'info'
-    })
-    const result = await savePlaylist(props.menuData.playlist)
-    if (! result) {
-        notify({
-            title: 'Ops',
-            text: 'It´s not possible to save the Playlist at this time.',
-            type: 'error'
-        })
-    }
-
-    notify({
-        title: 'Alright',
-        text: 'Playlist saved!',
-        type: 'success'
-    })
-    closeMenu()
-}
-
-const doRefresh = () => {
-    emit('refresh-playlist')
-    closeMenu()
-}
-
-const openStatistics = () => {
-    emit('open-statistics')
-    closeMenu()
-}
-
-const openArtists = () => {
-    emit('open-artists')
-    closeMenu()
-}
-
-const openExternalAnalysis = () => {
-    console.log(menuData)
-    window.open('https://www.chosic.com/spotify-playlist-analyzer/?plid=' + menuData.value.id)
-}
-
-const doQueue = (track) => {
-    emit('add-queue', track)
-    closeMenu()
-}
-
 const listPlaylists = async() => {
     state.playlistsOriginal = playlistStore.playlists
 
@@ -673,10 +412,6 @@ const listPlaylists = async() => {
     })
     state.playlistsOpened = true
 }
-
-onMounted(async () => {
-    
-})
 
 const executeMoveTrack = async() => {
     const sourcePos = state.moveSourcePosition
@@ -784,7 +519,6 @@ const closeMenu = () => {
     state.playlistToAdd = null
     state.selectedPosition = null
     resetMoveState()
-    resetRemoveState()
     emit('update-menu-opened', false)
 }
 </script>
@@ -846,96 +580,11 @@ const closeMenu = () => {
                     <div class="menu-item-track-details" style="height: 30px" v-if="menuData.type == 'track'">
                         <p class="playlist-subtitle">Genres: {{menuData?.genres?.map(genre => genre.genre).join(', ')}} </p>
                     </div>
-                    <div class="menu-item-track-details" style="margin-bottom: 10px;" v-if="menuData.type == 'playlist'">
-                        Created by: {{ menuData.owner }}
-                    </div>
-                    <div class="menu-item-track-details" v-if="menuData.type == 'playlist'">
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                            <font-awesome-icon icon="heart" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:3px">{{ menuData.followers }}</p>
-                        </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;color:#3498db">
-                            <font-awesome-icon v-if="menuData.visibility == 'Public'" icon="unlock-alt" style="vertical-align:middle;" />
-                            <font-awesome-icon v-else icon="lock" style="vertical-align:middle;" />
-                            <p class="playlist-subtitle" style="margin-top:10px;font-size:12px">{{ menuData.visibility }}</p>
-                        </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;" 
-                            :class="{
-                                'icon-popularity-bad' : (menuData.popularity <= 40),
-                                'icon-popularity-medium' : (menuData.popularity > 40 && menuData.popularity <= 70),
-                                'icon-popularity-good' : (menuData.popularity > 70)
-                            }">
-                            <font-awesome-icon icon="chart-line" />
-                            <p class="playlist-subtitle" style="margin-top:3px">{{menuData.popularity}}%</p>
-                        </div>
-                        <div style="display: flex;flex-direction:column;text-align: center;font-size:24px;"
-                        :class="{
-                            'icon-popularity-bad' : (state.likesAVG < 0),
-                            'icon-popularity-medium' : (state.likesAVG == 0),
-                            'icon-popularity-good' : (state.likesAVG > 0)
-                        }">
-                            <font-awesome-icon v-if="(state.likesAVG < 0)" icon="sad-tear"/>
-                            <font-awesome-icon v-else-if="(state.likesAVG == 0)" icon="meh"/>
-                            <font-awesome-icon v-else-if="(state.likesAVG > 0)" icon="smile"/>
-                            <p class="playlist-subtitle" style="margin-top:3px">{{ state.likesAVG }}</p>
-                        </div>                       
-                    </div>
                     <hr class="style-one" style="height: 30px;">
                     <div v-if="menuData.type == 'track'" style="max-height: 500px;">
                         <div class="menu-item" v-if="!state.playlistsOpened" @click="executeTrack(menuData.id)">
                             <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
                             <h3 class="menu-item-option">Play</h3>
-                        </div>
-                        <div class="menu-item" v-if="!state.playlistsOpened" @click="doQueue(menuData.id)">
-                            <font-awesome-icon icon="play" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Add to queue</h3>
-                        </div>
-                        <div class="menu-item" v-if="!state.playlistsOpened && state.removeMode === 'confirm'" @click="removeTrack">
-                            <font-awesome-icon icon="trash" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Remove from this playlist</h3>
-                        </div>
-                        <div class="remove-confirm" v-if="!state.playlistsOpened && state.removeMode === 'confirm' && state.removeTargetTrack">
-                            <p class="remove-confirm-title">Remove "{{ state.removeTargetTrack.name }}"?</p>
-                            <div class="remove-buttons">
-                                <button class="btn-remove-only" @click="removeOnly">Remove only</button>
-                                <button class="btn-replace" @click="showReplacementList">Replace with another track</button>
-                            </div>
-                            <button class="btn-cancel-remove" @click="cancelRemove">Cancel</button>
-                        </div>
-                        <div class="replacement-container" v-if="!state.playlistsOpened && state.removeMode === 'replace'">
-                            <input 
-                                v-model="state.replacementSearchQuery"
-                                placeholder="Search tracks..."
-                                class="replacement-search"
-                            />
-                            <div class="replacement-list">
-                                <div v-for="track in filteredReplacementTracks" 
-                                     :key="track.track?.uri ?? track.uri"
-                                     class="replacement-track"
-                                     @click="selectReplacement(track)">
-                                    <span class="replacement-position">{{ track.id + 1 }}</span>
-                                    <img :src="track.track?.album?.images[0]?.url ?? track.album?.images[0]?.url" class="replacement-cover"/>
-                                    <div class="replacement-info">
-                                        <strong>{{ track.track?.name ?? track.name }}</strong>
-                                        <p>{{ track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="btn-cancel-remove" @click="cancelRemove">Cancel</button>
-                        </div>
-                        <div class="selected-replacement" v-if="!state.playlistsOpened && state.removeMode === 'list' && state.selectedReplacementTrack">
-                            <p class="selected-replacement-title">Replace with:</p>
-                            <div class="selected-track-preview">
-                                <img :src="state.selectedReplacementTrack.track?.album?.images[0]?.url ?? state.selectedReplacementTrack.album?.images[0]?.url" class="selected-replacement-cover"/>
-                                <div class="selected-replacement-info">
-                                    <strong>{{ state.selectedReplacementTrack.track?.name ?? state.selectedReplacementTrack.name }}</strong>
-                                    <p>{{ state.selectedReplacementTrack.track?.artists?.map(a => a.name).join(', ') ?? state.selectedReplacementTrack.artists?.map(a => a.name).join(', ') }}</p>
-                                </div>
-                            </div>
-                            <div class="confirm-buttons">
-                                <button class="btn-confirm" @click="confirmReplacement">Confirm</button>
-                                <button class="btn-cancel" @click="backToReplacementList">Back</button>
-                            </div>
                         </div>
                         <div class="playlists" v-if="state.playlists && state.playlistsOpened">
                             <div class="position-input-container" v-if="!state.pendingRelocation">
@@ -995,29 +644,6 @@ const closeMenu = () => {
                                 <button class="btn-confirm" @click="executeMoveTrack" :disabled="!state.moveTargetPosition">Confirm</button>
                                 <button class="btn-cancel" @click="cancelMoveMode">Cancel</button>
                             </div>
-                        </div>
-                    </div>
-                    <div v-if="menuData.type == 'playlist'">
-                        <div class="menu-item" @click="doRefresh">
-                            <font-awesome-icon icon="sync" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Refresh from Spotify</h3>
-                        </div>
-                        <div class="menu-item" @click="saveThisPlaylist">
-                            <font-awesome-icon icon="save" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 v-if="playlistSaved" class="menu-item-option">Update on Database</h3>
-                            <h3 v-else class="menu-item-option">Save</h3>
-                        </div>
-                        <div class="menu-item" @click="openArtists">
-                            <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Show top artists</h3>
-                        </div>
-                        <div class="menu-item" @click="openStatistics">
-                            <font-awesome-icon icon="chart-pie" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Show statistics</h3>
-                        </div>
-                        <div class="menu-item" @click="openExternalAnalysis">
-                            <font-awesome-icon icon="chart-line" style="vertical-align:middle;margin-right:10px;color: #b3b3b3;" />
-                            <h3 class="menu-item-option">Open External Analytics</h3>
                         </div>
                     </div>
                 </div>            
@@ -1302,165 +928,6 @@ const closeMenu = () => {
     }
     .btn-cancel:hover {
         background-color: #555;
-    }
-    .remove-confirm {
-        padding: 20px;
-        text-align: center;
-    }
-    .remove-confirm-title {
-        color: #fff;
-        font-size: 14px;
-        margin: 0 0 20px 0;
-    }
-    .remove-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-    .btn-remove-only, .btn-replace {
-        padding: 12px 20px;
-        border-radius: 20px;
-        border: none;
-        font-size: 14px;
-        cursor: pointer;
-        font-weight: 600;
-    }
-    .btn-remove-only {
-        background-color: #e74c3c;
-        color: #fff;
-    }
-    .btn-remove-only:hover {
-        background-color: #c0392b;
-    }
-    .btn-replace {
-        background-color: #1db954;
-        color: #000;
-    }
-    .btn-replace:hover {
-        background-color: #1ed760;
-    }
-    .btn-cancel-remove {
-        background: transparent;
-        border: 1px solid #b3b3b3;
-        color: #b3b3b3;
-        padding: 8px 20px;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 13px;
-    }
-    .btn-cancel-remove:hover {
-        border-color: #fff;
-        color: #fff;
-    }
-    .replacement-container {
-        padding: 15px;
-    }
-    .replacement-search {
-        width: 100%;
-        padding: 10px 15px;
-        border-radius: 20px;
-        border: 1px solid #b3b3b3;
-        background-color: #404040;
-        color: #fff;
-        margin-bottom: 15px;
-        font-size: 14px;
-    }
-    .replacement-search::placeholder {
-        color: #888;
-    }
-    .replacement-search:focus {
-        border-color: #1db954;
-        outline: none;
-    }
-    .replacement-list {
-        max-height: 250px;
-        overflow-y: auto;
-    }
-    .replacement-track {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        cursor: pointer;
-        border-radius: 8px;
-    }
-    .replacement-track:hover {
-        background-color: #383838;
-    }
-    .replacement-position {
-        color: #888;
-        font-size: 12px;
-        min-width: 25px;
-    }
-    .replacement-cover {
-        width: 40px;
-        height: 40px;
-        border-radius: 4px;
-    }
-    .replacement-info {
-        flex: 1;
-        overflow: hidden;
-    }
-    .replacement-info strong {
-        color: #fff;
-        font-size: 13px;
-        display: block;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .replacement-info p {
-        color: #888;
-        font-size: 11px;
-        margin: 2px 0 0 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .selected-replacement {
-        padding: 20px;
-        text-align: center;
-    }
-    .selected-replacement-title {
-        color: #fff;
-        font-size: 14px;
-        margin: 0 0 15px 0;
-    }
-    .selected-track-preview {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background-color: #2a2a2a;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    }
-    .selected-replacement-cover {
-        width: 50px;
-        height: 50px;
-        border-radius: 4px;
-    }
-    .selected-replacement-info {
-        flex: 1;
-        overflow: hidden;
-        text-align: left;
-    }
-    .selected-replacement-info strong {
-        color: #fff;
-        font-size: 13px;
-        display: block;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .selected-replacement-info p {
-        color: #888;
-        font-size: 11px;
-        margin: 4px 0 0 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
     .move-position-container {
         padding: 15px 20px;
