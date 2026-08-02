@@ -120,6 +120,9 @@ export const usePlaylistStore = defineStore('playlist', {
             }            
 
             return playlist
+        },
+        remove(playlistId) {
+            this.playlists = this.playlists.filter(element => element.id !== playlistId)
         }
     }
 })

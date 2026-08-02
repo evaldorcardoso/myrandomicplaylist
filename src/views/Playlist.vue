@@ -8,6 +8,7 @@
   import Notification from '@/components/Notification.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
+  import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
   import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
@@ -21,7 +22,7 @@
   const userStore = useUserStore()
   const progress = inject("progress")
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
-  const { updatePlaylistTotalTracks, savePlaylist } = PlaylistService()
+  const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
 
@@ -98,6 +99,7 @@
   const slotManagementOpened = ref(false)
   const slotManagementTrack = ref(null)
   const slotManagementRequest = ref(null)
+  const confirmRemovePlaylistOpened = ref(false)
   const slotsVersion = ref(0)
   const bumpSlots = () => slotsVersion.value++
 
@@ -294,6 +296,34 @@
       return
     }
     notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
+  }
+
+  const confirmRemoveFromManagement = () => {
+    confirmRemovePlaylistOpened.value = true
+  }
+
+  const closeRemoveFromManagement = () => {
+    confirmRemovePlaylistOpened.value = false
+  }
+
+  const handleRemoveFromManagement = async () => {
+    confirmRemovePlaylistOpened.value = false
+    isProcessing.value = true
+    try {
+      const removed = await removeFromDatabase(playlistId.value)
+      if (!removed) {
+        notify({ title: 'Ops', text: 'Não foi possível remover a playlist do banco.', type: 'error' })
+        return
+      }
+      playlistStore.remove(playlistId.value)
+      notify({ title: 'Alright', text: 'Playlist removida da gestão!', type: 'success' })
+      router.push('/')
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Erro ao remover a playlist.', type: 'error' })
+    } finally {
+      isProcessing.value = false
+    }
   }
 
   const onFixPositionMismatch = () => {
@@ -696,6 +726,13 @@
     @updated="onSlotUpdated"
     @remove-track="onSlotRemoveTrack"
   />
+  <ConfirmRemovePlaylistModal
+    :open="confirmRemovePlaylistOpened"
+    :playlist="state.playlist"
+    :is-submitting="isProcessing"
+    @close="closeRemoveFromManagement"
+    @confirm="handleRemoveFromManagement"
+  />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
@@ -791,6 +828,14 @@
             @click="handleSavePlaylist"
           >
             <font-awesome-icon icon="save" />
+          </button>
+          <button
+            v-if="playlistSaved"
+            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-error hover:text-on-error transition-colors"
+            title="Remover da gestão"
+            @click="confirmRemoveFromManagement"
+          >
+            <font-awesome-icon icon="trash" />
           </button>
         </div>
       </div>

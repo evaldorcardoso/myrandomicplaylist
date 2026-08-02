@@ -90,6 +90,7 @@ Copy `.env.example` to `.env` and configure:
 - Use SCSS (with `lang="scss"` in Vue components)
 - Use `scoped` attribute for component-specific styles
 - Support CSS nesting (BEM-style patterns common)
+- **IMPORTANT**: Never use `max-w-sm/md/lg/xl` (or `max-w-{spacing-token}`). The `@theme` in `src/assets/main.css` defines custom `--spacing-*` tokens (`--spacing-md: 1.5rem`, etc.), and in Tailwind v4 these classes resolve to `var(--spacing-*)` instead of the container scale — e.g. `max-w-md` becomes `max-width: 1.5rem` (24px), collapsing the element into a thin bar. Use arbitrary values (`max-w-[420px]`) or container-scale sizes (`max-w-2xl`/`max-w-4xl`).
 
 ### API Patterns
 - Supabase for database operations

@@ -1,6 +1,7 @@
 import { useGeneral } from '@/support/spotifyApi'
 import { usePlaylistStore } from '@/stores/playlist'
 import { supabase } from '@/support/supabaseClient'
+import { invalidateOccupancy } from '@/support/occupancyCache'
 import { useUserStore } from '../stores/user'
 
 export function PlaylistService() {
@@ -130,6 +131,38 @@ export function PlaylistService() {
         return data;
     }
 
+    const removeFromDatabase = async(playlistId) => {
+        const relatedTables = [
+            'track_requests',
+            'track_popularity',
+            'playlists_statistics',
+            'price_positions'
+        ]
+
+        for (const table of relatedTables) {
+            const { error } = await supabase
+                .from(table)
+                .delete()
+                .eq('playlist_id', playlistId)
+            if (error) {
+                console.error(error.message)
+                return false
+            }
+        }
+
+        const { error } = await supabase
+            .from('playlists')
+            .delete()
+            .eq('id', playlistId)
+        if (error) {
+            console.error(error.message)
+            return false
+        }
+
+        invalidateOccupancy()
+        return true
+    }
+
     const getGenres = async(artists) => {
         const uniqueArtistIds = new Set();
     
@@ -175,6 +208,7 @@ export function PlaylistService() {
         savePlaylist,
         updatePlaylistTotalTracks,
         loadAllFromDatabase,
+        removeFromDatabase,
         getGenres
     }
 }
