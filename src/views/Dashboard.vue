@@ -3,11 +3,13 @@
   import { useRouter } from 'vue-router'
   import { DashboardService } from '@/services/DashboardService'
   import { usePlaylistStore } from '@/stores/playlist'
+  import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
 
   const { getDashboardData } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
   const playlistStore = usePlaylistStore()
+  const userStore = useUserStore()
   const router = useRouter()
   const state = reactive({
     data: null
@@ -101,14 +103,15 @@
           </div>
         </div>
 
-        <div class="bg-primary-container p-lg rounded-xl flex flex-col justify-between shadow-lg shadow-primary/10 group cursor-pointer hover:scale-[1.02] transition-transform">
-          <div class="flex flex-col">
-            <span class="text-on-primary-container font-headline-sm font-display">Nova Playlist</span>
-            <p class="text-on-primary-container/80 text-body-sm mt-1">Criar uma nova playlist</p>
+        <div class="bg-surface-container-low p-lg rounded-xl flex flex-col gap-xs shadow-sm hover:bg-surface-container transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Likes no Perfil</span>
+            <span class="material-symbols-outlined text-tertiary text-headline-sm">favorite</span>
           </div>
-          <div class="flex justify-end">
-            <div class="w-10 h-10 bg-on-primary-container rounded-full flex items-center justify-center text-primary">
-              <span class="material-symbols-outlined">add</span>
+          <div class="flex flex-col">
+            <span class="text-display-lg font-display text-on-surface">{{ userStore.getUser?.followers?.total ?? 0 }}</span>
+            <div class="flex items-center gap-1 text-on-surface-variant">
+              <span class="text-label-sm">Seguidores no Spotify</span>
             </div>
           </div>
         </div>
