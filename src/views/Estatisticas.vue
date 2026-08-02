@@ -24,7 +24,8 @@
     avgPopularity,
     topArtists,
     genres,
-    askToSaveNewStatistics
+    hasTodayStatistics,
+    saveLikesStatistics
   } = pd
 
   const props = defineProps({
@@ -136,10 +137,6 @@
     isRefreshing.value = false
   }
 
-  const onUpdateDatabase = () => {
-    askToSaveNewStatistics()
-  }
-
   const onShowTopArtists = () => {
     document.getElementById('top-artists')?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -151,7 +148,6 @@
   onMounted(async () => {
     progress.start()
     await init({ topArtistsLimit: 10 })
-    askToSaveNewStatistics()
     progress.finish()
   })
 </script>
@@ -390,11 +386,12 @@
               </div>
               <font-awesome-icon icon="chevron-right" />
             </button>
-            <button class="w-full group bg-surface-container-lowest text-on-surface px-6 py-4 rounded-xl flex items-center justify-between hover:bg-surface-container-highest transition-all" @click="onUpdateDatabase">
+            <button class="w-full group bg-primary text-on-primary px-6 py-4 rounded-xl flex items-center justify-between hover:brightness-110 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" :disabled="hasTodayStatistics" @click="saveLikesStatistics">
               <div class="flex items-center gap-4">
-                <font-awesome-icon icon="database" class="text-primary" />
-                <span class="text-body-md">Update Database</span>
+                <font-awesome-icon icon="save" class="group-hover:rotate-180 transition-transform duration-500" />
+                <span class="text-body-md">{{ hasTodayStatistics ? 'Estatística salva hoje' : 'Salvar estatística' }}</span>
               </div>
+              <font-awesome-icon icon="chevron-right" />
             </button>
             <button class="w-full group bg-surface-container-lowest text-on-surface px-6 py-4 rounded-xl flex items-center justify-between hover:bg-surface-container-highest transition-all" @click="onShowTopArtists">
               <div class="flex items-center gap-4">

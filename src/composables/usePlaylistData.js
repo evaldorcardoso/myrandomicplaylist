@@ -11,7 +11,6 @@ import { PlaylistService } from '@/services/PlaylistService'
 
 export const NOTIFICATION_ACTIONS = {
   UPDATE_SORT: 'update_sort',
-  SAVE_LIKES_STATISTICS: 'save_likes_statistics',
   SAVE_TRACKS_STATISTICS: 'save_tracks_statistics',
   UPDATE_DESCRIPTION: 'update_description',
   UPDATE_PLAYLIST: 'update_playlist',
@@ -35,7 +34,6 @@ export function usePlaylistData(callbacks = {}) {
   } = PlaylistService()
 
   const MAX_STATISTICS_ITEMS_TO_RETAIN = 10
-  const DIFF_DAY_TO_SAVE_NEW_STATISTICS = 6
 
   const playlistId = computed(() => route.params.id)
 
@@ -76,6 +74,7 @@ export function usePlaylistData(callbacks = {}) {
   const isNotificationOpened = ref(false)
   const notificationDataReactive = ref(null)
   const notificationAction = ref('')
+  const hasTodayStatistics = ref(false)
 
   const notificationOpened = computed(() => {
     return isNotificationOpened.value
@@ -393,21 +392,28 @@ export function usePlaylistData(callbacks = {}) {
     isNotificationOpened.value = true
   }
 
-  const askToSaveNewStatistics = () => {
-    if (state.dataLikes.length > 1) {
-      const diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length - 2].created_at))
-      if (diffDays < DIFF_DAY_TO_SAVE_NEW_STATISTICS) {
-        return
-      }
-    }
-    showNotification(
-      NOTIFICATIONS_TYPE.info,
-      'Hey',
-      'Save new likes statistics for this playlist today ?',
-      true,
-      false
-    )
-    notificationAction.value = NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS
+  const checkTodayStatistics = async() => {
+    if (!state.playlist?.id) return
+    const { data } = await supabase
+      .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
+      .select('created_at')
+      .eq('playlist_id', state.playlist.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const lastSavedAt = data?.[0]?.created_at
+    hasTodayStatistics.value = !!lastSavedAt && calcDiffDays(new Date(), new Date(lastSavedAt)) === 0
+  }
+
+  const saveLikesStatistics = async() => {
+    if (hasTodayStatistics.value) return
+    await saveStatistics()
+    await saveTracksStatistics()
+    hasTodayStatistics.value = true
+    notify({
+      title: 'Alright',
+      text: 'Statistics saved!',
+      type: 'success'
+    })
   }
 
   const executeUserPlaylist = async(currentPlaying) => {
@@ -469,26 +475,6 @@ export function usePlaylistData(callbacks = {}) {
     isNotificationOpened.value = false
     if (value) {
       switch (notificationAction.value) {
-        case NOTIFICATION_ACTIONS.SAVE_LIKES_STATISTICS:
-          if (state.dataLikes.length > 0) {
-            let diffDays = calcDiffDays(new Date(), new Date(state.dataLikes[state.dataLikes.length - 1].created_at));
-            if (diffDays == 0) {
-              showNotification(
-                NOTIFICATIONS_TYPE.warning,
-                'Ops',
-                'Looks like you already have a statistics for today!'
-              )
-              return
-            }
-            await saveStatistics()
-            await saveTracksStatistics()
-            notify({
-              title: 'Alright',
-              text: 'Statistics saved!',
-              type: 'success'
-            })
-          }
-          break
         case NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS:
           await saveTracksStatistics()
           await getPlaylistTracks(true)
@@ -567,6 +553,7 @@ export function usePlaylistData(callbacks = {}) {
     if (options.topArtistsLimit && (!Array.isArray(state.playlist?.topArtists) || state.playlist.topArtists.length === 0)) {
       getTopArtists(options.topArtistsLimit).catch((error) => console.error(error))
     }
+    await checkTodayStatistics()
     progress.finish()
   }
 
@@ -581,13 +568,14 @@ export function usePlaylistData(callbacks = {}) {
     genres,
     avgPopularity,
     MAX_STATISTICS_ITEMS_TO_RETAIN,
-    DIFF_DAY_TO_SAVE_NEW_STATISTICS,
+    hasTodayStatistics,
     init,
     onRefreshPage,
     onNotificationAction,
     identifyPlaylistChanges,
     showNotification,
-    askToSaveNewStatistics,
+    checkTodayStatistics,
+    saveLikesStatistics,
     openPlaylistApp,
     executeUserPlaylist,
     getPlaylistTracks,
