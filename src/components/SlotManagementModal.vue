@@ -245,13 +245,14 @@
     isSubmitting.value = true
     submitState.value = 'idle'
     try {
-      let requester = props.request
+      let requesterId = props.request?.requester_id ?? null
       if (requesterName.value.trim() !== (props.request.requester_name ?? '').trim()) {
-        requester = await resolveRequester()
+        const requester = await resolveRequester()
+        if (requester) requesterId = requester.id
       }
       const parsedValue = parseValue()
       const payload = {
-        requester_id: requester?.id ?? props.request.requester_id
+        requester_id: requesterId
       }
       if (Number.isFinite(parsedValue) && parsedValue > 0) {
         payload.value = parsedValue
