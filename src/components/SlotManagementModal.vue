@@ -1,10 +1,12 @@
 <script setup>
-  import { ref, computed, watch, onBeforeUnmount } from 'vue'
+  import { ref, computed, watch, onBeforeUnmount, markRaw } from 'vue'
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
+  import { useGeneral } from '@/support/spotifyApi'
+  import { usePlaylistStore } from '@/stores/playlist'
 
-  const emit = defineEmits(['close', 'updated', 'remove-track'])
+  const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'sell-slot'])
 
   const props = defineProps({
     open: {
@@ -35,6 +37,8 @@
 
   const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
+  const { getTracks } = useGeneral()
+  const playlistStore = usePlaylistStore()
 
   const requesterName = ref('')
   const curator = ref('')
@@ -43,10 +47,17 @@
   const dueDate = ref('')
   const isSubmitting = ref(false)
   const submitState = ref('idle')
-  const removeConfirmOpen = ref(false)
+  const removalOpen = ref(false)
+  const removalMode = ref('')
+  const searchQuery = ref('')
+  const availableTracks = ref([])
+  const selectedReplacement = ref(null)
+  const tracksLoading = ref(false)
   const isLoading = ref(false)
 
   const isPending = computed(() => props.request?.status === 'pending')
+
+  const isFree = computed(() => !props.request)
 
   const trackData = computed(() => props.track?.track ?? null)
 
@@ -68,23 +79,20 @@
 
   const position = computed(() => (props.track?.id ?? 0) + 1)
 
+  const filteredReplacementTracks = computed(() => {
+    if (!searchQuery.value) return availableTracks.value
+    const query = searchQuery.value.toLowerCase()
+    return availableTracks.value.filter(track =>
+      (track.track?.name ?? track.name).toLowerCase().includes(query) ||
+      (track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ')).toLowerCase().includes(query)
+    )
+  })
+
   const daysLeft = computed(() => {
     if (!props.request?.due_date) return null
     const due = new Date(`${props.request.due_date}T00:00:00`).getTime()
     return Math.max(0, Math.ceil((due - Date.now()) / (24 * 60 * 60 * 1000)))
   })
-
-  const slotExpired = computed(() => {
-    if (!props.request?.due_date) return false
-    const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    return props.request.due_date < todayStr
-  })
-
-  const formatDueDate = () => {
-    if (!props.request?.due_date) return '-'
-    return new Date(`${props.request.due_date}T00:00:00`).toLocaleDateString('pt-BR')
-  }
 
   const pad = (n) => String(n).padStart(2, '0')
 
@@ -130,7 +138,7 @@
     dueDate.value = props.request?.due_date ?? calcDueDateISO(30)
     isSubmitting.value = false
     submitState.value = 'idle'
-    removeConfirmOpen.value = false
+    resetRemoval()
     if (!curator.value) {
       loadCuratorSuggestions()
     }
@@ -228,7 +236,7 @@
 
   const close = () => {
     if (isSubmitting.value) return
-    removeConfirmOpen.value = false
+    resetRemoval()
     emit('close')
   }
 
@@ -298,23 +306,79 @@
     }
   }
 
+  const loadReplacementTracks = async () => {
+    if (availableTracks.value.length > 0) return
+    tracksLoading.value = true
+    try {
+      const playlistId = props.playlistId
+      let tracks = await playlistStore.getTracks(playlistId)
+      if (!tracks || tracks.length === 0) {
+        tracks = await getTracks(playlistId)
+        playlistStore.loadTracks(playlistId, tracks)
+        tracks = await playlistStore.getTracks(playlistId)
+      }
+      const targetUri = props.track?.track?.uri ?? props.track?.uri
+      availableTracks.value = (tracks ?? []).filter(
+        t => (t.track?.uri ?? t.uri) !== targetUri
+      ).map(track => markRaw(track))
+    } catch (error) {
+      console.error(error)
+    } finally {
+      tracksLoading.value = false
+    }
+  }
+
+  const resetRemoval = () => {
+    removalOpen.value = false
+    removalMode.value = ''
+    searchQuery.value = ''
+    selectedReplacement.value = null
+  }
+
   const onRemoveTrack = () => {
     if (isSubmitting.value) return
-    if (slotExpired.value) {
-      doRemove()
-      return
-    }
-    removeConfirmOpen.value = true
+    removalOpen.value = true
+  }
+
+  const chooseRemove = () => {
+    doRemove()
+  }
+
+  const chooseReplace = async () => {
+    removalMode.value = 'replace'
+    selectedReplacement.value = null
+    await loadReplacementTracks()
+  }
+
+  const selectReplacement = (track) => {
+    selectedReplacement.value = track
+  }
+
+  const cancelRemoval = () => {
+    resetRemoval()
   }
 
   const doRemove = () => {
-    removeConfirmOpen.value = false
     emit('remove-track', { request: props.request, track: props.track })
     emit('close')
   }
 
+  const confirmReplacement = () => {
+    if (!selectedReplacement.value) return
+    emit('replace-track', {
+      request: props.request,
+      track: props.track,
+      replacement: selectedReplacement.value
+    })
+    emit('close')
+  }
+
+  const onSellSlot = () => {
+    emit('sell-slot', props.track)
+  }
+
   onBeforeUnmount(() => {
-    removeConfirmOpen.value = false
+    resetRemoval()
   })
 </script>
 
@@ -346,11 +410,13 @@
             <div class="flex items-center justify-center gap-3 mt-4">
               <span
                 class="text-label-sm px-3 py-1 rounded-full font-bold"
-                :class="isPending
-                  ? 'bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary-container'
-                  : 'bg-primary/10 border border-primary/30 text-primary'"
+                :class="isFree
+                  ? 'bg-surface-container-highest text-on-surface-variant'
+                  : isPending
+                    ? 'bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary-container'
+                    : 'bg-primary/10 border border-primary/30 text-primary'"
               >
-                {{ isPending ? 'PENDENTE' : 'PAGA' }}
+                {{ isFree ? 'LIVRE' : (isPending ? 'PENDENTE' : 'PAGA') }}
               </span>
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
             </div>
@@ -371,7 +437,7 @@
         <div class="w-full md:w-7/12 p-8 md:p-10 flex flex-col gap-7">
           <div class="flex justify-between items-start">
             <div class="space-y-1">
-              <h3 class="text-headline-md text-on-surface">Gestão de Posição Paga</h3>
+              <h3 class="text-headline-md text-on-surface">{{ isFree ? 'Gestão de posição' : 'Gestão de Posição Paga' }}</h3>
             </div>
             <button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant" title="Fechar" @click="close">
               <font-awesome-icon icon="times" />
@@ -397,7 +463,7 @@
             </div>
 
             <!-- Requester + Curator -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="!isFree" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Solicitante</label>
                 <input
@@ -434,7 +500,7 @@
             </div>
 
             <!-- Permanence + Value + Due date -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div v-if="!isFree" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Permanência</label>
                 <div class="relative">
@@ -478,6 +544,7 @@
 
           <!-- Logic Card -->
           <div
+            v-if="!isFree"
             class="p-2 rounded-xl space-y-3"
             :class="isPending
               ? 'bg-tertiary-container/5 border-l-4 border-tertiary-container'
@@ -497,25 +564,82 @@
             </p>
           </div>
 
-          <!-- Removal Confirmation -->
-          <div v-if="removeConfirmOpen" class="bg-tertiary-container/5 border border-tertiary-container/40 rounded-xl p-6 space-y-4">
-            <div class="flex items-center gap-2 text-tertiary-container">
-              <font-awesome-icon icon="info" class="text-[20px]" />
-              <span class="text-label-md font-bold uppercase tracking-tight">Aviso</span>
+          <!-- Removal Options -->
+          <div v-if="removalOpen" class="space-y-4">
+            <div>
+              <h3 class="text-headline-sm text-on-surface">Remover da Playlist</h3>
+              <p class="text-body-sm text-on-surface-variant">Deseja apenas remover esta música ou substituí-la por outra da grade?</p>
             </div>
-            <p class="text-body-sm text-on-surface-variant leading-relaxed">
-              Este slot ainda não venceu (vence em <strong class="text-tertiary-container">{{ formatDueDate() }}</strong>). Tem certeza que deseja remover esta música da playlist e liberar a posição?
-            </p>
-            <div class="flex gap-3">
+
+            <div class="grid grid-cols-2 gap-4">
               <button
-                class="flex-1 bg-tertiary-container text-on-tertiary-container text-label-md font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
-                @click="doRemove"
+                class="flex flex-col items-center justify-center p-6 rounded-xl border border-outline-variant/30 bg-surface-container-high/40 hover:border-primary/60 transition-all group"
+                @click="chooseRemove"
               >
-                Confirmar Remoção
+                <font-awesome-icon icon="trash" class="text-3xl mb-2 text-on-surface-variant group-hover:text-primary" />
+                <span class="text-label-md text-on-surface">Apenas Remover</span>
               </button>
               <button
-                class="flex-1 border border-outline-variant/30 text-on-surface-variant text-label-md py-3 rounded-xl hover:border-on-surface-variant hover:text-on-surface transition-colors"
-                @click="removeConfirmOpen = false"
+                class="flex flex-col items-center justify-center p-6 rounded-xl border-2 bg-primary/5 transition-all group"
+                :class="removalMode === 'replace' ? 'border-primary' : 'border-outline-variant/30 hover:border-primary/60'"
+                @click="chooseReplace"
+              >
+                <font-awesome-icon icon="exchange-alt" :class="removalMode === 'replace' ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'" class="text-3xl mb-2" />
+                <span :class="removalMode === 'replace' ? 'text-primary' : 'text-on-surface'" class="text-label-md">Substituir por outra</span>
+              </button>
+            </div>
+
+            <div v-if="removalMode === 'replace'" class="space-y-4">
+              <div class="relative">
+                <font-awesome-icon icon="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] pointer-events-none" />
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Buscar música na playlist..."
+                  class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl py-3 pl-12 pr-4 text-body-sm text-on-surface focus:outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div v-if="tracksLoading" class="space-y-2">
+                <div v-for="n in 4" :key="n" class="animate-pulse h-12 rounded-lg bg-surface-container-high"></div>
+              </div>
+              <div v-else class="space-y-2 max-h-48 overflow-y-auto pr-2">
+                <div
+                  v-for="track in filteredReplacementTracks"
+                  :key="track.track?.uri ?? track.uri"
+                  class="flex items-center justify-between p-3 rounded-lg bg-surface-container-highest/50 border border-outline-variant/10 hover:bg-surface-container-highest transition-colors cursor-pointer"
+                  @click="selectReplacement(track)"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-label-sm text-primary">{{ String((track.id ?? 0) + 1).padStart(2, '0') }}</span>
+                    <div class="flex flex-col min-w-0">
+                      <span class="text-body-sm font-bold text-on-surface truncate">{{ track.track?.name ?? track.name }}</span>
+                      <span class="text-[10px] text-on-surface-variant truncate">{{ track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ') }}</span>
+                    </div>
+                  </div>
+                  <font-awesome-icon
+                    :icon="selectedReplacement === track ? 'check-circle' : 'circle'"
+                    :class="selectedReplacement === track ? 'text-primary' : 'text-on-surface-variant'"
+                    class="flex-shrink-0"
+                  />
+                </div>
+                <p v-if="filteredReplacementTracks.length === 0" class="text-center text-body-sm text-on-surface-variant py-4">
+                  Nenhuma música encontrada.
+                </p>
+              </div>
+            </div>
+
+            <div v-if="removalMode === 'replace'" class="flex flex-col gap-3">
+              <button
+                class="w-full bg-primary hover:bg-primary-fixed text-on-primary text-headline-sm py-3 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                :disabled="!selectedReplacement"
+                @click="confirmReplacement"
+              >
+                <font-awesome-icon icon="check-circle" class="text-[20px]" />
+                <span>Confirmar Mudança</span>
+              </button>
+              <button
+                class="w-full border border-outline-variant/30 hover:bg-surface-container-high text-on-surface-variant text-label-md py-3 rounded-xl transition-all"
+                @click="cancelRemoval"
               >
                 Cancelar
               </button>
@@ -525,6 +649,17 @@
           <!-- Action Buttons -->
           <div v-else class="flex flex-col gap-3">
             <button
+              v-if="isFree"
+              class="group relative w-full bg-primary hover:bg-primary-fixed text-on-primary text-headline-sm py-3 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              :disabled="isSubmitting"
+              @click="onSellSlot"
+            >
+              <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              <font-awesome-icon icon="bolt" class="relative z-10" />
+              <span class="relative z-10">Vender slot</span>
+            </button>
+            <button
+              v-if="!isFree"
               class="group relative w-full text-headline-sm py-2 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               :class="isPending
                 ? 'bg-primary hover:bg-primary-fixed text-on-primary'
@@ -541,6 +676,7 @@
               </span>
             </button>
             <button
+              v-if="!isFree"
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
               :disabled="isSubmitting"
               @click="makeFree"

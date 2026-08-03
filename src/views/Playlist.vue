@@ -21,7 +21,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress")
-  const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist } = useGeneral()
+  const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
@@ -442,11 +442,6 @@
   }
 
   const openTrackSlotModal = (track) => {
-    const status = track._slot?.status ?? 'free'
-    if (status === 'free') {
-      openSellSlot(track)
-      return
-    }
     slotManagementTrack.value = track
     slotManagementRequest.value = findTrackRequest(track)
     slotManagementOpened.value = true
@@ -456,6 +451,11 @@
     slotManagementOpened.value = false
     slotManagementTrack.value = null
     slotManagementRequest.value = null
+  }
+
+  const onSellSlotFromManagement = (track) => {
+    closeSlotManagement()
+    openSellSlot(track)
   }
 
   const reloadSlots = async () => {
@@ -501,6 +501,76 @@
       notify({
         title: 'Ops',
         text: 'Erro ao remover a música!',
+        type: 'error'
+      })
+    }
+  }
+
+  const onSlotReplaceTrack = async ({ request, track, replacement }) => {
+    closeSlotManagement()
+    try {
+      if (request?.id) {
+        const { error } = await deleteTrackRequest(request.id)
+        if (error) throw error
+      }
+
+      const targetUri = track?.track?.uri ?? track?.uri
+      const replacementUri = replacement?.track?.uri ?? replacement?.uri
+
+      let tracks = await playlistStore.getTracks(playlistId.value) ?? []
+      if (tracks.length === 0) {
+        playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+        tracks = await playlistStore.getTracks(playlistId.value)
+      }
+
+      const replacementTrack = tracks.find(t => (t.track?.uri ?? t.uri) === replacementUri)
+      const removalTrack = tracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+      if (!replacementTrack || !removalTrack) {
+        notify({ title: 'Ops', text: 'Música não encontrada!', type: 'error' })
+        return
+      }
+
+      const moveFormData = {
+        'range_start': replacementTrack.id,
+        'insert_before': removalTrack.id
+      }
+      await updateTracksOfPlaylist(playlistId.value, moveFormData)
+
+      const updatedTracks = await getTracks(playlistId.value)
+      const newRemovalTrack = updatedTracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+      if (newRemovalTrack) {
+        const removeFormData = {
+          'tracks': [{ 'uri': targetUri }]
+        }
+        await removeTracksOfPlaylist(playlistId.value, removeFormData)
+      }
+
+      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+
+      const trackFound = state.tracks.find(e => e.track.uri === targetUri)?.track?.id
+      if (trackFound) {
+        removeTrackStatistics(trackFound)
+      }
+
+      await getPlaylistTracks()
+      state.playlist.items = state.tracks.length
+      await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
+      sortUserPlaylist(false)
+      buildSlots()
+      await reloadSlots()
+
+      notify({
+        title: 'Alright',
+        text: 'Música substituída!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao substituir a música!',
         type: 'error'
       })
     }
@@ -739,6 +809,8 @@
     @close="closeSlotManagement"
     @updated="onSlotUpdated"
     @remove-track="onSlotRemoveTrack"
+    @replace-track="onSlotReplaceTrack"
+    @sell-slot="onSellSlotFromManagement"
   />
   <ConfirmRemovePlaylistModal
     :open="confirmRemovePlaylistOpened"
@@ -1016,12 +1088,6 @@
                   </button>
                   <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
                     <font-awesome-icon icon="sort" />
-                  </button>
-                  <button class="p-2 hover:bg-error/20 hover:text-error rounded-lg transition-colors text-on-surface-variant" title="Remover" @click="removeInlineTrack(track)">
-                    <font-awesome-icon icon="trash" />
-                  </button>
-                  <button class="p-2 hover:bg-secondary/20 hover:text-secondary rounded-lg transition-colors text-on-surface-variant" title="Ver Detalhes" @click="openTrackSlotModal(track)">
-                    <font-awesome-icon icon="eye" />
                   </button>
                 </div>
               </td>

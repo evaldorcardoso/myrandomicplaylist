@@ -9,11 +9,12 @@
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import { useGeneral } from '@/support/spotifyApi'
   import { invalidateOccupancy } from '@/support/occupancyCache'
+  import { notify } from "@kyvg/vue3-notification";
 
   const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
   const { deleteTrackRequest } = TrackRequestService()
-  const { removeTracksOfPlaylist } = useGeneral()
+  const { removeTracksOfPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const router = useRouter()
@@ -107,6 +108,65 @@
       await loadDashboardData()
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const onSlotReplaceTrack = async ({ request, track, replacement }) => {
+    const playlistId = slotManagementPlaylistId.value
+    closeSlotManagement()
+    try {
+      if (request?.id) {
+        const { error } = await deleteTrackRequest(request.id)
+        if (error) throw error
+      }
+
+      const targetUri = track?.track?.uri ?? track?.uri
+      const replacementUri = replacement?.track?.uri ?? replacement?.uri
+
+      let tracks = await playlistStore.getTracks(playlistId) ?? []
+      if (tracks.length === 0) {
+        playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+        tracks = await playlistStore.getTracks(playlistId)
+      }
+
+      const replacementTrack = tracks.find(t => (t.track?.uri ?? t.uri) === replacementUri)
+      const removalTrack = tracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+      if (!replacementTrack || !removalTrack) {
+        notify({ title: 'Ops', text: 'Música não encontrada!', type: 'error' })
+        return
+      }
+
+      const moveFormData = {
+        'range_start': replacementTrack.id,
+        'insert_before': removalTrack.id
+      }
+      await updateTracksOfPlaylist(playlistId, moveFormData)
+
+      const updatedTracks = await getTracks(playlistId)
+      const newRemovalTrack = updatedTracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
+
+      if (newRemovalTrack) {
+        await removeTracksOfPlaylist(playlistId, {
+          'tracks': [{ 'uri': targetUri }]
+        })
+      }
+
+      playlistStore.loadTracks(playlistId, await getTracks(playlistId))
+      await loadDashboardData()
+
+      notify({
+        title: 'Alright',
+        text: 'Música substituída!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao substituir a música!',
+        type: 'error'
+      })
     }
   }
 
@@ -418,5 +478,6 @@
     @close="closeSlotManagement"
     @updated="onSlotUpdated"
     @remove-track="onSlotRemoveTrack"
+    @replace-track="onSlotReplaceTrack"
   />
 </template>
