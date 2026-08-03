@@ -12,7 +12,7 @@ export function PlaylistService() {
     const hasChangedFromDatabase = async (playlist) => {
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
 
-        if (! trackedPlaylist.tracked) {
+        if (!trackedPlaylist?.tracked) {
             return false
         }
         if (trackedPlaylist.name !== playlist.name) {
@@ -29,7 +29,7 @@ export function PlaylistService() {
     const hasSilentChangesFromDatabase = async (playlist) => {
         const trackedPlaylist = await playlistStore.getPlaylist(playlist.id)
 
-        if (! trackedPlaylist.tracked) {
+        if (!trackedPlaylist?.tracked) {
             return false
         }
         if ((trackedPlaylist) && (trackedPlaylist.items !== playlist.tracks.total)) {
@@ -67,7 +67,7 @@ export function PlaylistService() {
             payload.top_artists = topArtists
         }
         const ps = await playlistStore.getPlaylist(spotifyPlaylist.id) 
-        const trackedPlaylist = ps.tracked ?? false
+        const trackedPlaylist = ps?.tracked ?? false
         if (!trackedPlaylist) {
             payload.id = spotifyPlaylist.id
             const { data, error } = await supabase

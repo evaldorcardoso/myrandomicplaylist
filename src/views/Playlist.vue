@@ -113,6 +113,11 @@
   const currentPlaying = computed(() => props.currentData)
   const playlistSaved = computed(() => state.playlist?.tracked ?? false)
 
+  const availableTabs = computed(() => {
+    if (!playlistSaved.value) return ['Todas']
+    return TABS
+  })
+
   const menuOpened = computed(() => isMenuOpened.value)
   const menuData = computed(() => menuDataReactive.value)
 
@@ -138,7 +143,10 @@
     return state.tracks.some(track => track._slot?.status && track._slot.status !== 'free')
   })
 
-  const tableColumns = computed(() => hasSoldSlots.value ? 8 : 6)
+  const tableColumns = computed(() => {
+    const base = hasSoldSlots.value ? 8 : 6
+    return playlistSaved.value ? base : base - 1
+  })
 
   const filteredTracks = computed(() => {
     slotsVersion.value
@@ -186,6 +194,12 @@
 
   watch(activeTab, () => {
     currentPage.value = 1
+  })
+
+  watch(playlistSaved, (saved) => {
+    if (!saved) {
+      activeTab.value = 'Todas'
+    }
   })
 
   const pad = (n) => String(n).padStart(2, '0')
@@ -779,27 +793,27 @@
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
             <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
           </div>
-          <div v-if="!growthReady" class="flex flex-col gap-1">
+          <div v-if="playlistSaved && !growthReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
-          <div v-else class="flex flex-col">
+          <div v-if="playlistSaved && growthReady" class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
             <span class="text-headline-md text-primary">{{ details.growth.value }}</span>
           </div>
-          <div v-if="!slotsReady" class="flex flex-col gap-1">
+          <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
-          <div v-else class="flex flex-col">
+          <div v-if="playlistSaved && slotsReady" class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
             <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
           </div>
-          <div v-if="!slotsReady" class="flex flex-col gap-1">
+          <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
             <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
           </div>
-          <div v-else class="flex flex-col">
+          <div v-if="playlistSaved && slotsReady" class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Faturamento Mensal</span>
             <span class="text-headline-md text-on-surface">{{ details.monthlyRevenue }}</span>
           </div>
@@ -848,7 +862,7 @@
           <span class="text-on-surface text-headline-sm">Gerenciamento de Músicas</span>
           <nav class="flex gap-2 flex-wrap">
             <button
-              v-for="tab in TABS"
+              v-for="tab in availableTabs"
               :key="tab"
               class="px-4 py-1.5 rounded-full text-label-sm transition-colors"
               :class="activeTab === tab
@@ -910,7 +924,7 @@
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
               <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+              <th v-if="playlistSaved" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
               <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
@@ -969,7 +983,7 @@
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td v-if="playlistSaved" class="px-6 py-4">
                 <div v-if="!track._slot" class="animate-pulse h-5 w-16 rounded-full bg-surface-container-high"></div>
                 <button
                   v-else-if="track._slot.status === 'free'"

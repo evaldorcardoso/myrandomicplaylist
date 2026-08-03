@@ -66,7 +66,7 @@
 
 <template>
   <div v-if="state.data" class="h-full overflow-y-auto bg-surface text-on-surface">
-    <div class="max-w-[1400px] mx-auto p-gutter md:p-lg">
+    <div class="max-w-[1600px] mx-auto p-gutter md:p-lg">
       <!-- Top Stats Row -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter">
         <div class="bg-surface-container-low p-lg rounded-xl flex flex-col gap-xs shadow-sm hover:bg-surface-container transition-colors">
