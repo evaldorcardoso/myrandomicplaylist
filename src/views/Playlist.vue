@@ -4,7 +4,6 @@
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
-  import FloatMenu from '@/components/FloatMenu.vue'
   import Notification from '@/components/Notification.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
@@ -75,12 +74,9 @@
     showNotification,
     executeUserPlaylist,
     getPlaylistTracks,
-    checkTracksStatistics,
     removeTrackStatistics
   } = pd
 
-  const isMenuOpened = ref(null)
-  const menuDataReactive = ref(null)
   const editPlaylistDescription = ref(false)
   const activeTab = ref('Todas')
   const currentPage = ref(1)
@@ -119,9 +115,6 @@
     return TABS
   })
 
-  const menuOpened = computed(() => isMenuOpened.value)
-  const menuData = computed(() => menuDataReactive.value)
-
   const details = computed(() => {
     const trackIds = new Set(state.tracks.map(t => t.track?.id))
     const requests = trackRequests.value.filter(r => r.track_id && trackIds.has(r.track_id))
@@ -147,7 +140,7 @@
   const hasPriceValues = computed(() => pricePositions.value.size > 0)
 
   const tableColumns = computed(() => {
-    const base = 6 + (hasSoldSlots.value ? 1 : 0) + ((hasSoldSlots.value || hasPriceValues.value) ? 1 : 0)
+    const base = 5 + (hasSoldSlots.value ? 1 : 0) + ((hasSoldSlots.value || hasPriceValues.value) ? 1 : 0)
     return playlistSaved.value ? base : base - 1
   })
 
@@ -398,14 +391,6 @@
     router.push(`/playlist/${playlistId.value}/stats`)
   }
 
-  const onUpdateMenuOpened = async (value) => {
-    isMenuOpened.value = value
-    if (!value) {
-      await checkTracksStatistics()
-      bumpSlots()
-    }
-  }
-
   const onRemoveTrack = async (value) => {
     playlistStore.removeTrack(playlistId.value, value)
     const trackFound = state.tracks.find(e => e.track.uri === value)?.track?.id
@@ -589,21 +574,69 @@
     }
   }
 
-  const openMovePositionMenu = (track, index) => {
-    track['playlist'] = {
-      id: state.playlist.id,
-      owner: state.playlist.owner.display_name
-    }
+  const onSlotMoveTrack = async ({ track, replacement }) => {
+    closeSlotManagement()
+    try {
+      const sourcePos = track?.id ?? 0
+      const targetPos = replacement?.id ?? 0
 
-    let menuData = {
-      type: 'track',
-      track,
-      moveMode: true,
-      playlistTracks: state.tracks,
-      currentPosition: index
+      if (sourcePos === targetPos) {
+        notify({
+          title: 'Ops',
+          text: 'Mesma posição!',
+          type: 'warn'
+        })
+        return
+      }
+
+      notify({
+        title: 'Please, wait',
+        text: 'Trocando posições...',
+        type: 'info'
+      })
+
+      if (sourcePos < targetPos) {
+        await updateTracksOfPlaylist(playlistId.value, {
+          'range_start': sourcePos,
+          'insert_before': targetPos
+        })
+        await updateTracksOfPlaylist(playlistId.value, {
+          'range_start': targetPos,
+          'insert_before': sourcePos
+        })
+      } else {
+        await updateTracksOfPlaylist(playlistId.value, {
+          'range_start': sourcePos,
+          'insert_before': targetPos
+        })
+        await updateTracksOfPlaylist(playlistId.value, {
+          'range_start': targetPos,
+          'insert_before': sourcePos + 1
+        })
+      }
+
+      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+
+      await getPlaylistTracks()
+      state.playlist.items = state.tracks.length
+      await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
+      sortUserPlaylist(false)
+      buildSlots()
+      await reloadSlots()
+
+      notify({
+        title: 'Alright',
+        text: 'Posições trocadas!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao trocar as posições!',
+        type: 'error'
+      })
     }
-    menuDataReactive.value = menuData
-    isMenuOpened.value = true
   }
 
   const removePartFromText = (text) => {
@@ -796,13 +829,6 @@
     :data="notificationData"
     @notification-action="onNotificationAction"
   />
-  <FloatMenu
-    :menu-opened="menuOpened"
-    :menu-data="menuData"
-    :user-data="currentUser"
-    @update-menu-opened="onUpdateMenuOpened"
-    @refresh-playlist="handleRefresh"
-  />
   <SellSlotModal
     :open="sellSlotOpened"
     :track="sellSlotTrack"
@@ -824,6 +850,7 @@
     @updated="onSlotUpdated"
     @remove-track="onSlotRemoveTrack"
     @replace-track="onSlotReplaceTrack"
+    @move-track="onSlotMoveTrack"
     @sell-slot="onSellSlotFromManagement"
   />
   <ConfirmRemovePlaylistModal
@@ -1013,7 +1040,6 @@
               <th v-if="playlistSaved" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
               <th v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/10">
@@ -1093,16 +1119,6 @@
                   <span v-if="popularityDiff(track) !== 0" class="flex items-center gap-0" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
                     (<font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff(track) }})
                   </span>
-                </div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="flex items-center justify-end gap-2 bg-surface-container-low/50 p-1 rounded-lg" @click.stop>
-                  <button v-if="track._slot?.positionMismatch" class="p-2 hover:bg-tertiary-container/20 hover:text-tertiary rounded-lg transition-colors text-on-surface-variant" title="Corrigir Posição" @click="onFixPositionMismatch">
-                    <font-awesome-icon icon="sync" />
-                  </button>
-                  <button class="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors text-on-surface-variant" title="Editar Posição" @click="openMovePositionMenu(track, track.id)">
-                    <font-awesome-icon icon="sort" />
-                  </button>
                 </div>
               </td>
             </tr>

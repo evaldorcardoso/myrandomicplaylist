@@ -6,7 +6,7 @@
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
 
-  const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'sell-slot'])
+  const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'move-track', 'sell-slot'])
 
   const props = defineProps({
     open: {
@@ -333,11 +333,20 @@
     removalMode.value = ''
     searchQuery.value = ''
     selectedReplacement.value = null
+    availableTracks.value = []
   }
 
   const onRemoveTrack = () => {
     if (isSubmitting.value) return
     removalOpen.value = true
+  }
+
+  const onMoveTrack = () => {
+    if (isSubmitting.value) return
+    removalOpen.value = true
+    removalMode.value = 'move'
+    selectedReplacement.value = null
+    loadReplacementTracks()
   }
 
   const chooseRemove = () => {
@@ -363,13 +372,18 @@
     emit('close')
   }
 
-  const confirmReplacement = () => {
+  const confirmAction = () => {
     if (!selectedReplacement.value) return
-    emit('replace-track', {
+    const payload = {
       request: props.request,
       track: props.track,
       replacement: selectedReplacement.value
-    })
+    }
+    if (removalMode.value === 'move') {
+      emit('move-track', payload)
+    } else {
+      emit('replace-track', payload)
+    }
     emit('close')
   }
 
@@ -567,11 +581,11 @@
           <!-- Removal Options -->
           <div v-if="removalOpen" class="space-y-4">
             <div>
-              <h3 class="text-headline-sm text-on-surface">Remover da Playlist</h3>
-              <p class="text-body-sm text-on-surface-variant">Deseja apenas remover esta música ou substituí-la por outra da grade?</p>
+              <h3 class="text-headline-sm text-on-surface">{{ removalMode === 'move' ? 'Editar Posição' : 'Remover da Playlist' }}</h3>
+              <p class="text-body-sm text-on-surface-variant">{{ removalMode === 'move' ? 'Escolha a música da grade para trocar de posição com esta.' : 'Deseja apenas remover esta música ou substituí-la por outra da grade?' }}</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div v-if="removalMode !== 'move'" class="grid grid-cols-2 gap-4">
               <button
                 class="flex flex-col items-center justify-center p-6 rounded-xl border border-outline-variant/30 bg-surface-container-high/40 hover:border-primary/60 transition-all group"
                 @click="chooseRemove"
@@ -589,7 +603,7 @@
               </button>
             </div>
 
-            <div v-if="removalMode === 'replace'" class="space-y-4">
+            <div v-if="removalMode === 'replace' || removalMode === 'move'" class="space-y-4">
               <div class="relative">
                 <font-awesome-icon icon="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] pointer-events-none" />
                 <input
@@ -628,14 +642,14 @@
               </div>
             </div>
 
-            <div v-if="removalMode === 'replace'" class="flex flex-col gap-3">
+            <div v-if="removalMode === 'replace' || removalMode === 'move'" class="flex flex-col gap-3">
               <button
                 class="w-full bg-primary hover:bg-primary-fixed text-on-primary text-headline-sm py-3 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 :disabled="!selectedReplacement"
-                @click="confirmReplacement"
+                @click="confirmAction"
               >
                 <font-awesome-icon icon="check-circle" class="text-[20px]" />
-                <span>Confirmar Mudança</span>
+                <span>{{ removalMode === 'move' ? 'Trocar Posições' : 'Confirmar Mudança' }}</span>
               </button>
               <button
                 class="w-full border border-outline-variant/30 hover:bg-surface-container-high text-on-surface-variant text-label-md py-3 rounded-xl transition-all"
@@ -683,6 +697,14 @@
             >
               <font-awesome-icon icon="heart" class="text-[18px]" />
               <span>Tornar Gratuita</span>
+            </button>
+            <button
+              class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+              :disabled="isSubmitting"
+              @click="onMoveTrack"
+            >
+              <font-awesome-icon icon="exchange-alt" class="text-[18px]" />
+              <span>Editar Posição</span>
             </button>
             <button
               class="w-full border border-outline-variant/30 hover:border-tertiary/50 hover:text-tertiary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
