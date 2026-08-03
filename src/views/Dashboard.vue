@@ -1,13 +1,19 @@
 <script setup>
-  import { onMounted, onUnmounted, reactive } from 'vue'
+  import { onMounted, onUnmounted, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { DashboardService } from '@/services/DashboardService'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
+  import { TrackRequestService } from '@/services/TrackRequestService'
+  import SlotManagementModal from '@/components/SlotManagementModal.vue'
+  import { useGeneral } from '@/support/spotifyApi'
+  import { invalidateOccupancy } from '@/support/occupancyCache'
 
   const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
+  const { deleteTrackRequest } = TrackRequestService()
+  const { removeTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const router = useRouter()
@@ -16,6 +22,12 @@
   })
 
   let countdownInterval = null
+
+  const slotManagementOpened = ref(false)
+  const slotManagementTrack = ref(null)
+  const slotManagementRequest = ref(null)
+  const slotManagementPlaylistId = ref('')
+  const slotManagementPlaylist = ref(null)
 
   const pad = (value) => String(value).padStart(2, '0')
 
@@ -42,12 +54,64 @@
     router.push('/playlist/' + playlistId)
   }
 
-  onMounted(async () => {
+  const loadDashboardData = async () => {
     if (!playlistStore.isLoaded) {
       const playlists = await loadAllFromDatabase()
       playlistStore.loadAll(playlists)
     }
     state.data = await getDashboardData(playlistStore.playlists, await loadOccupancy(), await loadEarnings(), await loadExpirations(), await loadUpcomingExpirations(), await loadRecentOrders())
+  }
+
+  const openSlotManagement = async (expiration) => {
+    if (!expiration.request || !expiration.track) {
+      invalidateOccupancy()
+      await loadDashboardData()
+      const fresh = state.data.expirations.find(item => item.id === expiration.id)
+      if (!fresh?.request || !fresh?.track) return
+      expiration = fresh
+    }
+    slotManagementTrack.value = expiration.track
+    slotManagementRequest.value = expiration.request
+    slotManagementPlaylistId.value = expiration.playlistId
+    slotManagementPlaylist.value = expiration.playlist
+    slotManagementOpened.value = true
+  }
+
+  const closeSlotManagement = () => {
+    slotManagementOpened.value = false
+    slotManagementTrack.value = null
+    slotManagementRequest.value = null
+    slotManagementPlaylistId.value = ''
+    slotManagementPlaylist.value = null
+  }
+
+  const onSlotUpdated = async () => {
+    closeSlotManagement()
+    await loadDashboardData()
+  }
+
+  const onSlotRemoveTrack = async ({ request, track }) => {
+    const playlistId = slotManagementPlaylistId.value
+    closeSlotManagement()
+    try {
+      if (request?.id) {
+        const { error } = await deleteTrackRequest(request.id)
+        if (error) throw error
+      }
+      if (track?.track?.uri) {
+        await removeTracksOfPlaylist(playlistId, {
+          tracks: [{ uri: track.track.uri }]
+        })
+        playlistStore.removeTrack(playlistId, track.track.uri)
+      }
+      await loadDashboardData()
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  onMounted(async () => {
+    await loadDashboardData()
     countdownInterval = setInterval(() => {
       const now = Date.now()
       state.data.expirations.forEach(expiration => {
@@ -250,6 +314,7 @@
                   <button
                     v-if="expiration.urgent"
                     class="flex-1 bg-primary text-on-primary py-2 rounded-lg text-label-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                    @click="openSlotManagement(expiration)"
                   >
                     <span class="material-symbols-outlined text-[18px]">refresh</span>
                     RENOVAR
@@ -342,4 +407,16 @@
       </div>
     </div>
   </div>
+
+  <SlotManagementModal
+    :open="slotManagementOpened"
+    :track="slotManagementTrack"
+    :request="slotManagementRequest"
+    :playlist-id="slotManagementPlaylistId"
+    :playlist="slotManagementPlaylist"
+    :select-playlist="false"
+    @close="closeSlotManagement"
+    @updated="onSlotUpdated"
+    @remove-track="onSlotRemoveTrack"
+  />
 </template>

@@ -59,6 +59,18 @@ const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
   return new Set(tracksMap.keys())
 }
 
+const getCurrentTracksFullMap = async (playlist, playlistStore, getTracks) => {
+  const loaded = await playlistStore.getTracks(playlist.id)
+  const source = (Array.isArray(loaded) && loaded.length > 0) ? loaded : await getTracks(playlist.id)
+  const tracksMap = new Map()
+  source?.forEach((item, index) => {
+    const track = item?.track
+    if (!track?.id) return
+    tracksMap.set(track.id, { ...item, id: index })
+  })
+  return tracksMap
+}
+
 const getMonthStart = (year, month) => new Date(year, month, 1)
 
 const sumEarnings = (rows, start, end) => {
@@ -257,7 +269,7 @@ export function DashboardService() {
   const fetchExpirationItems = async () => {
     const { data, error } = await supabase
       .from(TRACK_REQUESTS_TABLE)
-      .select('id, playlist_id, track_id, name, due_date, status, requesters(name, curator)')
+      .select('id, playlist_id, track_id, name, due_date, status, value, requester_id, requesters(name, curator)')
 
     if (error) {
       console.error(error.message)
@@ -281,25 +293,41 @@ export function DashboardService() {
     await Promise.all([...playlistIds].map(async (playlistId) => {
       const playlist = playlistsById.get(playlistId)
       if (!playlist) return
-      tracksByPlaylist[playlistId] = await getCurrentTracksMap(playlist, playlistStore, getTracks)
+      tracksByPlaylist[playlistId] = await getCurrentTracksFullMap(playlist, playlistStore, getTracks)
     }))
 
     const items = []
     for (const request of activeRequests) {
       const tracksMap = tracksByPlaylist[request.playlist_id]
       if (!tracksMap || !tracksMap.has(request.track_id)) continue
-      const trackInfo = tracksMap.get(request.track_id)
+      const trackItem = tracksMap.get(request.track_id)
+      const trackInfo = trackItem?.track
       const requesterName = request.requesters?.name ?? null
       const curator = request.requesters?.curator ?? null
-      const trackName = request.name ?? trackInfo.name
-      const title = trackInfo.artist ? `${trackName} — ${trackInfo.artist}` : (trackName ?? 'Faixa')
+      const trackName = request.name ?? trackInfo?.name
+      const title = trackInfo?.artists?.[0]?.name
+        ? `${trackName} — ${trackInfo.artists[0].name}`
+        : (trackName ?? 'Faixa')
       const subtitle = curator ? `${requesterName} by ${curator}` : (requesterName ?? '')
+      const playlist = playlistsById.get(request.playlist_id)
       items.push({
         id: String(request.id),
         icon: 'priority_high',
         title,
         subtitle,
-        dueTs: request.dueTs
+        dueTs: request.dueTs,
+        playlistId: request.playlist_id,
+        track: trackItem ?? null,
+        request: {
+          id: String(request.id),
+          status: request.status,
+          due_date: request.due_date,
+          value: request.value,
+          requester_id: request.requester_id,
+          requester_name: requesterName,
+          curator
+        },
+        playlist: playlist ? { id: playlist.id, name: playlist.name } : null
       })
     }
 

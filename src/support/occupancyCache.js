@@ -1,6 +1,6 @@
 const CACHE_KEY = 'dashboard_occupancy'
 const EARNINGS_CACHE_KEY = 'dashboard_earnings'
-const EXPIRATIONS_CACHE_KEY = 'dashboard_expirations_v2'
+const EXPIRATIONS_CACHE_KEY = 'dashboard_expirations_v3'
 const LEGACY_EXPIRATIONS_CACHE_KEY = 'dashboard_expirations'
 const CACHE_TTL_MS = 60 * 60 * 1000
 const EXPIRATIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000
