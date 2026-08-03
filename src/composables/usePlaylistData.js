@@ -11,7 +11,6 @@ import { PlaylistService } from '@/services/PlaylistService'
 
 export const NOTIFICATION_ACTIONS = {
   UPDATE_SORT: 'update_sort',
-  SAVE_TRACKS_STATISTICS: 'save_tracks_statistics',
   UPDATE_DESCRIPTION: 'update_description',
   UPDATE_PLAYLIST: 'update_playlist',
 }
@@ -76,6 +75,7 @@ export function usePlaylistData(callbacks = {}) {
   const notificationAction = ref('')
   const hasTodayStatistics = ref(false)
   const isSavingLikesStatistics = ref(false)
+  const isSavingTracksStatistics = ref(false)
 
   const notificationOpened = computed(() => {
     return isNotificationOpened.value
@@ -117,7 +117,7 @@ export function usePlaylistData(callbacks = {}) {
   }
 
   const checkTracksStatistics = async() => {
-    var newTracks = false
+    const newTracks = []
     state.databaseTracks = userStore.getTracks()
     const databaseTracksById = new Map(state.databaseTracks.map(track => [track.track_id, track]))
     for (const track of state.tracks) {
@@ -125,22 +125,24 @@ export function usePlaylistData(callbacks = {}) {
       track.track.popularity_old = tracked?.popularity ?? track.track.popularity
       track.track.tracked = tracked
       if ((!track.track.tracked) && (state.playlist?.tracked)) {
-        newTracks = true
+        newTracks.push(track)
       }
     }
-    if (newTracks) {
-      if (isNotificationOpened.value) {
-        console.log('Notification is already opened, ignoring "checkTracksStatistics"')
-        return;
+    if ((newTracks.length > 0) && (!isSavingTracksStatistics.value)) {
+      // TODO: Enviar feedback para o futuro sistema de notificações quando as estatísticas dos tracks novos forem salvas
+      isSavingTracksStatistics.value = true
+      try {
+        for (const track of newTracks) {
+          const savedTrack = await saveTrackStatistics(track)
+          if (savedTrack) {
+            userStore.loadTrack(savedTrack)
+          }
+        }
+      } catch (error) {
+        console.log(error)
+      } finally {
+        isSavingTracksStatistics.value = false
       }
-      showNotification(
-        NOTIFICATIONS_TYPE.info,
-        'Hey',
-        'There are new tracks in this playlist. Do you want to update the statistics ?',
-        true,
-        false
-      )
-      notificationAction.value = NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS
     }
   }
 
@@ -475,15 +477,6 @@ export function usePlaylistData(callbacks = {}) {
     isNotificationOpened.value = false
     if (value) {
       switch (notificationAction.value) {
-        case NOTIFICATION_ACTIONS.SAVE_TRACKS_STATISTICS:
-          await saveTracksStatistics()
-          await getPlaylistTracks(true)
-          notify({
-            title: 'Alright',
-            text: 'Statistics saved!',
-            type: 'success'
-          })
-          break
         case NOTIFICATION_ACTIONS.UPDATE_SORT:
           if (callbacks.onUpdateSort) callbacks.onUpdateSort()
           break
