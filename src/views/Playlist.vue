@@ -595,25 +595,17 @@
         type: 'info'
       })
 
-      if (sourcePos < targetPos) {
-        await updateTracksOfPlaylist(playlistId.value, {
-          'range_start': sourcePos,
-          'insert_before': targetPos
-        })
-        await updateTracksOfPlaylist(playlistId.value, {
-          'range_start': targetPos,
-          'insert_before': sourcePos
-        })
-      } else {
-        await updateTracksOfPlaylist(playlistId.value, {
-          'range_start': sourcePos,
-          'insert_before': targetPos
-        })
-        await updateTracksOfPlaylist(playlistId.value, {
-          'range_start': targetPos,
-          'insert_before': sourcePos + 1
-        })
-      }
+      const lo = Math.min(sourcePos, targetPos)
+      const hi = Math.max(sourcePos, targetPos)
+
+      await updateTracksOfPlaylist(playlistId.value, {
+        'range_start': hi,
+        'insert_before': lo
+      })
+      await updateTracksOfPlaylist(playlistId.value, {
+        'range_start': lo + 1,
+        'insert_before': hi + 1
+      })
 
       playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
 
