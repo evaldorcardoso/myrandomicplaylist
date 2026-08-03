@@ -73,7 +73,7 @@
   const copyTrackName = async () => {
     if (state.item?.name) {
       await navigator.clipboard.writeText(state.item.name)
-      state.message = 'Track name copied!'
+      state.message = 'Nome da faixa copiado!'
       setTimeout(() => { state.message = '' }, 2000)
     }
   }
@@ -81,7 +81,7 @@
   const copyTrackArtist = async () => {
     if (state.item?.artists?.[0]?.name) {
       await navigator.clipboard.writeText(state.item.artists[0].name)
-      state.message = 'Artist name copied!'
+      state.message = 'Nome do artista copiado!'
       setTimeout(() => { state.message = '' }, 2000)
     }
   }
@@ -315,14 +315,14 @@
 
           <div class="flex flex-wrap gap-8 py-4 border-t border-outline-variant/10">
             <div class="flex flex-col">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularity</span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularidade</span>
               <div class="flex items-center gap-1 text-headline-md text-on-surface">
                 <font-awesome-icon icon="chart-line" class="text-primary text-[16px]" />
                 {{ state.item?.popularity }}%
               </div>
             </div>
             <div class="flex flex-col">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Released</span>
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Lançamento</span>
               <span class="text-headline-md text-on-surface">{{ state.track?.release }}</span>
             </div>
           </div>
@@ -332,15 +332,15 @@
       <div class="relative flex flex-wrap items-center gap-3 pt-4 border-t border-outline-variant/10">
         <button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold hover:brightness-110 transition-all" @click="openAddToPlaylist()">
           <font-awesome-icon icon="plus" />
-          Add to playlist
+          Adicionar à playlist
         </button>
-        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackName()" title="Copy track name">
+        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackName()" title="Copiar nome da faixa">
           <font-awesome-icon icon="copy" />
-          Copy Track
+          Copiar Faixa
         </button>
-        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackArtist()" title="Copy artist name">
+        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackArtist()" title="Copiar nome do artista">
           <font-awesome-icon icon="copy" />
-          Copy Artist
+          Copiar Artista
         </button>
       </div>
     </div>         
