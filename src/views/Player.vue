@@ -249,285 +249,137 @@
     :user-data="currentUser"
     @update-menu-opened="onUpdateMenuOpened" 
     /> 
-  <div class="page"> 
-    <p class="message">{{state.message}}</p>     
-    <div class="player" v-if="state.devices.length > 0">
-      <div class="artwork">
-        <img v-bind:src="state.item?.album.images[0].url" style="width: 100%; height: 100%;" />
+  <div class="page px-gutter md:px-lg py-md space-y-lg"> 
+    <p v-if="state.message" class="text-center text-label-sm text-primary">{{ state.message }}</p>     
+
+    <div v-if="state.devices.length === 0" class="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      <div class="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center">
+        <font-awesome-icon icon="mobile-alt" class="text-primary text-[32px]" />
       </div>
-      <div class="track-name">
-        <font-awesome-icon v-if="state.track?.tracked" icon="heart" style="vertical-align:middle;margin-right:5px;color: rgb(30, 215, 96);;" />
-        <h3>{{ state.item?.name }}</h3>
-      </div>
-      <div class="track-artists">
-        <!-- exibir os artistas separados por vírgula-->
-        <h4>{{ state.item?.artists.map(artist => artist.name).join(', ') }}</h4>
-      </div>
-      <div class="bar-progress">
-        <div class="bar-progress-fill" :style="{ width: (state.progPerc) + '%'}"></div>
-      </div>
-      <div class="track-time">
-        <span>{{ state.track?.time }}</span>
-        <span>{{ state.track?.display_time_total }}</span>
-      </div>
-      <div class="player-controls">
-        <button class="btn-previous" @click="skipToUserPrevious()"><font-awesome-icon icon="step-backward"/></button>
-        <button v-if="!state.isPlaying" class="btn-play" @click="resumeUserPlayback()"><font-awesome-icon icon="play"/></button>
-        <button v-if="state.isPlaying" class="btn-play" @click="pauseUserPlayback()"><font-awesome-icon icon="pause"/></button>
-        <button class="btn-next" @click="skipToUserNext()"><font-awesome-icon icon="step-forward"/></button>
-      </div>
-      <div class="info">
-        <h4>Popularity: {{ state.item?.popularity }}</h4>
-        <h4>Released: {{ state.track?.release }}</h4>
-        <button class="btn-generate" @click="trackInfo(state.item, true)">Add to playlist</button>
-        <div class="copy-buttons">
-          <button class="btn-copy" @click="copyTrackName()" title="Copy track name">
-            <font-awesome-icon icon="copy" /> Copy Track
-          </button>
-          <button class="btn-copy" @click="copyTrackArtist()" title="Copy artist name">
-            <font-awesome-icon icon="copy" /> Copy Artist
-          </button>
+      <p class="text-body-md text-on-surface-variant max-w-[420px]">
+        Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!
+      </p>
+    </div>
+
+    <!-- Player Hero -->
+    <div v-if="state.devices.length > 0" class="relative overflow-hidden rounded-2xl bg-surface-container-lowest p-xl border border-outline-variant/10 shadow-xl">
+      <div class="absolute top-0 right-0 -mt-16 -mr-16 w-96 h-96 bg-primary/10 blur-[120px] rounded-full"></div>
+      <div class="relative flex flex-col md:flex-row gap-xl items-center md:items-start">
+        <div class="relative group shrink-0">
+          <div class="absolute inset-0 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"></div>
+          <img
+            v-if="state.item?.album?.images?.[0]?.url"
+            class="relative w-52 h-52 md:w-72 md:h-72 object-cover rounded-xl shadow-2xl border border-outline-variant/20"
+            :src="state.item.album.images[0].url"
+          />
+          <div v-else class="relative w-52 h-52 md:w-72 md:h-72 rounded-xl bg-surface-container-high flex items-center justify-center">
+            <font-awesome-icon icon="music" class="text-on-surface-variant text-[48px]" />
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col gap-4 py-2 w-full min-w-0">
+          <div class="flex items-center gap-3">
+            <font-awesome-icon v-if="state.track?.tracked" icon="heart" class="text-primary text-[22px] shrink-0" />
+            <h1 class="text-headline-lg md:text-display-lg text-on-surface truncate">{{ state.item?.name }}</h1>
+          </div>
+          <h4 class="text-body-md text-on-surface-variant">{{ state.item?.artists?.map(artist => artist.name).join(', ') }}</h4>
+
+          <div class="flex flex-col gap-1 w-full">
+            <div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+              <div class="h-full bg-primary transition-[width] duration-100" :style="{ width: state.progPerc + '%' }"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-on-surface-variant tabular-nums">
+              <span>{{ state.track?.time }}</span>
+              <span>{{ state.track?.display_time_total }}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="skipToUserPrevious()">
+              <font-awesome-icon icon="step-backward" />
+            </button>
+            <button
+              v-if="!state.isPlaying"
+              class="w-16 h-16 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              @click="resumeUserPlayback()"
+            >
+              <font-awesome-icon icon="play" class="text-[24px] ml-1" />
+            </button>
+            <button
+              v-else
+              class="w-16 h-16 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              @click="pauseUserPlayback()"
+            >
+              <font-awesome-icon icon="pause" class="text-[24px]" />
+            </button>
+            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="skipToUserNext()">
+              <font-awesome-icon icon="step-forward" />
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-8 py-4 border-t border-outline-variant/10">
+            <div class="flex flex-col">
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularity</span>
+              <div class="flex items-center gap-1 text-headline-md text-on-surface">
+                <font-awesome-icon icon="chart-line" class="text-primary text-[16px]" />
+                {{ state.item?.popularity }}%
+              </div>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Released</span>
+              <span class="text-headline-md text-on-surface">{{ state.track?.release }}</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>         
-    <div class="devices" v-if="state.devices.length > 0">
-      <h3>Dispositivos disponíveis:</h3>
-      <div class="device" v-for="device in state.devices" @click="transferUserPlayback(device.id)">
-        <div class="device-name">
-          <h4 v-if="device.is_active" :style="{ color: '#fff'}">{{ device.name }}</h4>
-          <h4 v-else>{{ device.name }}</h4>
-        </div>      
+
+      <div class="relative flex flex-wrap items-center gap-3 pt-4 border-t border-outline-variant/10">
+        <button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold hover:brightness-110 transition-all" @click="trackInfo(state.item, true)">
+          <font-awesome-icon icon="plus" />
+          Add to playlist
+        </button>
+        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackName()" title="Copy track name">
+          <font-awesome-icon icon="copy" />
+          Copy Track
+        </button>
+        <button class="flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-3 rounded-full text-label-md hover:bg-surface-variant transition-colors" @click="copyTrackArtist()" title="Copy artist name">
+          <font-awesome-icon icon="copy" />
+          Copy Artist
+        </button>
       </div>
-    </div>
-    <div v-if="(state.devices.length == 0)">
-      <p class="span-no-devices">Desculpe, mas não conseguimos localizar nenhum dispositivo conectado à sua conta!</p>
-    </div>
+    </div>         
+
+    <!-- Devices -->
+    <section v-if="state.devices.length > 0" class="flex flex-col gap-md">
+      <div class="flex items-center justify-between">
+        <h3 class="text-headline-sm text-on-surface">Dispositivos disponíveis</h3>
+        <span class="px-2 py-0.5 bg-surface-container-high rounded text-label-sm text-on-surface-variant">
+          {{ state.devices.length }} {{ state.devices.length === 1 ? 'dispositivo' : 'dispositivos' }}
+        </span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-gutter md:gap-md">
+        <button
+          v-for="device in state.devices"
+          :key="device.id"
+          class="flex items-center gap-4 bg-surface-container-low rounded-xl p-4 border border-outline-variant/10 hover:bg-surface-container transition-colors text-left"
+          :class="{ 'border-primary/40': device.is_active }"
+          @click="transferUserPlayback(device.id)"
+        >
+          <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" :class="device.is_active ? 'bg-primary/20 text-primary' : 'bg-surface-container-high text-on-surface-variant'">
+            <font-awesome-icon :icon="device.is_active ? 'check' : 'mobile-alt'" />
+          </div>
+          <div class="flex flex-col min-w-0 flex-1">
+            <span class="text-body-md font-semibold text-on-surface truncate">{{ device.name }}</span>
+            <span class="text-label-sm" :class="device.is_active ? 'text-primary' : 'text-on-surface-variant'">{{ device.type }}</span>
+          </div>
+          <span v-if="device.is_active" class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest shrink-0">
+            Ativo
+          </span>
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.message{
-    color: #fff;
-    font-size: 12px;
-    text-align: center;
-}
-.span-no-devices{
-  text-align: center;
-  font-size: 18px;
-  margin-top: 40px;
-  color: #fff;
-}
-.center{
-  display: block;
-    margin-left: auto;
-    margin-right: auto
-}
-.player{
-  margin: 40px auto 40px auto;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 300px;
-  height: auto;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0px 0px 10px #000;
-}
-.artwork{
-  width: 250px;
-  height: 250px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin: auto;
-}
-.track-name{
-  text-align: center;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 30px;  
-  margin-top: 10px;
-  color: #fff;
-  display: flex;
-}
-.track-name h3{
-  margin: 0;
-  white-space: nowrap;
-  max-width: 300px;
-  overflow: hidden;
-}
-.track-artists{
-  text-align: center;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 30px;
-  white-space: nowrap;
-  max-width: 300px;
-  overflow: hidden;
-}
-.track-artists h4{
-  margin: 0;
-  color: #999;
-}
-.bar-progress{
-  width: 100%;
-  height: 10px;
-  background-color: #ccc;
-  border-radius: 4px;
-}
-.bar-progress-fill{  
-  height: 10px;
-  background-color: #42b983;
-  border-radius: 4px;
-  transition: width 0.3s;
-}
-.track-time{
-  margin-top: 5px;
-  width: 100%;
-  height: 20px;
-  text-align: left;
-}
-
-.track-time span{
-  font-size: 12px;
-  float:left;
-  color: #999;
-}
-.track-time span:nth-child(2){
-  font-size: 12px;
-  float:right;
-  color: #999;
-}
-.player-controls{
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-gap: 10px;
-}
-.btn-down{
-  font-size: 20px;
-  border-radius: 50%;
-  background-color: #1c1c1c;
-  border: none;
-  outline: none;
-  margin-top: 10px;
-  cursor: pointer;
-  color: #999;
-  text-align: center;
-}
-.btn-previous{
-  font-size: 20px;
-  border-radius: 50%;
-  background-color: #1c1c1c;
-  border: none;
-  outline: none;
-  margin-right: 10px;
-  margin-top: 10px;
-  cursor: pointer;
-  color: #999;
-  text-align: center;
-}
-.btn-next{
-  font-size: 20px;
-  border-radius: 50%;
-  background-color: #1c1c1c;
-  border: none;
-  outline: none;
-  margin-top: 10px;
-  cursor: pointer;
-  color: #999;
-  text-align: center;
-}
-.btn-play{
-  font-size: 20px;
-  height: 40px;
-  width: 40px;
-  border-radius: 50%;
-  background-color: #fff;
-  border: none;
-  outline: none;
-  margin: 10px auto auto auto;
-  cursor: pointer;
-  color: #1c1c1c;
-  text-align: center;
-}
-.devices{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  border-radius: 4px;
-  box-shadow: 0px 0px 10px #000;
-  width: 340px;
-}
-.devices h3{
-  text-align: center;
-  color: #fff;
-}
-.device{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 300px;
-  height: 50px;
-}
-.device-name{
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 30px;
-  color: #999;
-  align-items: center;
-  justify-content: center;
-}
-.device-name h4{
-  margin: 0;
-  white-space: nowrap;
-  max-width: 300px;
-  overflow: hidden;
-}
-.info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 300px;
-  height: auto;
-  color: #999;
-}
-.info h4 {
-  margin: 10px 5px;
-}
-.btn-generate {
-  margin: 25px auto auto auto;
-  background-image: linear-gradient(60deg, #e0eb98, #62faf5);
-  color: black;
-  border: none;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  border-radius: 20px;
-  border: none;
-}
-.copy-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-.btn-copy {
-  background-color: #1c1c1c;
-  color: #999;
-  border: none;
-  padding: 8px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 4px;
-}
+<style scoped>
 </style>
