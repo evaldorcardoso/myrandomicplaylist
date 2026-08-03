@@ -1,7 +1,8 @@
 <script setup>
-  import { onMounted, onBeforeMount, onBeforeUnmount, ref, computed, reactive } from 'vue'
+  import { onMounted, onBeforeMount, onBeforeUnmount, ref, reactive } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
-  import FloatMenu from '@/components/FloatMenu.vue'
+  import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
+  import SellSlotModal from '@/components/SellSlotModal.vue'
   import { useUserStore } from '@/stores/user'
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '../services/PlaylistService'
@@ -17,9 +18,7 @@
     transferPlayback
   } = useProfile()
 
-  const { loadAllFromDatabase, getGenres } = PlaylistService()
-
-  const emit = defineEmits(['updateStepData', 'updateMenuData'])
+  const { loadAllFromDatabase } = PlaylistService()
 
   const props = defineProps({
     stepData: {
@@ -56,26 +55,11 @@
     },
   })
 
-  const isMenuOpened = ref(null)
-  const menuDataReactive = ref(null)
+  const addToPlaylistOpen = ref(false)
+  const sellSlotOpened = ref(false)
+  const sellSlotData = ref(null)
   const userStore = useUserStore()
   const playlistStore = usePlaylistStore()
-
-  const currentUser = computed(() => {
-    return userStore.getUser
-  });
-
-  const menuOpened = computed(() => {
-    return isMenuOpened.value;
-  })
-
-  const menuData = computed(() => {
-    return menuDataReactive.value
-  })
-
-  const onUpdateMenuOpened = (value) => {
-    isMenuOpened.value = value    
-  }
 
   const getTrackStatistics = async() => {
     if (! state.item) return
@@ -102,21 +86,23 @@
     }
   }
 
-  const trackInfo = async (track, addToAnotherPlaylist = false) => {
-    const topGenres = await getGenres(track.artists)
-    track['playlist'] = {
-      id: state.item.id,
-      owner: 'player'
-    }
+  const openAddToPlaylist = () => {
+    addToPlaylistOpen.value = true
+  }
 
-    let menuData = {
-      type: 'track',
-      track,
-      listPlaylists: addToAnotherPlaylist,
-      genres: topGenres
-    }
-    menuDataReactive.value = menuData
-    isMenuOpened.value = true
+  const onCloseAddToPlaylist = () => {
+    addToPlaylistOpen.value = false
+  }
+
+  const onSellSlot = (data) => {
+    addToPlaylistOpen.value = false
+    sellSlotData.value = data
+    sellSlotOpened.value = true
+  }
+
+  const onCloseSellSlot = () => {
+    sellSlotOpened.value = false
+    sellSlotData.value = null
   }
 
   const getUserDevices = async() => {
@@ -243,12 +229,22 @@
 </script>
 
 <template>
-  <FloatMenu 
-    :menu-opened="menuOpened"
-    :menu-data="menuData"
-    :user-data="currentUser"
-    @update-menu-opened="onUpdateMenuOpened" 
-    /> 
+  <AddToPlaylistModal
+    :open="addToPlaylistOpen"
+    :track="state.item"
+    @close="onCloseAddToPlaylist"
+    @sell-slot="onSellSlot"
+  />
+  <SellSlotModal
+    :open="sellSlotOpened"
+    :track="sellSlotData ? { track: sellSlotData.track } : null"
+    :playlist-id="sellSlotData?.playlistId ?? ''"
+    :playlist="sellSlotData?.playlist ?? null"
+    :position="sellSlotData?.position"
+    :select-playlist="false"
+    @close="onCloseSellSlot"
+    @confirm="onCloseSellSlot"
+  />
   <div class="page px-gutter md:px-lg py-md space-y-lg"> 
     <p v-if="state.message" class="text-center text-label-sm text-primary">{{ state.message }}</p>     
 
@@ -334,7 +330,7 @@
       </div>
 
       <div class="relative flex flex-wrap items-center gap-3 pt-4 border-t border-outline-variant/10">
-        <button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold hover:brightness-110 transition-all" @click="trackInfo(state.item, true)">
+        <button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold hover:brightness-110 transition-all" @click="openAddToPlaylist()">
           <font-awesome-icon icon="plus" />
           Add to playlist
         </button>
