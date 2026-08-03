@@ -170,6 +170,24 @@
     return state.tracks
   })
 
+  const tabCounts = computed(() => {
+    slotsVersion.value
+    return {
+      'Expira em breve': state.tracks.filter(t =>
+        t._slot?.dueTs != null &&
+        t._slot.dueTs > now.value &&
+        (t._slot.dueTs - now.value) <= 86400000
+      ).length,
+      'Expiradas': state.tracks.filter(t =>
+        t._slot?.status &&
+        t._slot.status !== 'free' &&
+        t._slot.dueTs != null &&
+        t._slot.dueTs <= now.value
+      ).length,
+      'Pendentes': state.tracks.filter(t => t._slot?.status === 'pending').length
+    }
+  })
+
   const pendingTotalValue = computed(() => {
     slotsVersion.value
     const trackIds = new Set(state.tracks.map(t => t.track?.id))
@@ -984,13 +1002,19 @@
             <button
               v-for="tab in availableTabs"
               :key="tab"
-              class="px-4 py-1.5 rounded-full text-label-sm transition-colors"
+              class="px-4 py-1.5 rounded-full text-label-sm transition-colors inline-flex items-center justify-center gap-1.5"
               :class="activeTab === tab
                 ? 'bg-primary/10 text-primary border border-primary/20'
                 : 'hover:bg-surface-container-high text-on-surface-variant'"
               @click="activeTab = tab"
             >
               {{ tab }}
+              <span
+                v-if="tabCounts[tab] > 0"
+                class="inline-flex min-w-[20px] h-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[10px] font-bold tabular-nums text-primary"
+              >
+                {{ tabCounts[tab] }}
+              </span>
             </button>
           </nav>
         </div>
