@@ -4,6 +4,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
+  import { TrackRequestService } from '@/services/TrackRequestService'
   import { getCompatiblePlaylists } from '@/support/playlistCompatibility'
   import { supabase } from '@/support/supabaseClient'
 
@@ -24,6 +25,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const { loadAllFromDatabase, getGenres, updatePlaylistTotalTracks } = PlaylistService()
+  const { getTrackRequests, getPricePositions } = TrackRequestService()
 
   const mode = ref('organic')
   const playlists = ref([])
@@ -36,6 +38,8 @@
   const isSubmitting = ref(false)
   const submitState = ref('idle')
   const errorMessage = ref('')
+  const soldPositions = ref(new Set())
+  const pricePositions = ref(new Map())
 
   const trackData = computed(() => props.track ?? null)
 
@@ -65,8 +69,22 @@
 
   const positions = computed(() => {
     const total = playlistTracks.value.length
-    return Array.from({ length: total }, (_, index) => index + 1)
+    return Array.from({ length: total }, (_, index) => {
+      const pos = index + 1
+      let label = `#${String(pos).padStart(2, '0')}`
+      if (soldPositions.value.has(pos)) {
+        label += ' (Vendida)'
+      } else {
+        const price = pricePositions.value.get(pos)
+        label += price != null ? ` (Disponível por ${formatCurrency(price)})` : ' (Disponível)'
+      }
+      return { pos, label }
+    })
   })
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  }
 
   const occupiedTrack = computed(() => {
     if (!position.value) return null
@@ -93,6 +111,8 @@
     isSubmitting.value = false
     submitState.value = 'idle'
     errorMessage.value = ''
+    soldPositions.value = new Set()
+    pricePositions.value = new Map()
   }
 
   const loadPlaylistTracks = async (playlistId) => {
@@ -104,12 +124,25 @@
     return tracks.map(track => markRaw(track))
   }
 
+  const loadSlotStatus = async (playlistId) => {
+    const requests = await getTrackRequests(playlistId)
+    soldPositions.value = new Set(
+      requests.map(request => request.position).filter(position => position != null)
+    )
+    const { data: priceRows } = await getPricePositions(playlistId)
+    pricePositions.value = new Map((priceRows ?? []).map(row => [row.position, row.value]))
+  }
+
   const selectPlaylist = async (playlistId) => {
     selectedPlaylistId.value = playlistId
     position.value = ''
     pendingRelocation.value = null
     errorMessage.value = ''
-    playlistTracks.value = await loadPlaylistTracks(playlistId)
+    const [tracks] = await Promise.all([
+      loadPlaylistTracks(playlistId),
+      loadSlotStatus(playlistId)
+    ])
+    playlistTracks.value = tracks
   }
 
   watch(() => props.open, async (opened) => {
@@ -459,7 +492,7 @@
                     :disabled="playlists.length === 0"
                   >
                     <option value="">Final da playlist</option>
-                    <option v-for="pos in positions" :key="pos" :value="String(pos)">#{{ String(pos).padStart(2, '0') }}</option>
+                    <option v-for="option in positions" :key="option.pos" :value="String(option.pos)">{{ option.label }}</option>
                   </select>
                   <font-awesome-icon icon="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant opacity-50 text-[14px]" />
                 </div>
