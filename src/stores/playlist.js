@@ -3,12 +3,16 @@ import { markRaw } from "vue"
 
 export const usePlaylistStore = defineStore('playlist', {
     state: () => ({
-        playlists: []
+        playlists: [],
+        playlistRevision: {}
     }),
     getters: {
         isLoaded: (state) => state.playlists.length > 0
     },
     actions: {
+        bumpPlaylistRevision(playlistId) {
+            this.playlistRevision[playlistId] = (this.playlistRevision[playlistId] ?? 0) + 1
+        },
         loadAll(playlists) {
             this.playlists = [ ...this.playlists, ...playlists ]
             // this.playlists = playlists

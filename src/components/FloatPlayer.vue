@@ -203,5 +203,6 @@ onBeforeUnmount(() => {
         :position="sellSlotData?.position"
         :select-playlist="false"
         @close="onCloseSellSlot"
+        @confirm="onCloseSellSlot"
     />
 </template>

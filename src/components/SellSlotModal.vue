@@ -3,6 +3,9 @@
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
+  import { useGeneral } from '@/support/spotifyApi'
+  import { usePlaylistStore } from '@/stores/playlist'
+  import { PlaylistService } from '@/services/PlaylistService'
 
   const emit = defineEmits(['close', 'confirm'])
 
@@ -39,6 +42,9 @@
 
   const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition, createPricePosition } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
+  const { getTracks, addTracksToPlaylist, updateTracksOfPlaylist } = useGeneral()
+  const playlistStore = usePlaylistStore()
+  const { updatePlaylistTotalTracks } = PlaylistService()
 
   const selectedPlaylist = ref(props.playlistId)
   const permanenceDays = ref(30)
@@ -186,10 +192,57 @@
     emit('close')
   }
 
+  const trackUriOf = (track) => track?.track?.uri ?? track?.uri
+
+  const ensureTrackAtPosition = async () => {
+    const playlistId = selectedPlaylist.value || props.playlistId
+    const targetIndex = position.value - 1
+    const trackUri = trackData.value?.uri
+    if (!playlistId || !trackUri) return false
+
+    let tracks = await playlistStore.getTracks(playlistId) ?? []
+    if (!tracks.length) {
+      const fresh = await getTracks(playlistId)
+      playlistStore.loadTracks(playlistId, fresh)
+      tracks = fresh
+    }
+
+    const currentIndex = tracks.findIndex(track => trackUriOf(track) === trackUri)
+    if (currentIndex === targetIndex) return false
+
+    if (currentIndex === -1) {
+      const occupant = tracks[targetIndex]
+      const formData = { 'uris': [trackUri], 'position': targetIndex }
+      const { status } = await addTracksToPlaylist(playlistId, formData)
+      if (status !== 200 && status !== 201) {
+        throw new Error('Status: ' + status + ' not expected!')
+      }
+
+      if (occupant) {
+        const updatedTracks = await getTracks(playlistId)
+        const occupantIndex = updatedTracks.findIndex(track => trackUriOf(track) === trackUriOf(occupant))
+        const newTotal = updatedTracks.length
+        if (occupantIndex !== -1 && occupantIndex !== newTotal - 1) {
+          await updateTracksOfPlaylist(playlistId, { 'range_start': occupantIndex, 'insert_before': newTotal })
+        }
+      }
+    } else {
+      const insertBefore = currentIndex < targetIndex ? targetIndex + 1 : targetIndex
+      await updateTracksOfPlaylist(playlistId, { 'range_start': currentIndex, 'insert_before': insertBefore })
+    }
+
+    const refreshed = await getTracks(playlistId)
+    playlistStore.loadTracks(playlistId, refreshed)
+    updatePlaylistTotalTracks(playlistId, refreshed.length)
+    return true
+  }
+
   const confirm = async () => {
     if (!canSubmit.value) return
     isSubmitting.value = true
     try {
+      const mutated = await ensureTrackAtPosition()
+
       const { data: requester, error: requesterError } = await getOrCreateRequester({
         name: requesterName.value,
         curator: curator.value
@@ -219,6 +272,10 @@
       const [trackResult, priceResult] = await Promise.all([trackRequestPromise, pricePositionPromise])
       if (trackResult.error) throw trackResult.error
       if (priceResult?.error) console.error(priceResult.error.message)
+
+      if (mutated) {
+        playlistStore.bumpPlaylistRevision(selectedPlaylist.value || props.playlistId)
+      }
 
       submitState.value = 'success'
       emit('confirm', { track: props.track, request: trackResult.data?.[0] ?? payload })
@@ -412,7 +469,7 @@
               <span class="text-label-md font-bold uppercase tracking-tight">Lógica de Reordenamento</span>
             </div>
             <p class="text-body-sm text-on-surface-variant leading-relaxed">
-              A conversão desta faixa para <strong class="text-on-surface">Posição Paga</strong> atualizará seu status no painel de gerenciamento e iniciará o cronômetro de expiração conforme o período selecionado.
+              A conversão desta faixa para <strong class="text-on-surface">Posição Paga</strong> atualizará seu status no painel de gerenciamento e iniciará o cronômetro de expiração conforme o período selecionado. Caso a faixa ainda não esteja na posição escolhida, ela será adicionada à playlist via Spotify, movendo a música que ocupava a posição para o final.
             </p>
             <label class="flex items-center gap-3 cursor-pointer select-none">
               <input

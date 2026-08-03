@@ -198,6 +198,21 @@
     }
   })
 
+  watch(
+    () => playlistStore.playlistRevision[playlistId.value],
+    async () => {
+      if (!state.playlist || !playlistId.value) return
+      try {
+        await getPlaylistTracks()
+        state.playlist.items = state.tracks.length
+        await loadTrackRequests()
+        if (sortPosition.value !== 0) sortUserPlaylist(false)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  )
+
   const pad = (n) => String(n).padStart(2, '0')
 
   const formatCountdown = (seconds) => {
