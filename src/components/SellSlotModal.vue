@@ -30,6 +30,10 @@
     position: {
       type: Number,
       default: null
+    },
+    pricePositionValue: {
+      type: Number,
+      default: null
     }
   })
 
@@ -122,10 +126,15 @@
         if (!curator.value) {
           await loadSuggestions()
         }
-        const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
-        pricePositionExists.value = pricePosition?.value != null
-        if (pricePosition?.value != null) {
-          value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
+        if (props.pricePositionValue != null) {
+          pricePositionExists.value = true
+          value.value = Number(props.pricePositionValue).toFixed(2).replace('.', ',')
+        } else {
+          const { data: pricePosition } = await getPricePosition(selectedPlaylist.value || props.playlistId, position.value)
+          pricePositionExists.value = pricePosition?.value != null
+          if (pricePosition?.value != null) {
+            value.value = Number(pricePosition.value).toFixed(2).replace('.', ',')
+          }
         }
       } finally {
         isLoading.value = false

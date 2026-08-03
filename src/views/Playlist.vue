@@ -24,7 +24,7 @@
   const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
-  const { getTrackRequests, deleteTrackRequest } = TrackRequestService()
+  const { getTrackRequests, getPricePositions, deleteTrackRequest } = TrackRequestService()
 
   const PAGE_SIZE = 20
 
@@ -93,6 +93,7 @@
   const countdownActive = ref(false)
   const trackRequests = ref([])
   const trackRequestsLoaded = ref(false)
+  const pricePositions = ref(new Map())
   const isLoading = ref(true)
   const sellSlotOpened = ref(false)
   const sellSlotTrack = ref(null)
@@ -143,8 +144,10 @@
     return state.tracks.some(track => track._slot?.status && track._slot.status !== 'free')
   })
 
+  const hasPriceValues = computed(() => pricePositions.value.size > 0)
+
   const tableColumns = computed(() => {
-    const base = hasSoldSlots.value ? 8 : 6
+    const base = 6 + (hasSoldSlots.value ? 1 : 0) + ((hasSoldSlots.value || hasPriceValues.value) ? 1 : 0)
     return playlistSaved.value ? base : base - 1
   })
 
@@ -243,7 +246,17 @@
   const loadTrackRequests = async () => {
     trackRequests.value = await getTrackRequests(playlistId.value)
     trackRequestsLoaded.value = true
+    const { data: priceRows } = await getPricePositions(playlistId.value)
+    pricePositions.value = new Map((priceRows ?? []).map(row => [row.position, row.value]))
     buildSlots()
+  }
+
+  const slotValueLabel = (track) => {
+    if (track._slot?.status && track._slot.status !== 'free') {
+      return track._slot?.value ?? '-'
+    }
+    const value = pricePositions.value.get((track.id ?? 0) + 1)
+    return value != null ? formatCurrency(value) : '-'
   }
 
   const statusPill = (slot) => {
@@ -795,6 +808,7 @@
     :track="sellSlotTrack"
     :playlist-id="playlistId"
     :playlist="state.playlist"
+    :price-position-value="sellSlotTrack ? pricePositions.get((sellSlotTrack.id ?? 0) + 1) ?? null : null"
     :select-playlist="false"
     @close="closeSellSlot"
     @confirm="onConfirmSellSlot"
@@ -997,7 +1011,7 @@
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
               <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
               <th v-if="playlistSaved" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
-              <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
+              <th v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
             </tr>
@@ -1062,15 +1076,15 @@
                   class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/80 text-black"
                   @click.stop="openSellSlot(track)"
                 >
-                  Sell slot
+                  DISPONÍVEL
                 </button>
                 <span v-else class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest" :class="statusPill(track._slot).cls">
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-              <td v-if="hasSoldSlots" class="px-6 py-4">
+              <td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
                 <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
-                <span v-else class="text-label-md text-on-surface">{{ track._slot?.value ?? '-' }}</span>
+                <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track) }}</span>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-1 text-label-md text-on-surface">
