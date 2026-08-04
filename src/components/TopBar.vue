@@ -71,14 +71,7 @@
         </button>
       </template>
 
-      <div class="relative flex-1 max-w-2xl md:max-w-3xl lg:max-w-4xl min-w-[400px] ml-2">
-        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">search</span>
-        <input
-          class="w-full min-w-0 bg-surface-container-low border border-outline-variant/30 rounded-full py-2.5 pl-12 pr-6 text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-inner"
-          placeholder="Buscar playlists, artistas ou ordens..."
-          type="text"
-        />
-      </div>
+      <div class="flex-1"></div>
     </div>
 
     <div class="flex items-center gap-3 md:gap-6 flex-shrink-0">
