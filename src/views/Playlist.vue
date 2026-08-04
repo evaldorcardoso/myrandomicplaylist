@@ -4,7 +4,7 @@
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
-  import Notification from '@/components/Notification.vue'
+  import SortConfirmModal from '@/components/SortConfirmModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
@@ -83,6 +83,8 @@
   const activeTab = ref('Todas')
   const currentPage = ref(1)
   const sortPosition = ref(0)
+  const sortDropdownOpen = ref(false)
+  const sortConfirmOpened = ref(false)
   const differentSort = ref(false)
   const isProcessing = ref(false)
   const lastUpdatedLabel = ref('')
@@ -724,13 +726,6 @@
     const tracks = toRaw(state.tracks)
     for (let i = 0; i < tracks.length; i++) {
       if (i != tracks[i].id) {
-        showNotification(
-          NOTIFICATIONS_TYPE.info,
-          'Info',
-          'Apply this sort on Spotify ?',
-          true,
-          false
-        )
         differentSort.value = true
         notificationAction.value = NOTIFICATION_ACTIONS.UPDATE_SORT
         return;
@@ -738,7 +733,6 @@
     }
     differentSort.value = false
     notificationAction.value = ''
-    isNotificationOpened.value = false
   }
 
   const sortUserPlaylist = (increment = true) => {
@@ -819,6 +813,28 @@
     }
   }
 
+  const selectSort = (index) => {
+    sortDropdownOpen.value = false
+    sortPosition.value = index
+    sortUserPlaylist(false)
+  }
+
+  const closeSortConfirm = () => {
+    sortConfirmOpened.value = false
+    notificationAction.value = ''
+    sortPosition.value = 0
+    sortUserPlaylist(false)
+  }
+
+  const openSortConfirm = () => {
+    sortConfirmOpened.value = true
+  }
+
+  const confirmSortApply = () => {
+    sortConfirmOpened.value = false
+    onNotificationAction(true)
+  }
+
   callbacks.onUpdateSort = () => updateTracksOrder()
 
   onMounted(async () => {
@@ -852,10 +868,10 @@
 </script>
 
 <template>
-  <Notification
-    :open="notificationOpened"
-    :data="notificationData"
-    @notification-action="onNotificationAction"
+  <SortConfirmModal
+    :open="sortConfirmOpened"
+    @close="closeSortConfirm"
+    @confirm="confirmSortApply"
   />
   <SellSlotModal
     :open="sellSlotOpened"
@@ -1032,13 +1048,51 @@
           </nav>
         </div>
         <div class="flex items-center gap-4">
+          <div class="relative">
+            <button
+              class="flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors border border-outline-variant/20"
+              :class="{ 'border-primary/40 text-primary': differentSort }"
+              @click="sortDropdownOpen = !sortDropdownOpen"
+            >
+              <font-awesome-icon icon="sort" />
+              <span>{{ sortOptions[sortPosition] }}</span>
+              <font-awesome-icon icon="chevron-down" class="text-[10px] transition-transform" :class="{ 'rotate-180': sortDropdownOpen }" />
+            </button>
+            <transition name="dropdown-fade">
+              <div
+                v-if="sortDropdownOpen"
+                class="fixed inset-0 z-40"
+                @click="sortDropdownOpen = false"
+              ></div>
+            </transition>
+            <transition name="dropdown-fade">
+              <div
+                v-if="sortDropdownOpen"
+                class="absolute right-0 top-full mt-2 z-50 min-w-[180px] bg-surface-container-lowest border border-outline-variant/20 rounded-xl shadow-xl overflow-hidden"
+              >
+                <button
+                  v-for="(option, i) in sortOptions"
+                  :key="option"
+                  class="w-full flex items-center gap-2 px-4 py-2.5 text-label-sm transition-colors text-left"
+                  :class="i === sortPosition
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'"
+                  @click="selectSort(i)"
+                >
+                  <font-awesome-icon v-if="i === sortPosition" icon="check" class="text-[12px]" />
+                  <span v-else class="w-3"></span>
+                  {{ option }}
+                </button>
+              </div>
+            </transition>
+          </div>
           <button
-            class="flex items-center gap-2 rounded-full bg-surface-container-high px-4 py-1.5 text-label-sm text-on-surface-variant hover:text-on-surface transition-colors"
-            :title="sortOptions[sortPosition]"
-            @click="sortUserPlaylist()"
+            v-if="differentSort"
+            class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-label-sm font-bold text-on-primary hover:bg-primary-fixed transition-all active:scale-[0.98] shadow-lg"
+            @click="openSortConfirm"
           >
-            <font-awesome-icon icon="sort" />
-            {{ sortOptions[sortPosition] }}
+            <font-awesome-icon icon="check" />
+            Aplicar
           </button>
           <div class="flex items-center gap-4">
             <div class="text-on-surface-variant text-body-sm italic">
@@ -1077,7 +1131,10 @@
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr class="bg-surface-container-low/50">
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider"># Pos</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">
+                <span v-if="differentSort"># Original → Nova</span>
+                <span v-else># Pos</span>
+              </th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
               <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
               <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
@@ -1096,13 +1153,21 @@
             >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <div
-                    class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
-                    :class="track.id === 0 && activeTab === 'Todas'
-                      ? 'bg-primary/20 border border-primary/40 text-primary'
-                      : 'bg-surface-container-high text-on-surface-variant'"
-                  >
-                    {{ track.id + 1 }}
+                  <div class="flex flex-col items-center gap-0.5">
+                    <div
+                      class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
+                      :class="track.id === 0 && activeTab === 'Todas'
+                        ? 'bg-primary/20 border border-primary/40 text-primary'
+                        : 'bg-surface-container-high text-on-surface-variant'"
+                    >
+                      {{ track.id + 1 }}
+                    </div>
+                    <span
+                      v-if="differentSort && track.id !== (currentPage - 1) * PAGE_SIZE + i"
+                      class="text-[10px] font-bold tabular-nums text-[#75ff18] leading-none"
+                    >
+                      → {{ (currentPage - 1) * PAGE_SIZE + i + 1 }}
+                    </span>
                   </div>
                   <font-awesome-icon
                     v-if="track._slot?.positionMismatch"
@@ -1246,4 +1311,13 @@
 </template>
 
 <style scoped>
+  .dropdown-fade-enter-active,
+  .dropdown-fade-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .dropdown-fade-enter-from,
+  .dropdown-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 </style>
