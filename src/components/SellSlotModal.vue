@@ -7,6 +7,8 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '@/services/PlaylistService'
 
+  const PERMANENCE_DAYS = 30
+
   const emit = defineEmits(['close', 'confirm'])
 
   const props = defineProps({
@@ -47,7 +49,6 @@
   const { updatePlaylistTotalTracks } = PlaylistService()
 
   const selectedPlaylist = ref(props.playlistId)
-  const permanenceDays = ref(30)
   const value = ref('')
   const requesterName = ref('')
   const curator = ref('')
@@ -89,7 +90,7 @@
     return `${y}-${m}-${d}`
   }
 
-  const dueDateInput = ref(calcDueDateISO(30))
+  const dueDateInput = ref(calcDueDateISO(PERMANENCE_DAYS))
 
   const parseValue = () => {
     const raw = String(value.value ?? '').trim()
@@ -110,8 +111,7 @@
     curator.value = ''
     requesters.value = []
     dropdownOpen.value = false
-    permanenceDays.value = 30
-    dueDateInput.value = calcDueDateISO(30)
+    dueDateInput.value = calcDueDateISO(PERMANENCE_DAYS)
     value.value = ''
     isSubmitting.value = false
     submitState.value = 'idle'
@@ -146,10 +146,6 @@
         isLoading.value = false
       }
     }
-  })
-
-  watch(permanenceDays, (days) => {
-    dueDateInput.value = calcDueDateISO(days)
   })
 
   const searchRequesters = async (query) => {
@@ -422,20 +418,6 @@
 
             <!-- Permanence + Value + Due date -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-3">
-                <label class="text-label-md text-primary uppercase tracking-wider">Permanência</label>
-                <div class="relative">
-                  <select
-                    v-model="permanenceDays"
-                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
-                  >
-                    <option :value="30">30 Dias</option>
-                    <option :value="60">60 Dias</option>
-                    <option :value="90">90 Dias</option>
-                  </select>
-                  <font-awesome-icon icon="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[14px]" />
-                </div>
-              </div>
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Valor (R$)</label>
                 <div v-if="isLoading" class="animate-pulse h-10 w-full rounded-xl bg-surface-container-high"></div>

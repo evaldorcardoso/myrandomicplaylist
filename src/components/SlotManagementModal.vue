@@ -6,6 +6,8 @@
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
 
+  const PERMANENCE_DAYS = 30
+
   const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'move-track', 'sell-slot'])
 
   const props = defineProps({
@@ -42,7 +44,6 @@
 
   const requesterName = ref('')
   const curator = ref('')
-  const permanenceDays = ref(30)
   const value = ref('')
   const dueDate = ref('')
   const isSubmitting = ref(false)
@@ -131,11 +132,10 @@
   const init = () => {
     requesterName.value = props.request?.requester_name ?? ''
     curator.value = props.request?.curator ?? ''
-    permanenceDays.value = 30
     value.value = props.request?.value != null
       ? Number(props.request.value).toFixed(2).replace('.', ',')
       : ''
-    dueDate.value = props.request?.due_date ?? calcDueDateISO(30)
+    dueDate.value = props.request?.due_date ?? calcDueDateISO(PERMANENCE_DAYS)
     isSubmitting.value = false
     submitState.value = 'idle'
     resetRemoval()
@@ -224,12 +224,6 @@
     }
   }
 
-  const onPermanenceChange = () => {
-    const due = calcDueDateISO(permanenceDays.value)
-    dueDate.value = due
-    saveDueDate(due)
-  }
-
   const onDueChange = () => {
     saveDueDate(dueDate.value)
   }
@@ -266,7 +260,7 @@
         submitState.value = 'success'
         emit('updated', 'paid')
       } else {
-        payload.due_date = calcDueDateISO(30, props.request.due_date)
+        payload.due_date = calcDueDateISO(PERMANENCE_DAYS, props.request.due_date)
         payload.status = 'pending'
         const { error } = await updateTrackRequest(props.request.id, payload)
         if (error) throw error
@@ -516,21 +510,6 @@
 
             <!-- Permanence + Value + Due date -->
             <div v-if="!isFree" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-3">
-                <label class="text-label-md text-primary uppercase tracking-wider">Permanência</label>
-                <div class="relative">
-                  <select
-                    v-model="permanenceDays"
-                    class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-5 py-2 text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary transition-all cursor-pointer"
-                    @change="onPermanenceChange"
-                  >
-                    <option :value="30">30 Dias</option>
-                    <option :value="60">60 Dias</option>
-                    <option :value="90">90 Dias</option>
-                  </select>
-                  <font-awesome-icon icon="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[14px]" />
-                </div>
-              </div>
               <div class="space-y-3">
                 <label class="text-label-md text-primary uppercase tracking-wider">Valor (R$)</label>
                 <input
