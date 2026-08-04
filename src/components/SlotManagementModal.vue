@@ -401,6 +401,39 @@
     emit('sell-slot', props.track)
   }
 
+  const formatDueDateBR = (date) => {
+    if (!date) return ''
+    const [year, month, day] = String(date).split('-')
+    if (!year || !month || !day) return date
+    return `${day}/${month}/${year}`
+  }
+
+  const notifyRequester = async () => {
+    if (isSubmitting.value) return
+    const trackName = trackData.value?.name ?? ''
+    const artistName = trackData.value?.artists?.map(artist => artist.name).join(', ') ?? ''
+    const curatorName = props.request?.curator?.trim() ?? ''
+    const artistLabel = curatorName ? `${artistName} by ${curatorName}` : artistName
+    const playlistName = props.playlist?.name ?? ''
+    const dueDateBR = formatDueDateBR(props.request?.due_date)
+    const message = `Música vencendo na playlist: A música *${trackName}* do artista *${artistLabel}*, posição *${position.value}* na playlist ${playlistName}, vence no dia *${dueDateBR}*. Avise caso queira renovar, senão será *removida* em até *3 dias*.`
+    try {
+      await navigator.clipboard.writeText(message)
+      notify({
+        title: 'Alright',
+        text: 'Mensagem copiada! Cole no WhatsApp do solicitante.',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Não foi possível copiar a mensagem!',
+        type: 'error'
+      })
+    }
+  }
+
   onBeforeUnmount(() => {
     resetRemoval()
   })
@@ -688,6 +721,15 @@
               <span class="relative z-10">
                 {{ submitState === 'success' ? 'Concluído!' : (isSubmitting ? 'Processando...' : (isPending ? 'Realizar Pagamento' : 'Renovar Posição')) }}
               </span>
+            </button>
+            <button
+              v-if="!isFree && isExpired"
+              class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+              :disabled="isSubmitting"
+              @click="notifyRequester"
+            >
+              <font-awesome-icon :icon="['fab', 'whatsapp']" class="text-[18px]" />
+              <span>Notificar solicitante</span>
             </button>
             <button
               v-if="!isFree"

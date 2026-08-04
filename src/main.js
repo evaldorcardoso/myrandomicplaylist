@@ -76,6 +76,9 @@ import {
 import {
     faXmarkCircle
 } from '@fortawesome/free-regular-svg-icons'
+import {
+    faWhatsapp
+} from '@fortawesome/free-brands-svg-icons'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { createPinia } from 'pinia';
 import Notifications from '@kyvg/vue3-notification'
@@ -147,7 +150,8 @@ library.add(
     faCog,
     faExclamationTriangle,
     faSearch,
-    faExchangeAlt
+    faExchangeAlt,
+    faWhatsapp
 )
 
 const updateSW = registerSW({
