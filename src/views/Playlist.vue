@@ -305,7 +305,7 @@
     const secondsLeft = Math.max(0, Math.floor((slot.dueTs - now.value) / 1000))
     const urgent = secondsLeft <= 86400
     if (secondsLeft <= 0) {
-      return { value: 'Expirado', label: 'Vencido', urgent: true }
+      return { value: 'Expirado', label: formatDate(slot.dueTs), urgent: true }
     }
     if (slot.status === 'pending') {
       return { value: Math.ceil(secondsLeft / 86400), label: 'Dias', urgent }
