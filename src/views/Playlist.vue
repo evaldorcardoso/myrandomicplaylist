@@ -100,8 +100,9 @@
   const slotsVersion = ref(0)
   const bumpSlots = () => slotsVersion.value++
 
-  const followersReady = computed(() => state.playlist?.followers != null)
-  const growthReady = computed(() => state.dataLikes.length > 0)
+   const followersReady = computed(() => state.playlist?.followers != null)
+   const descriptionReady = computed(() => state.playlist?.description != null)
+   const growthReady = computed(() => state.dataLikes.length > 0)
   const slotsReady = computed(() =>
     trackRequestsLoaded.value && (state.tracks.length > 0 || !isLoading.value)
   )
@@ -913,9 +914,12 @@
           <font-awesome-icon icon="check-circle" class="text-[16px]" />
           by @{{ state.playlist.owner.display_name }}
         </div>
-        <p v-if="!editPlaylistDescription" class="text-on-surface-variant max-w-2xl text-body-md cursor-pointer" @click="openEditPlaylistDescription()">
-          {{ state.playlist?.description || 'Edit description...' }}
-        </p>
+<div v-if="!editPlaylistDescription">
+           <div v-if="isLoading" class="animate-pulse h-4 w-48 max-w-2xl rounded bg-surface-container-high"></div>
+           <p v-else class="text-on-surface-variant max-w-2xl text-body-md cursor-pointer" @click="openEditPlaylistDescription()">
+             {{ state.playlist?.description || 'Edit description...' }}
+           </p>
+         </div>
         <textarea
           v-else
           v-model="state.playlistDescription"
