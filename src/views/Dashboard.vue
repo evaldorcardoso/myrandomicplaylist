@@ -21,6 +21,7 @@
   const state = reactive({
     data: null
   })
+  const isLoading = ref(true)
 
   const DISPLAY_LIMIT = 5
   const showAllExpirations = ref(false)
@@ -179,6 +180,7 @@
 
   onMounted(async () => {
     await loadDashboardData()
+    isLoading.value = false
     countdownInterval = setInterval(() => {
       const now = Date.now()
       state.data.expirations.forEach(expiration => {
@@ -471,6 +473,130 @@
                     :class="order.tone === 'primary' ? 'text-primary bg-primary/10' : 'text-on-tertiary-container bg-tertiary-container/10'"
                   >{{ order.status }}</span>
                   <span class="text-[10px] text-on-surface-variant mt-1">{{ order.time }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skeleton Loading -->
+  <div v-else class="h-full overflow-y-auto bg-surface text-on-surface">
+    <div class="max-w-[1600px] mx-auto p-gutter md:p-lg">
+      <!-- Top Stats Row Skeleton -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter">
+        <div v-for="n in 4" :key="'stat-skel-' + n" class="bg-surface-container-low p-lg rounded-xl flex flex-col gap-xs shadow-sm">
+          <div class="flex items-center justify-between">
+            <div class="h-4 w-28 rounded animate-pulse bg-surface-container-high"></div>
+            <div class="h-6 w-6 rounded animate-pulse bg-surface-container-high"></div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="h-10 w-24 rounded animate-pulse bg-surface-container-high"></div>
+            <div class="h-4 w-16 rounded animate-pulse bg-surface-container-high"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Grid Content Skeleton -->
+      <div class="grid grid-cols-12 gap-lg items-start mt-lg">
+        <!-- Left Column Skeleton -->
+        <div class="col-span-12 lg:col-span-8 flex flex-col gap-md">
+          <div class="flex items-center gap-3">
+            <div class="h-7 w-48 rounded animate-pulse bg-surface-container-high"></div>
+            <div class="h-5 w-24 rounded animate-pulse bg-surface-container-high"></div>
+          </div>
+          <div class="bg-surface-container-low rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
+            <table class="w-full table-fixed text-left border-collapse min-w-[480px]">
+              <thead>
+                <tr class="bg-surface-container text-label-sm text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
+                  <th class="px-4 py-4">Playlist</th>
+                  <th class="w-[90px] px-4 py-4 text-center">Total Posições</th>
+                  <th class="w-[150px] px-4 py-4">Ocupação</th>
+                  <th class="w-[110px] px-4 py-4 text-right">Valor Médio</th>
+                  <th class="w-[44px] px-4 py-4"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/5">
+                <tr v-for="n in 5" :key="'row-skel-' + n">
+                  <td class="px-4 py-4 min-w-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-10 h-10 rounded animate-pulse bg-surface-container-high flex-shrink-0"></div>
+                      <div class="flex flex-col gap-1.5 min-w-0">
+                        <div class="h-4 w-32 rounded animate-pulse bg-surface-container-high"></div>
+                        <div class="h-3 w-20 rounded animate-pulse bg-surface-container-high"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 text-center">
+                    <div class="h-4 w-6 mx-auto rounded animate-pulse bg-surface-container-high"></div>
+                  </td>
+                  <td class="px-4 py-4">
+                    <div class="flex flex-col gap-1.5">
+                      <div class="h-3 w-full rounded animate-pulse bg-surface-container-high"></div>
+                      <div class="h-1.5 w-full rounded-full bg-surface-container-highest overflow-hidden">
+                        <div class="h-full w-2/3 rounded-full animate-pulse bg-surface-container-high"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 text-right">
+                    <div class="h-4 w-16 ml-auto rounded animate-pulse bg-surface-container-high"></div>
+                  </td>
+                  <td class="px-4 py-4 text-right">
+                    <div class="h-5 w-5 ml-auto rounded animate-pulse bg-surface-container-high"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Column Skeleton -->
+        <div class="col-span-12 lg:col-span-4 flex flex-col gap-lg">
+          <!-- Expiration Widget Skeleton -->
+          <div class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 shadow-xl">
+            <div class="flex items-center gap-3">
+              <div class="h-6 w-6 rounded animate-pulse bg-surface-container-high"></div>
+              <div class="h-5 w-40 rounded animate-pulse bg-surface-container-high"></div>
+            </div>
+            <div class="flex flex-col gap-4">
+              <div v-for="n in 3" :key="'exp-skel-' + n" class="p-4 bg-surface-container rounded-xl border border-outline-variant/10 flex flex-col gap-3">
+                <div class="flex justify-between items-start">
+                  <div class="flex gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded animate-pulse bg-surface-container-high flex-shrink-0"></div>
+                    <div class="flex flex-col gap-1.5 min-w-0">
+                      <div class="h-4 w-28 rounded animate-pulse bg-surface-container-high"></div>
+                      <div class="h-3 w-20 rounded animate-pulse bg-surface-container-high"></div>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                    <div class="h-4 w-16 rounded animate-pulse bg-surface-container-high"></div>
+                    <div class="h-3 w-10 rounded animate-pulse bg-surface-container-high"></div>
+                  </div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                  <div class="h-8 flex-1 rounded-lg animate-pulse bg-surface-container-high"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Orders Skeleton -->
+          <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
+            <div class="h-4 w-32 rounded animate-pulse bg-surface-container-high"></div>
+            <div class="flex flex-col gap-3">
+              <div v-for="n in 4" :key="'order-skel-' + n" class="flex items-center justify-between gap-3 p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-full animate-pulse bg-surface-container-high flex-shrink-0"></div>
+                  <div class="flex flex-col gap-1.5 min-w-0">
+                    <div class="h-4 w-28 rounded animate-pulse bg-surface-container-high"></div>
+                    <div class="h-3 w-20 rounded animate-pulse bg-surface-container-high"></div>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                  <div class="h-5 w-16 rounded-full animate-pulse bg-surface-container-high"></div>
+                  <div class="h-3 w-12 rounded animate-pulse bg-surface-container-high"></div>
                 </div>
               </div>
             </div>
