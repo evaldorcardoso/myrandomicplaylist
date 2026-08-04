@@ -153,6 +153,13 @@ export function useGeneral() {
             .put(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}`, JSON.stringify(formData))
     }
 
+    const uploadPlaylistCoverImage = async(playlistId, base64Image) => {
+        return $axios
+            .put(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}/images`, base64Image, {
+                headers: { 'Content-Type': 'image/jpeg' }
+            })
+    }
+
     const getArtists = async(ids) => {
         let { data } = await $axios
             .get(`${import.meta.env.VITE_API_URL}/artists?ids=${ids}`)
@@ -170,6 +177,7 @@ export function useGeneral() {
         removeTracksOfPlaylist,
         savePlaylist,
         updatePlaylist,
+        uploadPlaylistCoverImage,
         getArtists
     }
 }

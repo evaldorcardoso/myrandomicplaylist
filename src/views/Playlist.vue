@@ -8,6 +8,7 @@
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
+  import EditPlaylistModal from '@/components/EditPlaylistModal.vue'
   import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
@@ -20,7 +21,7 @@
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const progress = inject("progress")
-  const { updateTracksOfPlaylist, updatePlaylist, removeTracksOfPlaylist, getTracks } = useGeneral()
+  const { updateTracksOfPlaylist, updatePlaylist, uploadPlaylistCoverImage, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, getPricePositions, deleteTrackRequest } = TrackRequestService()
@@ -77,7 +78,8 @@
     removeTrackStatistics
   } = pd
 
-  const editPlaylistDescription = ref(false)
+  const editPlaylistOpened = ref(false)
+  const editPlaylistSubmitting = ref(false)
   const activeTab = ref('Todas')
   const currentPage = ref(1)
   const sortPosition = ref(0)
@@ -665,55 +667,53 @@
     }
   }
 
-  const removePartFromText = (text) => {
-    const part = "Top artistas:";
-    const indice = text.indexOf(part);
-
-    if (indice !== -1) {
-      text = text.substring(0, indice);
-     }
-
-    return text.trimEnd();
+  const openEditPlaylist = () => {
+    editPlaylistOpened.value = true
   }
 
-  const openEditPlaylistDescription = (includeTopArtists = false) => {
-    var description = state.playlist.description
-    if (includeTopArtists) {
-      description = removePartFromText(state.playlist.description)
-        + ' Top artistas: '
-        + state.playlist?.topArtists?.slice(0, 3).map(artist => artist.name).join(', ')
-    }
-    state.playlistDescription = description
-    editPlaylistDescription.value = !editPlaylistDescription.value
-    showNotification(
-      NOTIFICATIONS_TYPE.info,
-      'Info',
-      'Save this description on Spotify ?',
-      true,
-      false
-    )
-    notificationAction.value = NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION
+  const closeEditPlaylist = () => {
+    editPlaylistOpened.value = false
   }
 
-  const updatePlaylistDescription = async() => {
-    isProcessing.value = true
-    const formData = {
-      'description': state.playlistDescription
-    }
+  const handleEditPlaylistConfirm = async (formData) => {
+    editPlaylistSubmitting.value = true
     try {
-      await updatePlaylist(state.playlist.id, formData)
+      const updateData = {
+        name: formData.name,
+        description: formData.description,
+        public: formData.isPublic
+      }
+      await updatePlaylist(state.playlist.id, updateData)
+
+      if (formData.imageBase64) {
+        try {
+          await uploadPlaylistCoverImage(state.playlist.id, formData.imageBase64)
+        } catch (imgError) {
+          console.error(imgError)
+          notify({
+            title: 'Ops',
+            text: 'Descrição atualizada, mas falha ao enviar a capa.',
+            type: 'warning'
+          })
+        }
+      }
+
       notify({
         title: 'Awesome',
-        text: 'Playlist description updated successfully!',
+        text: 'Playlist updated successfully!',
         type: 'success'
       })
-      editPlaylistDescription.value = false
+      editPlaylistOpened.value = false
     } catch (error) {
-      console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: error.message || 'Erro ao atualizar a playlist.',
+        type: 'error'
+      })
     }
     await handleRefresh()
-    isProcessing.value = false
+    editPlaylistSubmitting.value = false
   }
 
   const checkDifferentSort = () => {
@@ -814,10 +814,6 @@
   }
 
   callbacks.onUpdateSort = () => updateTracksOrder()
-  callbacks.onUpdateDescription = () => updatePlaylistDescription()
-  callbacks.onCancelDescription = () => {
-    editPlaylistDescription.value = false
-  }
 
   onMounted(async () => {
     progress.start()
@@ -886,6 +882,13 @@
     @close="closeRemoveFromManagement"
     @confirm="handleRemoveFromManagement"
   />
+  <EditPlaylistModal
+    :open="editPlaylistOpened"
+    :playlist="state.playlist"
+    :is-submitting="editPlaylistSubmitting"
+    @close="closeEditPlaylist"
+    @confirm="handleEditPlaylistConfirm"
+  />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
@@ -896,15 +899,12 @@
     <section class="relative flex flex-col md:flex-row gap-lg items-end pb-xl">
       <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div class="relative group shrink-0">
+      <div class="relative shrink-0">
         <div class="w-40 h-40 md:w-64 md:h-64 shadow-2xl rounded-xl overflow-hidden bg-surface-container">
           <img
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            class="w-full h-full object-cover"
             :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image"
           />
-        </div>
-        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl cursor-pointer" @click="openEditPlaylistDescription()">
-          <font-awesome-icon icon="edit" class="text-primary text-[48px]" />
         </div>
       </div>
 
@@ -914,18 +914,12 @@
           <font-awesome-icon icon="check-circle" class="text-[16px]" />
           by @{{ state.playlist.owner.display_name }}
         </div>
-<div v-if="!editPlaylistDescription">
-           <div v-if="isLoading" class="animate-pulse h-4 w-48 max-w-2xl rounded bg-surface-container-high"></div>
-           <p v-else class="text-on-surface-variant max-w-2xl text-body-md cursor-pointer" @click="openEditPlaylistDescription()">
-             {{ state.playlist?.description || 'Edit description...' }}
-           </p>
-         </div>
-        <textarea
-          v-else
-          v-model="state.playlistDescription"
-          class="max-w-2xl rounded-xl bg-surface-container-high p-3 text-on-surface text-body-md outline-none resize-none focus:ring-2 focus:ring-primary"
-          rows="3"
-        />
+        <div>
+            <div v-if="isLoading" class="animate-pulse h-4 w-48 max-w-2xl rounded bg-surface-container-high"></div>
+            <p v-else class="text-on-surface-variant max-w-2xl text-body-md">
+              {{ state.playlist?.description || 'Sem descrição.' }}
+            </p>
+          </div>
         <div class="flex flex-wrap items-center gap-xl mt-4">
           <div v-if="!followersReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
@@ -977,6 +971,13 @@
           </button>
           <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Compartilhar" @click="sharePlaylist">
             <font-awesome-icon icon="share" />
+          </button>
+          <button
+            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors"
+            title="Editar Playlist"
+            @click="openEditPlaylist"
+          >
+            <font-awesome-icon icon="edit" />
           </button>
           <button
             class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors"
