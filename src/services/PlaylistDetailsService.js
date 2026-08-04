@@ -69,7 +69,8 @@ const getGrowth = (likesHistory = [], currentLikes = 0) => {
   const percentText = delta === 0 ? '' : `(${formatPercent(percent)})`
   return {
     days,
-    value: `${sign}${Math.round(delta)}${percentText}`
+    value: `${sign}${Math.round(delta)}${percentText}`,
+    negative: delta < 0
   }
 }
 

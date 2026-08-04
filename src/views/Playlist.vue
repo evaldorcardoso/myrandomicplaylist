@@ -937,7 +937,7 @@
           </div>
           <div v-if="playlistSaved && growthReady" class="flex flex-col">
             <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
-            <span class="text-headline-md text-primary">{{ details.growth.value }}</span>
+            <span class="text-headline-md" :class="details.growth.negative ? 'text-[#ff1717]' : 'text-primary'">{{ details.growth.value }}</span>
           </div>
           <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1">
             <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
