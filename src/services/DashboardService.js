@@ -6,7 +6,6 @@ import { getCachedOccupancy, setOccupancy, getCachedEarnings, setEarnings, getCa
 const TRACK_REQUESTS_TABLE = 'track_requests'
 
 const SECONDS_PER_DAY = 86400
-const MAX_EXPIRATIONS = 5
 const DUE_DATE_DEADLINE_HOUR = 9
 const TIMEZONE_OFFSET = '-03:00'
 
@@ -256,7 +255,7 @@ export function DashboardService() {
           ? 'Nenhuma expiração iminente'
           : (count === 1 ? '1 expiração iminente' : `${count} expirações iminentes`)
       },
-      expirations: urgentOnly.slice(0, MAX_EXPIRATIONS)
+      expirations: urgentOnly
     }
   }
 

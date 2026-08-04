@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, onUnmounted, reactive, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { DashboardService } from '@/services/DashboardService'
   import { usePlaylistStore } from '@/stores/playlist'
@@ -20,6 +20,13 @@
   const router = useRouter()
   const state = reactive({
     data: null
+  })
+
+  const DISPLAY_LIMIT = 5
+  const showAllExpirations = ref(false)
+  const visibleExpirations = computed(() => {
+    const expirations = state.data?.expirations ?? []
+    return showAllExpirations.value ? expirations : expirations.slice(0, DISPLAY_LIMIT)
   })
 
   let countdownInterval = null
@@ -344,7 +351,7 @@
             </div>
             <div class="flex flex-col gap-4">
               <div
-                v-for="expiration in state.data.expirations"
+                v-for="expiration in visibleExpirations"
                 :key="expiration.id"
                 class="p-4 bg-surface-container rounded-xl flex flex-col gap-3 transition-all hover:bg-surface-container-high"
                 :class="expiration.urgent ? 'border border-error/20' : 'border border-outline-variant/10'"
@@ -394,7 +401,12 @@
                 </div>
               </div>
             </div>
-            <a class="text-center text-label-sm text-primary hover:underline mt-2" href="#">Ver todas as {{ state.data.stats.expiringSoon }} expirações</a>
+            <a
+              v-if="state.data.stats.expiringSoon > DISPLAY_LIMIT"
+              class="text-center text-label-sm text-primary hover:underline mt-2 cursor-pointer"
+              href="#"
+              @click.prevent="showAllExpirations = !showAllExpirations"
+            >{{ showAllExpirations ? 'Ver menos' : `Ver todas as ${state.data.stats.expiringSoon} expirações` }}</a>
           </div>
 
           <!-- Upcoming Expirations Widget -->
