@@ -7,6 +7,8 @@
   import { usePlaylistStore } from '@/stores/playlist'
 
   const PERMANENCE_DAYS = 30
+  const DUE_DATE_DEADLINE_HOUR = 9
+  const TIMEZONE_OFFSET = '-03:00'
 
   const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'move-track', 'sell-slot'])
 
@@ -91,8 +93,21 @@
 
   const daysLeft = computed(() => {
     if (!props.request?.due_date) return null
-    const due = new Date(`${props.request.due_date}T00:00:00`).getTime()
+    const due = new Date(`${props.request.due_date}T${String(DUE_DATE_DEADLINE_HOUR).padStart(2, '0')}:00:00${TIMEZONE_OFFSET}`).getTime()
     return Math.max(0, Math.ceil((due - Date.now()) / (24 * 60 * 60 * 1000)))
+  })
+
+  const isExpired = computed(() => {
+    if (isFree.value || isPending.value) return false
+    if (!props.request?.due_date) return false
+    const due = new Date(`${props.request.due_date}T${String(DUE_DATE_DEADLINE_HOUR).padStart(2, '0')}:00:00${TIMEZONE_OFFSET}`).getTime()
+    return Date.now() >= due
+  })
+
+  const expiresLabel = computed(() => {
+    if (daysLeft.value == null) return 'sem prazo'
+    if (daysLeft.value <= 0) return 'hoje'
+    return daysLeft.value === 1 ? 'em 1 dia' : `em ${daysLeft.value} dias`
   })
 
   const pad = (n) => String(n).padStart(2, '0')
@@ -423,9 +438,11 @@
                   ? 'bg-surface-container-highest text-on-surface-variant'
                   : isPending
                     ? 'bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary-container'
-                    : 'bg-primary/10 border border-primary/30 text-primary'"
+                    : isExpired
+                      ? 'bg-[#ff1717]/10 border border-[#ff1717]/30 text-[#ff1717]'
+                      : 'bg-primary/10 border border-primary/30 text-primary'"
               >
-                {{ isFree ? 'LIVRE' : (isPending ? 'PENDENTE' : 'PAGA') }}
+                {{ isFree ? 'LIVRE' : (isPending ? 'PENDENTE' : (isExpired ? 'EXPIRADA' : 'PAGA')) }}
               </span>
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
             </div>
@@ -552,8 +569,11 @@
               <template v-if="isPending">
                 Esta posição está aguardando pagamento. Realize o pagamento para confirmar sua permanência.
               </template>
+              <template v-else-if="isExpired">
+                Esta posição está <strong class="text-tertiary">expirada</strong>. Renove agora para garantir a permanência na grade.
+              </template>
               <template v-else>
-                Esta posição está ativa e expira em <strong class="text-primary">{{ daysLeft != null ? `${daysLeft} dias` : 'sem prazo' }}</strong>. Renove agora para garantir a permanência na grade.
+                Esta posição está ativa e expira <strong class="text-primary">{{ expiresLabel }}</strong>. Renove agora para garantir a permanência na grade.
               </template>
             </p>
           </div>
