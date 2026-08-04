@@ -3,7 +3,7 @@
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
-  import { useGeneral } from '@/support/spotifyApi'
+  import { useGeneral, useProfile } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
 
   const PERMANENCE_DAYS = 30
@@ -42,6 +42,7 @@
   const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
   const { getTracks } = useGeneral()
+  const { executePlaylist } = useProfile()
   const playlistStore = usePlaylistStore()
 
   const requesterName = ref('')
@@ -434,6 +435,20 @@
     }
   }
 
+  const playTrack = async () => {
+    const uri = trackData.value?.uri
+    if (!uri) return
+    try {
+      const { status } = await executePlaylist({ uris: [uri] })
+      if (status !== 204) {
+        notify({ title: 'Ops', text: 'Nenhum dispositivo Spotify ativo!', type: 'error' })
+      }
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Não foi possível tocar a música!', type: 'error' })
+    }
+  }
+
   onBeforeUnmount(() => {
     resetRemoval()
   })
@@ -490,6 +505,13 @@
               </div>
             </div>
           </div>
+          <button
+            class="group flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary hover:text-on-primary transition-all active:scale-95"
+            @click="playTrack"
+          >
+            <font-awesome-icon icon="play-circle" class="text-[20px]" />
+            <span class="text-label-md font-bold uppercase tracking-wider">Tocar</span>
+          </button>
         </div>
 
         <!-- Right Panel: Management Form -->
