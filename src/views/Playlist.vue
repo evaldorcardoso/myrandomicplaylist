@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, onUnmounted, computed, reactive, ref, inject, watch } from 'vue'
+  import { onMounted, onUnmounted, computed, reactive, ref, inject, watch, toRaw, markRaw } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
@@ -265,10 +265,11 @@
 
   const buildSlots = () => {
     const requestsByTrackId = new Map(trackRequests.value.map(request => [request.track_id, request]))
-    state.tracks.forEach((track, index) => {
+    const tracks = toRaw(state.tracks)
+    tracks.forEach((track, index) => {
       track._slot = getTrackSlot(track, index, requestsByTrackId.get(track?.track?.id))
     })
-    countdownActive.value = state.tracks.some(track => track._slot?.dueTs != null)
+    countdownActive.value = tracks.some(track => track._slot?.dueTs != null)
     bumpSlots()
   }
 
@@ -403,7 +404,7 @@
   const onConfirmSellSlot = async () => {
     closeSellSlot()
     trackRequestsLoaded.value = false
-    state.tracks.forEach(track => {
+    toRaw(state.tracks).forEach(track => {
       track._slot = null
     })
     try {
@@ -494,7 +495,7 @@
 
   const reloadSlots = async () => {
     trackRequestsLoaded.value = false
-    state.tracks.forEach(track => {
+    toRaw(state.tracks).forEach(track => {
       track._slot = null
     })
     await loadTrackRequests()
@@ -720,8 +721,9 @@
     if (state.playlist?.owner?.display_name != currentUser.value?.display_name) {
       return
     }
-    for (let i = 0; i < state.tracks.length; i++) {
-      if (i != state.tracks[i].id) {
+    const tracks = toRaw(state.tracks)
+    for (let i = 0; i < tracks.length; i++) {
+      if (i != tracks[i].id) {
         showNotification(
           NOTIFICATIONS_TYPE.info,
           'Info',
@@ -748,17 +750,20 @@
     }
 
     const option = sortOptions[sortPosition.value]
+    const raw = toRaw(state.tracks)
+    const sorted = [...raw]
     if (option === 'top first') {
-      state.tracks.sort((a, b) => b.track?.popularity - a.track?.popularity)
+      sorted.sort((a, b) => b.track?.popularity - a.track?.popularity)
     } else if (option === 'top last') {
-      state.tracks.sort((a, b) => a.track?.popularity - b.track?.popularity)
+      sorted.sort((a, b) => a.track?.popularity - b.track?.popularity)
     } else if (option === 'added first') {
-      state.tracks.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
+      sorted.sort((a, b) => new Date(a.added_at) - new Date(b.added_at))
     } else if (option === 'added last') {
-      state.tracks.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
+      sorted.sort((a, b) => new Date(b.added_at) - new Date(a.added_at))
     } else {
-      state.tracks.sort((a, b) => a.id - b.id)
+      sorted.sort((a, b) => a.id - b.id)
     }
+    state.tracks = sorted
     checkDifferentSort()
     buildSlots()
     currentPage.value = 1
@@ -766,32 +771,33 @@
 
   const updateTracksOrder = async() => {
     isProcessing.value = true
-    var i = 0
-    var changes = 0
-    while(i < state.tracks.length) {
-      let id = state.tracks[i].id
-      if (id == i) {
-        i++
-        continue
+    const raw = toRaw(state.tracks)
+    const moves = []
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i].id !== i) {
+        moves.push({ from: raw[i].id, to: i })
       }
-      changes++
-      notify({ title: 'Please, wait', text: 'Sorting songs... (' + changes + '/' + state.tracks.length + ')', type: 'info' })
-      const formData = {
-        'range_start': id,
-        'insert_before': i
-      }
-      await updateTracksOfPlaylist(playlistId.value, formData)
-      state.tracks.sort((a, b) => a.id - b.id)
-      let temp = state.tracks.splice(id, 1)
-      state.tracks.splice(i, 0, temp[0])
-      for(let j=0; j<state.tracks.length; j++) {
-        state.tracks[j].id = j
-      }
-      sortUserPlaylist(false)
-      i = 0
     }
 
-    notify({ title: 'Alright!', text: 'Playlist updated with ' + changes + ' changes!', type: 'success' })
+    if (moves.length > 0) {
+      notify({ title: 'Please, wait', text: `Sorting songs... (0/${moves.length})`, type: 'info' })
+    }
+
+    for (let m = 0; m < moves.length; m++) {
+      const { from, to } = moves[m]
+      const formData = {
+        'range_start': from,
+        'insert_before': to
+      }
+      await updateTracksOfPlaylist(playlistId.value, formData)
+      if (m % 5 === 0 || m === moves.length - 1) {
+        notify({ title: 'Please, wait', text: `Sorting songs... (${m + 1}/${moves.length})`, type: 'info' })
+      }
+    }
+
+    if (moves.length > 0) {
+      notify({ title: 'Alright!', text: 'Playlist updated with ' + moves.length + ' changes!', type: 'success' })
+    }
     sortPosition.value = 0
     await handleRefresh()
     differentSort.value = false

@@ -1,4 +1,4 @@
-import { computed, inject, reactive, ref } from 'vue'
+import { computed, inject, reactive, ref, markRaw, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
 import { useGeneral, useProfile } from '@/support/spotifyApi'
@@ -108,11 +108,13 @@ export function usePlaylistData(callbacks = {}) {
   }
 
   const getPlaylistTracks = async(force = false) => {
-    state.tracks = (await playlistStore.getTracks(playlistId.value)) ?? []
-    if ((state.tracks.length === 0) || force) {
+    const storeTracks = (await playlistStore.getTracks(playlistId.value)) ?? []
+    if ((storeTracks.length === 0) || force) {
       const spotifyTracks = await getTracks(playlistId.value)
       playlistStore.loadTracks(playlistId.value, spotifyTracks)
       state.tracks = (await playlistStore.getTracks(playlistId.value)) ?? []
+    } else {
+      state.tracks = storeTracks
     }
   }
 
