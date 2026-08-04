@@ -901,7 +901,9 @@
 
       <div class="relative shrink-0">
         <div class="w-40 h-40 md:w-64 md:h-64 shadow-2xl rounded-xl overflow-hidden bg-surface-container">
+          <div v-if="isLoading || !(state.playlist?.images?.[0]?.url || state.playlist?.image)" class="w-full h-full animate-pulse bg-surface-container-high"></div>
           <img
+            v-else
             class="w-full h-full object-cover"
             :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image"
           />
@@ -1158,14 +1160,45 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="isLoading && state.tracks.length === 0">
-              <td :colspan="tableColumns" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
-                <div class="flex items-center justify-center gap-3">
-                  <font-awesome-icon icon="spinner" spin class="text-primary" />
-                  <span>Carregando músicas...</span>
-                </div>
-              </td>
-            </tr>
+            <template v-if="isLoading && state.tracks.length === 0">
+              <tr v-for="n in 10" :key="'skeleton-' + n" class="hover:bg-surface-container-high/30">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded animate-pulse bg-surface-container-high"></div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg animate-pulse bg-surface-container-high"></div>
+                    <div class="flex flex-col gap-1.5">
+                      <div class="h-4 w-40 rounded animate-pulse bg-surface-container-high"></div>
+                      <div class="h-3 w-24 rounded animate-pulse bg-surface-container-high"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <div class="h-3 w-16 mx-auto rounded animate-pulse bg-surface-container-high"></div>
+                </td>
+                <td v-if="hasSoldSlots" class="px-6 py-4 text-center">
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="h-3 w-16 rounded animate-pulse bg-surface-container-high"></div>
+                    <div class="h-2 w-10 rounded animate-pulse bg-surface-container-high"></div>
+                  </div>
+                </td>
+                <td v-if="playlistSaved" class="px-6 py-4">
+                  <div class="h-5 w-16 rounded-full animate-pulse bg-surface-container-high"></div>
+                </td>
+                <td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
+                  <div class="h-4 w-14 rounded animate-pulse bg-surface-container-high"></div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-1">
+                    <div class="w-4 h-4 rounded animate-pulse bg-surface-container-high"></div>
+                    <div class="h-3 w-8 rounded animate-pulse bg-surface-container-high"></div>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="pagedTracks.length === 0">
               <td :colspan="tableColumns" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
                 Nenhuma música nesta categoria.
