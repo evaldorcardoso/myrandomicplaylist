@@ -260,7 +260,8 @@
       const pricePositionPromise = !pricePositionExists.value
         ? createPricePosition({
             playlist_id: selectedPlaylist.value || props.playlistId,
-            position: position.value,
+            min_position: position.value,
+            max_position: position.value,
             value: parseValue()
           })
         : Promise.resolve(null)

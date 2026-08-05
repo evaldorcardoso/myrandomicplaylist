@@ -95,7 +95,17 @@
   const countdownActive = ref(false)
   const trackRequests = ref([])
   const trackRequestsLoaded = ref(false)
-  const pricePositions = ref(new Map())
+  const pricePositions = ref([])
+  const priceRangeValues = computed(() => [...pricePositions.value].sort((a, b) => a.min_position - b.min_position))
+
+  const getPriceByPosition = (position) => {
+    for (const range of priceRangeValues.value) {
+      if (position >= range.min_position && position <= range.max_position) {
+        return range.value
+      }
+    }
+    return null
+  }
   const editingRequestData = ref(null)
   const deleteRequestData = ref(null)
   const isLoading = ref(true)
@@ -146,7 +156,7 @@
     return state.tracks.some(track => track._slot?.status && track._slot.status !== 'free')
   })
 
-  const hasPriceValues = computed(() => pricePositions.value.size > 0)
+  const hasPriceValues = computed(() => pricePositions.value.length > 0)
 
   const orphanTrackRequests = computed(() => {
     const trackIds = new Set(state.tracks.map(t => t.track?.id))
@@ -303,16 +313,24 @@
     trackRequests.value = await getTrackRequests(playlistId.value)
     trackRequestsLoaded.value = true
     const { data: priceRows } = await getPricePositions(playlistId.value)
-    pricePositions.value = new Map((priceRows ?? []).map(row => [row.position, row.value]))
+    pricePositions.value = priceRows ?? []
     buildSlots()
   }
 
   const slotValueLabel = (track) => {
     if (track._slot?.status && track._slot.status !== 'free') {
-      return track._slot?.value ?? '-'
+      return { value: track._slot?.value ?? '-', range: null }
     }
-    const value = pricePositions.value.get((track.id ?? 0) + 1)
-    return value != null ? formatCurrency(value) : '-'
+    const pos = (track.id ?? 0) + 1
+    for (const range of priceRangeValues.value) {
+      if (pos >= range.min_position && pos <= range.max_position) {
+        const label = range.min_position === range.max_position
+          ? formatCurrency(range.value)
+          : `${formatCurrency(range.value)} (faixa ${range.min_position}-${range.max_position})`
+        return { value: label, range }
+      }
+    }
+    return { value: '-', range: null }
   }
 
   const statusPill = (slot) => {
@@ -988,7 +1006,7 @@
     :track="sellSlotTrack"
     :playlist-id="playlistId"
     :playlist="state.playlist"
-    :price-position-value="sellSlotTrack ? pricePositions.get((sellSlotTrack.id ?? 0) + 1) ?? null : null"
+    :price-position-value="sellSlotTrack ? getPriceByPosition((sellSlotTrack.id ?? 0) + 1) ?? null : null"
     :select-playlist="false"
     @close="closeSellSlot"
     @confirm="onConfirmSellSlot"
@@ -1357,10 +1375,10 @@
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-              <td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
-                <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
-                <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track) }}</span>
-              </td>
+<td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
+                  <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
+                  <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track).value }}</span>
+                </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-1 text-label-md text-on-surface">
                   <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />

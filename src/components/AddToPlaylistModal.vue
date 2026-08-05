@@ -39,9 +39,17 @@
   const submitState = ref('idle')
   const errorMessage = ref('')
   const soldPositions = ref(new Set())
-  const pricePositions = ref(new Map())
+  const pricePositions = ref([])
+  const priceRangeValues = computed(() => [...pricePositions.value].sort((a, b) => a.min_position - b.min_position))
 
-  const trackData = computed(() => props.track ?? null)
+  const getPriceByPosition = (position) => {
+    for (const range of priceRangeValues.value) {
+      if (position >= range.min_position && position <= range.max_position) {
+        return range.value
+      }
+    }
+    return null
+  }
 
   const duration = computed(() => {
     if (!trackData.value?.duration_ms) return '--:--'
@@ -75,7 +83,7 @@
       if (soldPositions.value.has(pos)) {
         label += ' (Vendida)'
       } else {
-        const price = pricePositions.value.get(pos)
+        const price = getPriceByPosition(pos)
         label += price != null ? ` (Disponível por ${formatCurrency(price)})` : ' (Disponível)'
       }
       return { pos, label }
@@ -130,7 +138,7 @@
       requests.map(request => request.position).filter(position => position != null)
     )
     const { data: priceRows } = await getPricePositions(playlistId)
-    pricePositions.value = new Map((priceRows ?? []).map(row => [row.position, row.value]))
+    pricePositions.value = priceRows ?? []
   }
 
   const selectPlaylist = async (playlistId) => {

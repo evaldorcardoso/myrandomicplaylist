@@ -145,8 +145,43 @@ export function TrackRequestService() {
     const getPricePositions = async (playlistId) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
-            .select('position, value')
+            .select('id, min_position, max_position, value')
             .eq('playlist_id', playlistId)
+            .order('min_position', { ascending: true })
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
+    const getPricePositionsWithMetadata = async (playlistId) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .select('*, playlists(name, image)')
+            .eq('playlist_id', playlistId)
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        const items = (data ?? []).map(item => ({
+            ...item,
+            playlist_name: item.playlists?.name ?? null,
+            playlist_image: item.playlists?.image ?? null
+        }))
+        return { data: items, error: null }
+    }
+
+    const getPricePositionByRange = async (playlistId, position) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .select('id, min_position, max_position, value')
+            .eq('playlist_id', playlistId)
+            .lte('min_position', position)
+            .gte('max_position', position)
+            .maybeSingle()
 
         if (error) {
             console.error(error.message)
@@ -160,7 +195,7 @@ export function TrackRequestService() {
             .from(PRICE_POSITIONS_TABLE)
             .select('*, playlists(name, image)')
             .order('playlist_id', { ascending: true })
-            .order('position', { ascending: true })
+            .order('min_position', { ascending: true })
 
         if (error) {
             console.error(error.message)
@@ -202,24 +237,13 @@ export function TrackRequestService() {
     }
 
     const getPricePosition = async (playlistId, position) => {
-        const { data, error } = await supabase
-            .from(PRICE_POSITIONS_TABLE)
-            .select('value')
-            .eq('playlist_id', playlistId)
-            .eq('position', position)
-            .maybeSingle()
-
-        if (error) {
-            console.error(error.message)
-            return { data: null, error }
-        }
-        return { data, error: null }
+        return getPricePositionByRange(playlistId, position)
     }
 
-    const createPricePosition = async ({ playlist_id, position, value }) => {
+    const createPricePosition = async ({ playlist_id, min_position, max_position, value }) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
-            .insert({ playlist_id, position, value })
+            .insert({ playlist_id, min_position, max_position, value })
             .select()
 
         if (error) {
@@ -228,6 +252,8 @@ export function TrackRequestService() {
         }
         return { data, error: null }
     }
+
+    const createPriceGroup = createPricePosition
 
     const getOrCreateRequester = async ({ name, curator }) => {
         const trimmedName = String(name ?? '').trim()
@@ -276,8 +302,11 @@ export function TrackRequestService() {
         getOrCreateRequester,
         getCurators,
         getPricePositions,
+        getPricePositionsWithMetadata,
+        getPricePositionByRange,
         getPricePosition,
         createPricePosition,
+        createPriceGroup,
         getAllPricePositions,
         updatePricePosition,
         deletePricePosition

@@ -73,7 +73,8 @@
   const editingPrice = ref(null)
   const priceForm = reactive({
     playlist_id: '',
-    position: '',
+    min_position: '',
+    max_position: '',
     value: ''
   })
   const priceSubmitting = ref(false)
@@ -139,8 +140,10 @@
   const canSavePrice = computed(() => {
     if (priceSubmitting.value) return false
     if (!priceForm.playlist_id) return false
-    const pos = parseInt(priceForm.position, 10)
-    if (!Number.isFinite(pos) || pos < 1) return false
+    const minPos = parseInt(priceForm.min_position, 10)
+    const maxPos = parseInt(priceForm.max_position, 10)
+    if (!Number.isFinite(minPos) || minPos < 1) return false
+    if (!Number.isFinite(maxPos) || maxPos < minPos) return false
     const val = parsePriceValue()
     return Number.isFinite(val) && val > 0
   })
@@ -148,7 +151,8 @@
   const openCreatePrice = () => {
     editingPrice.value = null
     priceForm.playlist_id = ''
-    priceForm.position = ''
+    priceForm.min_position = ''
+    priceForm.max_position = ''
     priceForm.value = ''
     priceModalOpen.value = true
   }
@@ -156,7 +160,8 @@
   const openEditPrice = (item) => {
     editingPrice.value = item
     priceForm.playlist_id = item.playlist_id ?? ''
-    priceForm.position = item.position ?? ''
+    priceForm.min_position = item.min_position ?? ''
+    priceForm.max_position = item.max_position ?? ''
     priceForm.value = item.value != null ? Number(item.value).toFixed(2).replace('.', ',') : ''
     priceModalOpen.value = true
   }
@@ -172,40 +177,44 @@
     priceSubmitting.value = true
     const payload = {
       playlist_id: priceForm.playlist_id,
-      position: parseInt(priceForm.position, 10),
+      min_position: parseInt(priceForm.min_position, 10),
+      max_position: parseInt(priceForm.max_position, 10),
       value: parsePriceValue()
     }
     try {
       if (editingPrice.value) {
         const { error } = await updatePricePosition(editingPrice.value.id, payload)
         if (error) throw error
-        notify({ title: 'Alright', text: 'Posição atualizada!', type: 'success' })
+        notify({ title: 'Alright', text: 'Faixa atualizada!', type: 'success' })
       } else {
         const { error } = await createPricePosition(payload)
         if (error) throw error
-        notify({ title: 'Alright', text: 'Posição criada!', type: 'success' })
+        notify({ title: 'Alright', text: 'Faixa criada!', type: 'success' })
       }
       priceModalOpen.value = false
       editingPrice.value = null
       await loadPricePositions()
     } catch (e) {
       console.error(e)
-      notify({ title: 'Ops', text: 'Erro ao salvar posição!', type: 'error' })
+      notify({ title: 'Ops', text: 'Erro ao salvar faixa!', type: 'error' })
     } finally {
       priceSubmitting.value = false
     }
   }
 
   const removePricePosition = async (item) => {
-    if (!confirm(`Remover a posição ${item.position} de "${playlistName(item)}"?`)) return
+    const rangeLabel = item.min_position === item.max_position
+      ? `posição ${item.min_position}`
+      : `posições ${item.min_position} a ${item.max_position}`
+    if (!confirm(`Remover ${rangeLabel} de "${playlistName(item)}"?`)) return
     try {
       const { error } = await deletePricePosition(item.id)
       if (error) throw error
-      notify({ title: 'Alright', text: 'Posição removida!', type: 'success' })
+      notify({ title: 'Alright', text: 'Faixa removida!', type: 'success' })
       await loadPricePositions()
     } catch (e) {
       console.error(e)
-      notify({ title: 'Ops', text: 'Erro ao remover posição!', type: 'error' })
+      notify({ title: 'Ops', text: 'Erro ao remover faixa!', type: 'error' })
     }
   }
 
@@ -371,7 +380,7 @@
                       class="hover:bg-surface-container-high/50 transition-colors"
                     >
                       <td class="px-4 py-2.5 text-center">
-                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-label-md font-bold">{{ item.position }}</span>
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-label-md font-bold">{{ item.min_position === item.max_position ? item.min_position : `${item.min_position}-${item.max_position}` }}</span>
                       </td>
                       <td class="px-4 py-2.5 text-right">
                         <span class="font-mono text-body-md text-on-surface">{{ formatCurrency(item.value) }}</span>
@@ -418,8 +427,8 @@
                 <span class="material-symbols-outlined text-primary">{{ editingPrice ? 'edit' : 'add' }}</span>
               </div>
               <div>
-                <h3 class="text-headline-sm font-display text-on-surface">{{ editingPrice ? 'Editar Posição' : 'Nova Posição' }}</h3>
-                <p class="text-label-sm text-on-surface-variant">Defina o valor da posição na playlist.</p>
+                <h3 class="text-headline-sm font-display text-on-surface">{{ editingPrice ? 'Editar Faixa de Preço' : 'Nova Faixa de Preço' }}</h3>
+                <p class="text-label-sm text-on-surface-variant">Defina uma faixa de posições e seu valor na playlist.</p>
               </div>
             </div>
             <button
@@ -448,25 +457,36 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div class="flex flex-col gap-2">
-                <label class="text-label-md text-primary uppercase tracking-wider font-bold">Posição</label>
+                <label class="text-label-md text-primary uppercase tracking-wider font-bold">Posição de</label>
                 <input
-                  v-model="priceForm.position"
+                  v-model="priceForm.min_position"
                   type="number"
                   min="1"
-                  placeholder="Ex: 1"
+                  placeholder="Ex: 3"
                   class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                 />
               </div>
               <div class="flex flex-col gap-2">
-                <label class="text-label-md text-primary uppercase tracking-wider font-bold">Valor (R$)</label>
+                <label class="text-label-md text-primary uppercase tracking-wider font-bold">Posição até</label>
                 <input
-                  v-model="priceForm.value"
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="0,00"
+                  v-model="priceForm.max_position"
+                  type="number"
+                  min="1"
+                  placeholder="Ex: 10"
                   class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
                 />
               </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-label-md text-primary uppercase tracking-wider font-bold">Valor (R$)</label>
+              <input
+                v-model="priceForm.value"
+                type="text"
+                inputmode="decimal"
+                placeholder="0,00"
+                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
+              />
             </div>
           </div>
 
