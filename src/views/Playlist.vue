@@ -9,6 +9,7 @@
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
   import EditPlaylistModal from '@/components/EditPlaylistModal.vue'
+  import OrphanRequestModal from '@/components/OrphanRequestModal.vue'
   import { NOTIFICATIONS_TYPE } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
@@ -24,7 +25,7 @@
   const { updateTracksOfPlaylist, updatePlaylist, uploadPlaylistCoverImage, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
-  const { getTrackRequests, getPricePositions, deleteTrackRequest } = TrackRequestService()
+  const { getTrackRequests, getPricePositions, deleteTrackRequest, updateTrackRequest } = TrackRequestService()
 
   const PAGE_SIZE = 20
 
@@ -95,6 +96,8 @@
   const trackRequests = ref([])
   const trackRequestsLoaded = ref(false)
   const pricePositions = ref(new Map())
+  const editingRequestData = ref(null)
+  const deleteRequestData = ref(null)
   const isLoading = ref(true)
   const sellSlotOpened = ref(false)
   const sellSlotTrack = ref(null)
@@ -144,6 +147,11 @@
   })
 
   const hasPriceValues = computed(() => pricePositions.value.size > 0)
+
+  const orphanTrackRequests = computed(() => {
+    const trackIds = new Set(state.tracks.map(t => t.track?.id))
+    return trackRequests.value.filter(r => r.track_id && !trackIds.has(r.track_id))
+  })
 
   const tableColumns = computed(() => {
     const base = 5 + (hasSoldSlots.value ? 1 : 0) + ((hasSoldSlots.value || hasPriceValues.value) ? 1 : 0)
@@ -686,6 +694,92 @@
     }
   }
 
+  const orphanEditOpened = ref(false)
+  const orphanEditSubmitting = ref(false)
+  const orphanDeleteOpened = ref(false)
+  const orphanDeleteSubmitting = ref(false)
+
+  const openOrphanEdit = (request) => {
+    editingRequestData.value = {
+      id: request.id,
+      name: request.name ?? '',
+      requester_name: request.requester_name ?? '',
+      curator: request.curator ?? '',
+      value: request.value != null ? Number(request.value).toFixed(2).replace('.', ',') : '',
+      due_date: request.due_date ?? '',
+      status: request.status ?? 'pending',
+      requester_id: request.requester_id ?? null,
+      position: request.position ?? null,
+      track_id: request.track_id ?? null
+    }
+    orphanEditOpened.value = true
+  }
+
+  const closeOrphanEdit = () => {
+    orphanEditOpened.value = false
+    editingRequestData.value = null
+  }
+
+  const handleOrphanEditSave = async (formData) => {
+    if (!editingRequestData.value?.id) return
+    orphanEditSubmitting.value = true
+    try {
+      const raw = String(formData?.value ?? '').trim()
+      const parsedValue = raw === '' ? null : parseFloat(raw.replace(/\./g, '').replace(',', '.'))
+      const payload = {}
+      if (parsedValue !== null && Number.isFinite(parsedValue)) {
+        payload.value = parsedValue
+      }
+      if (formData?.due_date) {
+        payload.due_date = formData.due_date
+      }
+      if (formData?.status) {
+        payload.status = formData.status
+      }
+
+      const { error } = await updateTrackRequest(editingRequestData.value.id, payload)
+      if (error) throw error
+
+      notify({ title: 'Alright', text: 'Request atualizado!', type: 'success' })
+      orphanEditOpened.value = false
+      editingRequestData.value = null
+      await loadTrackRequests()
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Erro ao atualizar o request.', type: 'error' })
+    } finally {
+      orphanEditSubmitting.value = false
+    }
+  }
+
+  const openOrphanDelete = (request) => {
+    deleteRequestData.value = request
+    orphanDeleteOpened.value = true
+  }
+
+  const closeOrphanDelete = () => {
+    orphanDeleteOpened.value = false
+    deleteRequestData.value = null
+  }
+
+  const handleOrphanDelete = async () => {
+    if (!deleteRequestData.value?.id) return
+    orphanDeleteSubmitting.value = true
+    try {
+      const { error } = await deleteTrackRequest(deleteRequestData.value.id)
+      if (error) throw error
+      notify({ title: 'Alright', text: 'Request excluído!', type: 'success' })
+      orphanDeleteOpened.value = false
+      deleteRequestData.value = null
+      await loadTrackRequests()
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Erro ao excluir o request.', type: 'error' })
+    } finally {
+      orphanDeleteSubmitting.value = false
+    }
+  }
+
   const openEditPlaylist = () => {
     editPlaylistOpened.value = true
   }
@@ -926,6 +1020,22 @@
     :is-submitting="editPlaylistSubmitting"
     @close="closeEditPlaylist"
     @confirm="handleEditPlaylistConfirm"
+  />
+  <OrphanRequestModal
+    :open="orphanEditOpened"
+    :mode="'edit'"
+    :request="editingRequestData"
+    :is-submitting="orphanEditSubmitting"
+    @close="closeOrphanEdit"
+    @confirm="handleOrphanEditSave"
+  />
+  <OrphanRequestModal
+    :open="orphanDeleteOpened"
+    :mode="'delete'"
+    :request="deleteRequestData"
+    :is-submitting="orphanDeleteSubmitting"
+    @close="closeOrphanDelete"
+    @confirm="handleOrphanDelete"
   />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
@@ -1336,6 +1446,96 @@
             <font-awesome-icon icon="chevron-right" />
           </button>
         </div>
+      </div>
+    </section>
+
+    <!-- Orphan Track Requests Section -->
+    <section v-if="orphanTrackRequests.length > 0" class="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 shadow-xl">
+      <div class="p-6 border-b border-outline-variant/10 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-6">
+          <span class="text-on-surface text-headline-sm">Músicas Fora da Playlist</span>
+          <span class="text-body-sm text-on-surface-variant">
+            {{ orphanTrackRequests.length }} {{ orphanTrackRequests.length === 1 ? 'request' : 'requests' }} com música que não está mais na playlist
+          </span>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+          <thead>
+            <tr class="bg-surface-container-low/50">
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider"># Pos</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Solicitante</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Vencimento</th>
+              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10">
+            <tr
+              v-for="request in orphanTrackRequests"
+              :key="request.id"
+              class="hover:bg-surface-container-high/30 transition-colors"
+            >
+              <td class="px-6 py-4">
+                <div class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold bg-surface-container-high text-on-surface-variant">
+                  {{ request.position ?? '--' }}
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+                    <font-awesome-icon icon="music" class="text-on-surface-variant" />
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-on-surface text-body-md">{{ request.name }}</span>
+                    <span class="text-on-surface-variant text-body-sm">Não está mais na playlist</span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-body-sm text-on-surface-variant">{{ request.requester_name ?? '-' }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <span
+                  class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                  :class="{
+                    'bg-primary/10 text-primary border border-primary/20': request.status === 'paid',
+                    'bg-secondary-container/20 text-secondary border border-secondary/20': request.status === 'pending'
+                  }"
+                >
+                  {{ request.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-label-md text-on-surface">{{ request.value != null ? formatCurrency(request.value) : '-' }}</span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="text-body-sm text-on-surface-variant">{{ formatDate(request.due_date) }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-center gap-2">
+                  <button
+                    class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors"
+                    title="Editar request"
+                    @click="openOrphanEdit(request)"
+                  >
+                    <font-awesome-icon icon="edit" />
+                  </button>
+                  <button
+                    class="p-2 rounded-lg bg-surface-container-highest text-on-surface-variant hover:text-error transition-colors"
+                    title="Excluir request"
+                    @click="openOrphanDelete(request)"
+                  >
+                    <font-awesome-icon icon="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </div>
