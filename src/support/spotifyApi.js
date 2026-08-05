@@ -1,7 +1,9 @@
 import { inject } from "vue"
+import { useSettingsStore } from "@/stores/settings"
 
 export function useProfile() {
     const $axios = inject("useAxios")
+    const settingsStore = useSettingsStore()
 
     const getProfile = async () => {
         return $axios
@@ -19,15 +21,16 @@ export function useProfile() {
     }
 
     const getPlaylists = async() => {
+        const pageSize = settingsStore.getSessionSetting('playlistPageSize')
         var offset = 0
         var total = 0
         var playlists = []
         while (playlists.length < total || offset == 0) {
             let { data } = await $axios
-                .get(`${import.meta.env.VITE_API_URL}/me/playlists?limit=50&offset=${offset}`)
+                .get(`${import.meta.env.VITE_API_URL}/me/playlists?limit=${pageSize}&offset=${offset}`)
             total = data.total
             playlists = playlists.concat(data.items)
-            offset += 50
+            offset += pageSize
         }
 
         return playlists
@@ -97,6 +100,7 @@ export function useProfile() {
 
 export function useGeneral() {
     const $axios = inject("useAxios")
+    const settingsStore = useSettingsStore()
 
     const getPlaylist = async (playlistId) => {
         return $axios
@@ -114,15 +118,16 @@ export function useGeneral() {
     }
 
     const getTracks = async (playlistId) => {
+        const pageSize = settingsStore.getSessionSetting('tracksPageSize')
         var offset = 0
         var total = 0
         var tracks = []
         while (tracks.length < total || offset == 0) {
             let { data } = await $axios
-                .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}/tracks?limit=100&offset=${offset}`)
+                .get(`${import.meta.env.VITE_API_URL}/playlists/${playlistId}/tracks?limit=${pageSize}&offset=${offset}`)
             total = data.total
             tracks = tracks.concat(data.items)
-            offset += 100
+            offset += pageSize
         }
 
         return tracks

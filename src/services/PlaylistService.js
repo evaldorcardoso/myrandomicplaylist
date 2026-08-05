@@ -3,6 +3,7 @@ import { usePlaylistStore } from '@/stores/playlist'
 import { supabase } from '@/support/supabaseClient'
 import { invalidateOccupancy } from '@/support/occupancyCache'
 import { useUserStore } from '../stores/user'
+import { useSettingsStore } from '@/stores/settings'
 
 export function PlaylistService() {
     const playlistStore = usePlaylistStore()
@@ -165,26 +166,24 @@ export function PlaylistService() {
 
     const getGenres = async(artists) => {
         const uniqueArtistIds = new Set();
+        const settingsStore = useSettingsStore()
+        const batchSize = settingsStore.getSessionSetting('artistsBatchSize')
     
-        // Contagem de artistas e coleta de IDs únicos
         artists.forEach(artist => {
             const artistId = artist.id;
-            // Adiciona o ID ao conjunto de IDs únicos
             uniqueArtistIds.add(artistId);
         });
     
         const allArtistIds = Array.from(uniqueArtistIds);
         let allArtistsDetails = [];
         
-        // Processa artistas em lotes de 50 (limite da API do Spotify)
-        for (let i = 0; i < allArtistIds.length; i += 50) {
-            const idsBatch = allArtistIds.slice(i, i + 50).join(',');
+        for (let i = 0; i < allArtistIds.length; i += batchSize) {
+            const idsBatch = allArtistIds.slice(i, i + batchSize).join(',');
             const artistsBatch = await getArtists(idsBatch);
             allArtistsDetails = allArtistsDetails.concat(artistsBatch);
         }
     
         const genreCount = {};    
-        // Conta a ocorrência de cada gênero
         allArtistsDetails.forEach(artist => {
             if (artist.genres && Array.isArray(artist.genres)) {
                 artist.genres.forEach(genre => {
@@ -193,11 +192,11 @@ export function PlaylistService() {
             }
         });
         
-        // Transforma o objeto de contagem em array, ordena e pega os principais
+        const topGenresCount = settingsStore.getSessionSetting('topGenresCount')
         const topGenres = Object.entries(genreCount)
             .map(([genre, count]) => ({ genre, count }))
             .sort((a, b) => b.count - a.count)
-            .slice(0, 10);
+            .slice(0, topGenresCount);
     
         return topGenres
     }

@@ -102,7 +102,7 @@
 
       <button
         class="flex items-center px-4 py-3.5 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-300 group text-left"
-        @click="openLink('https://developer.spotify.com/dashboard')"
+        @click="closeAndGo('/configuracoes')"
       >
         <span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">settings</span>
         <span class="text-body-md">Configurações</span>

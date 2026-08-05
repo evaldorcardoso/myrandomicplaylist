@@ -9,6 +9,7 @@
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import { useGeneral } from '@/support/spotifyApi'
   import { invalidateOccupancy } from '@/support/occupancyCache'
+  import { useSettingsStore } from '@/stores/settings'
   import { notify } from "@kyvg/vue3-notification";
 
   const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
@@ -17,17 +18,18 @@
   const { removeTracksOfPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
+  const settingsStore = useSettingsStore()
   const router = useRouter()
   const state = reactive({
     data: null
   })
   const isLoading = ref(true)
 
-  const DISPLAY_LIMIT = 5
+  const DISPLAY_LIMIT = computed(() => settingsStore.getSessionSetting('dashboardExpirationsDisplay'))
   const showAllExpirations = ref(false)
   const visibleExpirations = computed(() => {
     const expirations = state.data?.expirations ?? []
-    return showAllExpirations.value ? expirations : expirations.slice(0, DISPLAY_LIMIT)
+    return showAllExpirations.value ? expirations : expirations.slice(0, DISPLAY_LIMIT.value)
   })
 
   let countdownInterval = null
