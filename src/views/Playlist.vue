@@ -81,6 +81,7 @@
   const editPlaylistOpened = ref(false)
   const editPlaylistSubmitting = ref(false)
   const activeTab = ref('Todas')
+  const searchQuery = ref('')
   const currentPage = ref(1)
   const sortPosition = ref(0)
   const sortDropdownOpen = ref(false)
@@ -201,17 +202,32 @@
       .reduce((sum, r) => sum + (r.value ?? 0), 0)
   })
 
-  const totalPages = computed(() => Math.max(1, Math.ceil(filteredTracks.value.length / PAGE_SIZE)))
+  const searchedTracks = computed(() => {
+    const q = searchQuery.value.trim().toLowerCase()
+    if (!q) return filteredTracks.value
+    return filteredTracks.value.filter(t => {
+      const name = (t.track?.name ?? '').toLowerCase()
+      const artists = (t.track?.artists?.map(a => a.name).join(', ') ?? '').toLowerCase()
+      const pos = String((t.id ?? 0) + 1)
+      return name.includes(q) || artists.includes(q) || pos === q
+    })
+  })
+
+  const totalPages = computed(() => Math.max(1, Math.ceil(searchedTracks.value.length / PAGE_SIZE)))
 
   const pagedTracks = computed(() => {
     if (activeTab.value !== 'Todas') {
-      return filteredTracks.value
+      return searchedTracks.value
     }
     const start = (currentPage.value - 1) * PAGE_SIZE
-    return filteredTracks.value.slice(start, start + PAGE_SIZE)
+    return searchedTracks.value.slice(start, start + PAGE_SIZE)
   })
 
   watch(activeTab, () => {
+    currentPage.value = 1
+  })
+
+  watch(searchQuery, () => {
     currentPage.value = 1
   })
 
@@ -912,6 +928,29 @@
     @confirm="handleEditPlaylistConfirm"
   />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
+    <div
+      class="sticky top-0 z-30 h-16 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 flex items-center px-gutter md:px-lg"
+    >
+      <div class="relative w-full max-w-[480px] group">
+        <font-awesome-icon
+          icon="search"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors"
+        />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Buscar por nome, artista ou posição..."
+          class="w-full bg-surface-container-low border border-outline-variant/30 rounded-full py-2.5 pl-12 pr-10 text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-inner"
+        />
+        <button
+          v-if="searchQuery"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface text-[14px]"
+          @click="searchQuery = ''"
+        >
+          <font-awesome-icon icon="times" />
+        </button>
+      </div>
+    </div>
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
       <span>Processing...</span>
@@ -1272,7 +1311,8 @@
             </template>
             <tr v-else-if="pagedTracks.length === 0">
               <td :colspan="tableColumns" class="px-6 py-10 text-center text-on-surface-variant text-body-sm">
-                Nenhuma música nesta categoria.
+                <template v-if="searchQuery.trim()">Nenhuma música encontrada para "{{ searchQuery }}".</template>
+                <template v-else>Nenhuma música nesta categoria.</template>
               </td>
             </tr>
           </tbody>
