@@ -928,36 +928,13 @@
     @confirm="handleEditPlaylistConfirm"
   />
   <div class="page px-gutter md:px-lg py-md space-y-lg">
-    <div
-      class="sticky top-0 z-30 h-16 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 flex items-center px-gutter md:px-lg"
-    >
-      <div class="relative w-full max-w-[480px] group">
-        <font-awesome-icon
-          icon="search"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors"
-        />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar por nome, artista ou posição..."
-          class="w-full bg-surface-container-low border border-outline-variant/30 rounded-full py-2.5 pl-12 pr-10 text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-inner"
-        />
-        <button
-          v-if="searchQuery"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface text-[14px]"
-          @click="searchQuery = ''"
-        >
-          <font-awesome-icon icon="times" />
-        </button>
-      </div>
-    </div>
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
       <span>Processing...</span>
     </div>
 
     <!-- Header Section: Playlist Profile -->
-    <section class="relative flex flex-col md:flex-row gap-lg items-end pb-xl">
+    <section class="relative flex flex-col md:flex-row gap-lg items-end">
       <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div class="relative shrink-0">
@@ -1060,6 +1037,20 @@
         </div>
       </div>
     </section>
+
+    <!-- Search Box -->
+    <div class="relative w-full group">
+      <font-awesome-icon
+        icon="search"
+        class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors"
+      />
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Buscar músicas nesta playlist..."
+        class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-4 pl-12 pr-6 text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-inner"
+      />
+    </div>
 
     <!-- Table Section -->
     <section class="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 shadow-xl">
