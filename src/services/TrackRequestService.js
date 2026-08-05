@@ -155,6 +155,52 @@ export function TrackRequestService() {
         return { data, error: null }
     }
 
+    const getAllPricePositions = async () => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .select('*, playlists(name, image)')
+            .order('playlist_id', { ascending: true })
+            .order('position', { ascending: true })
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        const items = (data ?? []).map(item => ({
+            ...item,
+            playlist_name: item.playlists?.name ?? null,
+            playlist_image: item.playlists?.image ?? null
+        }))
+        return { data: items, error: null }
+    }
+
+    const updatePricePosition = async (id, payload) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .update(payload)
+            .eq('id', id)
+            .select()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
+    const deletePricePosition = async (id) => {
+        const { data, error } = await supabase
+            .from(PRICE_POSITIONS_TABLE)
+            .delete()
+            .eq('id', id)
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
     const getPricePosition = async (playlistId, position) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
@@ -231,6 +277,9 @@ export function TrackRequestService() {
         getCurators,
         getPricePositions,
         getPricePosition,
-        createPricePosition
+        createPricePosition,
+        getAllPricePositions,
+        updatePricePosition,
+        deletePricePosition
     }
 }
