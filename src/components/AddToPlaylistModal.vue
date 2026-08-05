@@ -21,6 +21,8 @@
     }
   })
 
+  const trackData = computed(() => props.track ?? null)
+
   const { addTracksToPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
@@ -238,6 +240,7 @@
     const tracks = await getTracks(playlistId)
     playlistStore.loadTracks(playlistId, tracks)
     updatePlaylistTotalTracks(playlistId, tracks.length)
+    playlistStore.bumpPlaylistRevision(playlistId)
     playlistTracks.value = tracks.map(track => markRaw(track))
   }
 
