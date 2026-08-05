@@ -5,6 +5,7 @@
   import { PlaylistService } from '@/services/PlaylistService'
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { notify } from "@kyvg/vue3-notification";
+  import { hexToRgba } from '@/support/helpers.js';
 
   const settingsStore = useSettingsStore()
   const playlistStore = usePlaylistStore()
@@ -75,7 +76,8 @@
     playlist_id: '',
     min_position: '',
     max_position: '',
-    value: ''
+    value: '',
+    color: ''
   })
   const priceSubmitting = ref(false)
 
@@ -154,6 +156,7 @@
     priceForm.min_position = ''
     priceForm.max_position = ''
     priceForm.value = ''
+    priceForm.color = ''
     priceModalOpen.value = true
   }
 
@@ -163,6 +166,7 @@
     priceForm.min_position = item.min_position ?? ''
     priceForm.max_position = item.max_position ?? ''
     priceForm.value = item.value != null ? Number(item.value).toFixed(2).replace('.', ',') : ''
+    priceForm.color = item.color ?? ''
     priceModalOpen.value = true
   }
 
@@ -179,7 +183,8 @@
       playlist_id: priceForm.playlist_id,
       min_position: parseInt(priceForm.min_position, 10),
       max_position: parseInt(priceForm.max_position, 10),
-      value: parsePriceValue()
+      value: parsePriceValue(),
+      color: priceForm.color || null
     }
     try {
       if (editingPrice.value) {
@@ -367,11 +372,11 @@
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="text-label-xs text-on-surface-variant uppercase tracking-widest">
-                      <th class="w-[80px] px-4 py-2">Posição</th>
-                      <th class="w-[120px] px-4 py-2 text-right">Valor</th>
-                      <th class="w-[100px] px-4 py-2 text-right">Criado em</th>
-                      <th class="w-[88px] px-4 py-2 text-right">Ações</th>
-                    </tr>
+                       <th class="w-[120px] px-4 py-2">Posição</th>
+                       <th class="w-[120px] px-4 py-2 text-right">Valor</th>
+                       <th class="w-[100px] px-4 py-2 text-right">Criado em</th>
+                       <th class="w-[88px] px-4 py-2 text-right">Ações</th>
+                     </tr>
                   </thead>
                   <tbody class="divide-y divide-outline-variant/5">
                     <tr
@@ -380,7 +385,11 @@
                       class="hover:bg-surface-container-high/50 transition-colors"
                     >
                       <td class="px-4 py-2.5 text-center">
-                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-label-md font-bold">{{ item.min_position === item.max_position ? item.min_position : `${item.min_position}-${item.max_position}` }}</span>
+                        <span
+                          class="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-label-md font-bold whitespace-nowrap"
+                          :class="item.color ? '' : 'bg-primary/10 text-primary'"
+                          :style="item.color ? { backgroundColor: hexToRgba(item.color, 0.15), color: item.color } : null"
+                        >{{ item.min_position === item.max_position ? item.min_position : `${item.min_position}-${item.max_position}` }}</span>
                       </td>
                       <td class="px-4 py-2.5 text-right">
                         <span class="font-mono text-body-md text-on-surface">{{ formatCurrency(item.value) }}</span>
@@ -487,6 +496,27 @@
                 placeholder="0,00"
                 class="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-body-md text-on-surface focus:outline-none focus:border-primary transition-all"
               />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-label-md text-primary uppercase tracking-wider font-bold">Cor do grupo</label>
+              <div class="flex items-center gap-3">
+                <input
+                  v-model="priceForm.color"
+                  type="color"
+                  class="w-10 h-10 rounded-xl border border-outline-variant/30 bg-surface-container-high cursor-pointer p-1"
+                />
+                <span class="text-body-sm font-mono text-on-surface-variant">{{ priceForm.color || 'Sem cor' }}</span>
+                <button
+                  v-if="priceForm.color"
+                  class="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-surface-container-high transition-colors"
+                  title="Limpar cor"
+                  @click="priceForm.color = ''"
+                >
+                  <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+              <p class="text-label-xs text-on-surface-variant">Aplicada ao badge de posição na listagem e na coluna "Pos" da playlist.</p>
             </div>
           </div>
 

@@ -15,6 +15,18 @@ export const NOTIFICATIONS_TYPE = {
     danger: 'danger',
     warning: 'warning',
     info: 'info'
+};
+
+export function hexToRgba(hex, alpha = 0.7) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    // Handle invalid hex (ensure 6 chars)
+    if (hex.length !== 6) return null;
+    // Convert to RGB
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export default {

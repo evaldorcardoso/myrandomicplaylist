@@ -145,7 +145,7 @@ export function TrackRequestService() {
     const getPricePositions = async (playlistId) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
-            .select('id, min_position, max_position, value')
+            .select('id, min_position, max_position, value, color')
             .eq('playlist_id', playlistId)
             .order('min_position', { ascending: true })
 
@@ -177,7 +177,7 @@ export function TrackRequestService() {
     const getPricePositionByRange = async (playlistId, position) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
-            .select('id, min_position, max_position, value')
+            .select('id, min_position, max_position, value, color')
             .eq('playlist_id', playlistId)
             .lte('min_position', position)
             .gte('max_position', position)
@@ -240,10 +240,10 @@ export function TrackRequestService() {
         return getPricePositionByRange(playlistId, position)
     }
 
-    const createPricePosition = async ({ playlist_id, min_position, max_position, value }) => {
+    const createPricePosition = async ({ playlist_id, min_position, max_position, value, color }) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
-            .insert({ playlist_id, min_position, max_position, value })
+            .insert({ playlist_id, min_position, max_position, value, color: color ?? null })
             .select()
 
         if (error) {

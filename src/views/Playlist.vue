@@ -10,7 +10,7 @@
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
   import EditPlaylistModal from '@/components/EditPlaylistModal.vue'
   import OrphanRequestModal from '@/components/OrphanRequestModal.vue'
-  import { NOTIFICATIONS_TYPE } from '@/support/helpers'
+  import { NOTIFICATIONS_TYPE, hexToRgba } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
   import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
@@ -102,6 +102,15 @@
     for (const range of priceRangeValues.value) {
       if (position >= range.min_position && position <= range.max_position) {
         return range.value
+      }
+    }
+    return null
+  }
+
+  const getPriceColorByPosition = (position) => {
+    for (const range of priceRangeValues.value) {
+      if (position >= range.min_position && position <= range.max_position) {
+        return range.color ?? null
       }
     }
     return null
@@ -1313,10 +1322,17 @@
                 <div class="flex items-center gap-2">
                   <div class="flex flex-col items-center gap-0.5">
                     <div
-                      class="w-8 h-8 rounded flex items-center justify-center text-label-md font-bold"
+                      class="min-w-8 h-8 rounded flex items-center justify-center text-label-md font-bold px-2 whitespace-nowrap"
                       :class="track.id === 0 && activeTab === 'Todas'
-                        ? 'bg-primary/20 border border-primary/40 text-primary'
+                        ? 'border border-primary/40 text-primary'
                         : 'bg-surface-container-high text-on-surface-variant'"
+                      :style="getPriceColorByPosition((track.id ?? 0) + 1)
+                        ? {
+                            backgroundColor: hexToRgba(getPriceColorByPosition((track.id ?? 0) + 1), 0.15),
+                            color: getPriceColorByPosition((track.id ?? 0) + 1),
+                            borderColor: getPriceColorByPosition((track.id ?? 0) + 1)
+                          }
+                        : null"
                     >
                       {{ track.id + 1 }}
                     </div>
@@ -1366,7 +1382,15 @@
                 <div v-if="!track._slot" class="animate-pulse h-5 w-16 rounded-full bg-surface-container-high"></div>
                 <button
                   v-else-if="track._slot.status === 'free'"
-                  class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/80 text-black"
+                  class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border"
+                  :class="getPriceColorByPosition((track.id ?? 0) + 1) ? '' : 'bg-white/80 text-black border-transparent'"
+                  :style="getPriceColorByPosition((track.id ?? 0) + 1)
+                    ? {
+                        backgroundColor: hexToRgba(getPriceColorByPosition((track.id ?? 0) + 1), 0.15),
+                        color: getPriceColorByPosition((track.id ?? 0) + 1),
+                        borderColor: getPriceColorByPosition((track.id ?? 0) + 1)
+                      }
+                    : null"
                   @click.stop="openSellSlot(track)"
                 >
                   DISPONÍVEL
