@@ -5,6 +5,7 @@
   import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
   import { useGeneral, useProfile } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
+  import { PlaylistService } from '@/services/PlaylistService'
 
   const PERMANENCE_DAYS = 30
   const DUE_DATE_DEADLINE_HOUR = 9
@@ -44,6 +45,7 @@
   const { getTracks } = useGeneral()
   const { executePlaylist } = useProfile()
   const playlistStore = usePlaylistStore()
+  const { getGenres } = PlaylistService()
 
   const requesterName = ref('')
   const curator = ref('')
@@ -70,18 +72,29 @@
     return new Date(trackData.value.duration_ms).toISOString().slice(14, 19)
   })
 
-  const popularityDiff = computed(() => {
-    const current = trackData.value?.popularity ?? 0
-    return current - (trackData.value?.popularity_old ?? current)
+  const position = computed(() => (props.track?.id ?? 0) + 1)
+
+  const releaseDate = computed(() => {
+    const date = trackData.value?.album?.release_date
+    if (!date) return '—'
+    const [year, month, day] = date.split('-')
+    const parts = []
+    if (day) parts.push(day)
+    if (month) parts.push(month)
+    parts.push(year)
+    return parts.join('/')
   })
 
-  const popularityIcon = (popularity) => {
-    if (popularity <= 40) return 'text-[#ff1717]'
-    if (popularity > 40 && popularity <= 70) return 'text-[#fff01e]'
-    return 'text-[#75ff18]'
-  }
+  const trackGenres = ref([])
 
-  const position = computed(() => (props.track?.id ?? 0) + 1)
+  const loadTrackGenres = async () => {
+    try {
+      trackGenres.value = await getGenres(trackData.value?.artists ?? []).catch(() => [])
+    } catch (error) {
+      console.error(error)
+      trackGenres.value = []
+    }
+  }
 
   const filteredReplacementTracks = computed(() => {
     if (!searchQuery.value) return availableTracks.value
@@ -158,6 +171,7 @@
     if (!curator.value) {
       loadCuratorSuggestions()
     }
+    loadTrackGenres()
   }
 
   watch(() => props.open, (opened) => {
@@ -495,23 +509,17 @@
               <span class="text-label-sm px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant">{{ duration }}</span>
             </div>
             <div class="mt-4 flex flex-col items-center gap-1">
-              <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularidade</span>
-              <div class="flex items-center gap-1 text-label-md text-on-surface">
-                <font-awesome-icon icon="chart-line" :class="popularityIcon(trackData?.popularity)" />
-                {{ trackData?.popularity }}%
-                <span v-if="popularityDiff !== 0" class="flex items-center gap-0" :class="popularityDiff < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
-                  (<font-awesome-icon :icon="popularityDiff < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff }})
-                </span>
+              <p class="text-label-sm text-on-surface-variant">{{ releaseDate }}</p>
+              <div class="flex items-center gap-2">
+                <font-awesome-icon icon="chart-line" class="text-primary text-sm" />
+                <span class="text-label-sm text-primary uppercase tracking-widest">Popularidade: {{ trackData?.popularity }}/100</span>
+              </div>
+              <div v-if="trackGenres.length" class="flex items-center gap-1 opacity-60">
+                <font-awesome-icon icon="music" class="text-sm" />
+                <span class="text-label-sm">{{ trackGenres.slice(0, 3).map(genre => genre.genre).join(', ') }}</span>
               </div>
             </div>
           </div>
-          <button
-            class="group flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary hover:text-on-primary transition-all active:scale-95"
-            @click="playTrack"
-          >
-            <font-awesome-icon icon="play-circle" class="text-[20px]" />
-            <span class="text-label-md font-bold uppercase tracking-wider">Tocar</span>
-          </button>
         </div>
 
         <!-- Right Panel: Management Form -->
@@ -761,6 +769,14 @@
             >
               <font-awesome-icon icon="heart" class="text-[18px]" />
               <span>Tornar Gratuita</span>
+            </button>
+            <button
+              class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+              :disabled="isSubmitting"
+              @click="playTrack"
+            >
+              <font-awesome-icon icon="play-circle" class="text-[18px]" />
+              <span>Reproduzir agora</span>
             </button>
             <button
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
