@@ -6,7 +6,7 @@
 
   const userStore = useUserStore()
   const progress = inject("progress");
-  document.title = 'My Randomic Playlist'
+  document.title = 'MR Playlist'
 
   onMounted(async () => {
     if(! userStore.isTracksLoaded) {

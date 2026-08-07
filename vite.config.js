@@ -41,23 +41,23 @@ export default defineConfig({
     },
     includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
     manifest: {
-      name: 'My Randomic Playlist',
+      name: 'MR Playlist',
       short_name: 'MRP',
       description: 'Gerador de playlist aleatória do Spotify',
       theme_color: '#62faf5',
       icons: [
         {
-          src: '/pwa-192x192.png',
+          src: '/launchericon-192x192.png',
           sizes: '192x192',
           type: 'image/png'
         },
         {
-          src: '/pwa-512x512.png',
+          src: '/launchericon-512x512.png',
           sizes: '512x512',
           type: 'image/png'
         },
         {
-          src: '/pwa-512x512.png',
+           src: '/launchericon-512x512.png',
           sizes: '512x512',
           type: 'image/png',
           purpose: 'any maskable'
@@ -70,5 +70,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  publicPath: process.env.NODE_ENV === 'production' ? '/myrandomicplaylist/' : '/',
+  publicPath: process.env.NODE_ENV === 'production' ? '/mrplaylist/' : '/',
 })

@@ -1,4 +1,4 @@
-# AGENTS.md - My Randomic Playlist
+# AGENTS.md - MR Playlist
 
 ## Project Overview
 

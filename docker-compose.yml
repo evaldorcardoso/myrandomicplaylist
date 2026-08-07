@@ -1,7 +1,7 @@
 version: "3.8"
 services:
-  myrandomicplaylist:
-    container_name: myrandomicplaylist
+  mrplaylist:
+    container_name: mrplaylist
     image: node:lts
     working_dir: /var/www/html/app
     entrypoint: /bin/bash

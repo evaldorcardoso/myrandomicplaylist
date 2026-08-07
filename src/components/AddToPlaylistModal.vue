@@ -444,7 +444,7 @@
           <div class="grid grid-cols-2 gap-md mb-lg">
             <button
               type="button"
-              class="relative p-md rounded-lg border-2 transition-all duration-300 text-left"
+              class="relative p-2 rounded-lg border-2 transition-all duration-300 text-left"
               :class="mode === 'organic' ? 'border-primary bg-primary/5' : 'border-outline-variant bg-surface-container-high hover:border-primary'"
               @click="mode = 'organic'"
             >
@@ -459,7 +459,7 @@
             </button>
             <button
               type="button"
-              class="relative p-md rounded-lg border-2 transition-all duration-300 text-left"
+              class="relative p-2 rounded-lg border-2 transition-all duration-300 text-left"
               :class="mode === 'paid' ? 'border-secondary bg-secondary/5' : 'border-outline-variant bg-surface-container-high hover:border-secondary'"
               @click="mode = 'paid'"
             >
@@ -542,7 +542,7 @@
             </div>
 
             <!-- Info Box -->
-            <div class="bg-primary/10 p-md rounded-lg flex items-start gap-3 border-l-4 border-primary">
+            <div class="bg-primary/10 p-2 rounded-lg flex items-start gap-3 border-l-4 border-primary">
               <font-awesome-icon icon="info" class="text-primary shrink-0" />
               <p class="text-body-sm text-on-surface opacity-90">
                 <strong class="text-primary">Aviso de Reordenamento:</strong> Se uma música já existir na posição escolhida, ela será movida automaticamente para o final da playlist para preservar a integridade da grade.

@@ -1,4 +1,4 @@
-# My Randomic Playlist
+# MR Playlist
 
 Este é um aplicativo feito em VueJS3 que visa gerar playlists aleatórias baseada nas suas playlists do Spotify.
 
@@ -9,7 +9,7 @@ Além disso também é possível gerenciar sua biblioteca de playlists e música
 ## App Demo
 
 O aplicativo conta com uma versão rodando no endereço abaixo:
-- [My Randomic Playlist on Vercel](https://myrandomicplaylist.vercel.app/)
+- [MR Playlist on Vercel](https://myrandomicplaylist.vercel.app/)
 - Porém devido a limitações da API do Spotify, para conseguir logar com sua conta é necessário que tenha uma conta de desenvolvedor na api do Spotify e adicionar o email a ser usado no login como um email permitido para realizar login.
 
 ## Tecnologias utilizadas
