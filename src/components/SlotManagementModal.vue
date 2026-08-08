@@ -11,7 +11,7 @@
   const DUE_DATE_DEADLINE_HOUR = 9
   const TIMEZONE_OFFSET = '-03:00'
 
-  const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'move-track', 'sell-slot'])
+  const emit = defineEmits(['close', 'updated', 'remove-track', 'replace-track', 'move-track', 'sell-slot', 'fix-spotify'])
 
   const props = defineProps({
     open: {
@@ -40,7 +40,7 @@
     }
   })
 
-  const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester } = TrackRequestService()
+  const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester, getPricePosition } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
   const { getTracks } = useGeneral()
   const { executePlaylist } = useProfile()
@@ -73,6 +73,28 @@
   })
 
   const position = computed(() => (props.track?.id ?? 0) + 1)
+
+  const positionMismatch = computed(() => props.track?._slot?.positionMismatch ?? false)
+
+  const storedPosition = computed(() => props.track?._slot?.storedPosition ?? props.request?.position ?? null)
+
+  const slotPositionPrice = ref(null)
+
+  const formatPrice = (value) => {
+    if (value == null) return '-'
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  }
+
+  const loadSlotPositionPrice = async () => {
+    slotPositionPrice.value = null
+    try {
+      const { data: pricePosition } = await getPricePosition(props.playlistId, position.value)
+      slotPositionPrice.value = pricePosition?.value ?? null
+    } catch (error) {
+      console.error(error)
+      slotPositionPrice.value = null
+    }
+  }
 
   const releaseDate = computed(() => {
     const date = trackData.value?.album?.release_date
@@ -172,6 +194,7 @@
       loadCuratorSuggestions()
     }
     loadTrackGenres()
+    loadSlotPositionPrice()
   }
 
   watch(() => props.open, (opened) => {
@@ -416,6 +439,41 @@
     emit('sell-slot', props.track)
   }
 
+  const fixSlotPosition = async () => {
+    if (isSubmitting.value || !props.request) return
+    isSubmitting.value = true
+    try {
+      const payload = { position: position.value }
+      if (slotPositionPrice.value != null && slotPositionPrice.value !== props.request.value) {
+        payload.value = slotPositionPrice.value
+      }
+      const { error } = await updateTrackRequest(props.request.id, payload)
+      if (error) throw error
+      notify({
+        title: 'Alright',
+        text: 'Posição do slot atualizada!',
+        type: 'success'
+      })
+      emit('updated', 'position-fixed')
+      emit('close')
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Não foi possível atualizar a posição do slot!',
+        type: 'error'
+      })
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  const fixSpotifyPosition = () => {
+    if (isSubmitting.value || !props.request) return
+    emit('fix-spotify', { track: props.track, request: props.request })
+    emit('close')
+  }
+
   const formatDueDateBR = (date) => {
     if (!date) return ''
     const [year, month, day] = String(date).split('-')
@@ -478,6 +536,10 @@
           <div class="flex flex-col items-center gap-1">
             <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Posição</span>
             <span class="w-20 h-20 flex items-center justify-center rounded-full bg-primary/10 border-2 border-primary/40 text-display-lg text-primary font-bold leading-none shadow-xl">{{ position }}</span>
+            <div v-if="positionMismatch" class="flex flex-col items-center gap-1 mt-2">
+              <span class="text-label-sm text-[#ff1717] uppercase tracking-wider">Posição no slot</span>
+              <span class="text-body-lg text-[#ff1717] font-bold">{{ storedPosition }}</span>
+            </div>
           </div>
           <div class="relative group">
             <div class="absolute -inset-4 bg-primary/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -620,16 +682,21 @@
           <div
             v-if="!isFree"
             class="p-2 rounded-xl space-y-3"
-            :class="isPending
-              ? 'bg-tertiary-container/5 border-l-4 border-tertiary-container'
-              : 'bg-primary/5 border-l-4 border-primary'"
+            :class="positionMismatch
+              ? 'bg-[#ff1717]/5 border-l-4 border-[#ff1717]'
+              : isPending
+                ? 'bg-tertiary-container/5 border-l-4 border-tertiary-container'
+                : 'bg-primary/5 border-l-4 border-primary'"
           >
-            <div class="flex items-center gap-2" :class="isPending ? 'text-tertiary-container' : 'text-primary'">
-              <font-awesome-icon :icon="isPending ? 'hourglass' : 'clock'" class="text-[20px]" />
+            <div class="flex items-center gap-2" :class="positionMismatch ? 'text-[#ff1717]' : (isPending ? 'text-tertiary-container' : 'text-primary')">
+              <font-awesome-icon :icon="positionMismatch ? 'exclamation-triangle' : (isPending ? 'hourglass' : 'clock')" class="text-[20px]" />
               <span class="text-label-md font-bold uppercase tracking-tight">Status da Posição</span>
             </div>
             <p class="text-body-sm text-on-surface-variant leading-relaxed">
-              <template v-if="isPending">
+              <template v-if="positionMismatch">
+                Posição divergente entre o Spotify e o registro de venda. O slot está registrado na posição <strong class="text-[#ff1717]">#{{ storedPosition }}</strong> mas a música está na <strong class="text-[#ff1717]">#{{ position }}</strong> no Spotify.
+              </template>
+              <template v-else-if="isPending">
                 Esta posição está aguardando pagamento. Realize o pagamento para confirmar sua permanência.
               </template>
               <template v-else-if="isExpired">
@@ -736,7 +803,7 @@
               <span class="relative z-10">Vender slot</span>
             </button>
             <button
-              v-if="!isFree"
+              v-if="!isFree && !positionMismatch"
               class="group relative w-full text-headline-sm py-2 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               :class="isPending
                 ? 'bg-primary hover:bg-primary-fixed text-on-primary'
@@ -762,7 +829,7 @@
               <span>Notificar solicitante</span>
             </button>
             <button
-              v-if="!isFree"
+              v-if="!isFree && !positionMismatch"
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
               :disabled="isSubmitting"
               @click="makeFree"
@@ -770,6 +837,24 @@
               <font-awesome-icon icon="heart" class="text-[18px]" />
               <span>Tornar Gratuita</span>
             </button>
+            <template v-if="!isFree && positionMismatch">
+              <button
+                class="w-full border border-[#ff1717]/50 hover:border-[#ff1717] hover:text-[#ff1717] text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+                :disabled="isSubmitting"
+                @click="fixSlotPosition"
+              >
+                <font-awesome-icon icon="database" class="text-[18px]" />
+                <span>Manter posição (atualizar slot {{ formatPrice(props.request?.value) }} → {{ formatPrice(slotPositionPrice) }})</span>
+              </button>
+              <button
+                class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+                :disabled="isSubmitting"
+                @click="fixSpotifyPosition"
+              >
+                <font-awesome-icon icon="exchange-alt" class="text-[18px]" />
+                <span>Manter slot (atualizar spotify)</span>
+              </button>
+            </template>
             <button
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
               :disabled="isSubmitting"

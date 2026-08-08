@@ -437,11 +437,10 @@
   }
 
   const onFixPositionMismatch = () => {
-    notify({
-      title: 'Em breve',
-      text: 'Correção de posição estará disponível em breve!',
-      type: 'info'
-    })
+    const divergent = state.tracks.find(track => track._slot?.positionMismatch)
+    if (divergent) {
+      openTrackSlotModal(divergent)
+    }
   }
 
   const openSellSlot = (track) => {
@@ -561,7 +560,8 @@
       const messages = {
         paid: { title: 'Alright', text: 'Pagamento confirmado!' },
         renewed: { title: 'Alright', text: 'Posição renovada!' },
-        'made-free': { title: 'Alright', text: 'Posição liberada como gratuita!' }
+        'made-free': { title: 'Alright', text: 'Posição liberada como gratuita!' },
+        'position-fixed': { title: 'Alright', text: 'Posição do slot atualizada!' }
       }
       const message = messages[type] ?? { title: 'Alright', text: 'Posição atualizada!' }
       notify({ title: message.title, text: message.text, type: 'success' })
@@ -716,6 +716,66 @@
       notify({
         title: 'Ops',
         text: 'Erro ao trocar as posições!',
+        type: 'error'
+      })
+    }
+  }
+
+  const onSlotFixSpotify = async ({ track, request }) => {
+    closeSlotManagement()
+    try {
+      const sourcePos = track?.id ?? 0
+      const targetPos = (request?.position ?? 0) - 1
+
+      if (!Number.isFinite(targetPos) || targetPos < 0) {
+        notify({
+          title: 'Ops',
+          text: 'Posição do slot inválida!',
+          type: 'error'
+        })
+        return
+      }
+
+      if (targetPos === sourcePos) {
+        notify({
+          title: 'Ops',
+          text: 'Posições já coincidem!',
+          type: 'warn'
+        })
+        return
+      }
+
+      notify({
+        title: 'Please, wait',
+        text: 'Corrigindo posição no Spotify...',
+        type: 'info'
+      })
+
+      const insertBefore = sourcePos < targetPos ? targetPos + 1 : targetPos
+      await updateTracksOfPlaylist(playlistId.value, {
+        'range_start': sourcePos,
+        'insert_before': insertBefore
+      })
+
+      playlistStore.loadTracks(playlistId.value, await getTracks(playlistId.value))
+
+      await getPlaylistTracks()
+      state.playlist.items = state.tracks.length
+      await updatePlaylistTotalTracks(playlistId.value, state.tracks.length)
+      sortUserPlaylist(false)
+      buildSlots()
+      await reloadSlots()
+
+      notify({
+        title: 'Alright',
+        text: 'Posição corrigida no Spotify!',
+        type: 'success'
+      })
+    } catch (error) {
+      console.error(error)
+      notify({
+        title: 'Ops',
+        text: 'Erro ao corrigir a posição no Spotify!',
         type: 'error'
       })
     }
@@ -1032,6 +1092,7 @@
     @remove-track="onSlotRemoveTrack"
     @replace-track="onSlotReplaceTrack"
     @move-track="onSlotMoveTrack"
+    @fix-spotify="onSlotFixSpotify"
     @sell-slot="onSellSlotFromManagement"
   />
   <ConfirmRemovePlaylistModal
