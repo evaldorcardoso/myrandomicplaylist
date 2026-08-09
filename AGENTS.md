@@ -98,6 +98,10 @@ Copy `.env.example` to `.env` and configure:
 - Environment variables prefixed with `VITE_` for client-side config
 - Use `import.meta.env.VITE_*` for accessing env vars
 
+### Database Changes
+- **NEVER create migration files** (do not add files under `supabase/migrations/`)
+- Execute database commands directly on Supabase via the MCP (e.g. `apply_migration` / `execute_sql`)
+
 ## File Organization
 
 ```
