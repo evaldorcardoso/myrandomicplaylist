@@ -10,34 +10,17 @@ export default defineConfig({
   assetsInclude: ['**/*.png'],
   plugins: [vue(), tailwindcss(), loadVersion(), VitePWA({ 
     registerType: 'autoUpdate',
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
     devOptions: {
-      enabled: true
+      enabled: true,
+      type: 'module'
     },
-    workbox: {
+    injectManifest: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       sourcemap: true,
-      runtimeCaching: [
-          {
-            // Cachear imagens do Spotify
-            urlPattern: /^https:\/\/image-cdn-ak\.spotifycdn\.com\/.*$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'spotify-images-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 dias
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-      ],
-      navigateFallbackDenylist: [
-        /^https:\/\/api\.spotify\.com/,
-        /^https:\/\/image-cdn-ak\.spotifycdn\.com/,
-        /^https:\/\/.*\.supabase\.co/
-      ]
+      maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
     },
     includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
     manifest: {

@@ -162,10 +162,11 @@ library.add(
     faLockOpen
 )
 
-const updateSW = registerSW({
+  const updateSW = registerSW({
     onNeedRefresh() {},
     onOfflineReady() {},
-})
+    type: import.meta.env.MODE === 'development' ? 'module' : 'classic'
+  })
 const app  = createApp(App)
 const pinia = createPinia()
 const progressOptions = {

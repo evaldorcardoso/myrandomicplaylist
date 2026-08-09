@@ -6,11 +6,14 @@
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { notify } from "@kyvg/vue3-notification";
   import { hexToRgba } from '@/support/helpers.js';
+  import { usePushNotifications } from '@/composables/usePushNotifications'
 
   const settingsStore = useSettingsStore()
   const playlistStore = usePlaylistStore()
   const { loadAllFromDatabase } = PlaylistService()
   const { getAllPricePositions, createPricePosition, updatePricePosition, deletePricePosition } = TrackRequestService()
+
+  const push = usePushNotifications()
 
   const activeTab = ref('settings')
 
@@ -226,6 +229,7 @@
   onMounted(async () => {
     await ensurePlaylists()
     await loadPricePositions()
+    await push.init()
   })
 </script>
 
@@ -295,6 +299,49 @@
                 />
               </div>
             </div>
+          </div>
+
+          <!-- Notificações Push -->
+          <div class="pt-md border-t border-outline-variant/10">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="material-symbols-outlined text-secondary">notifications_active</span>
+              <h3 class="text-headline-sm font-display text-on-surface">Notificações Push</h3>
+            </div>
+            <p class="text-label-sm text-on-surface-variant mb-4">
+              Receba aviso às 9h quando músicas expirarem hoje.
+            </p>
+            <div v-if="!push.isSupported" class="flex items-center gap-2 text-on-surface-variant text-label-md">
+              <span class="material-symbols-outlined text-error">block</span>
+              <span>Seu navegador não suporta notificações push.</span>
+            </div>
+            <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex flex-col min-w-0">
+                <span class="text-body-md font-bold text-on-surface">
+                  {{ push.activeSubscription ? 'Ativas' : 'Desativadas' }}
+                </span>
+                <span class="text-label-sm text-on-surface-variant">
+                  {{ push.permission === 'granted' ? 'Permissão concedida' : (push.permission === 'denied' ? 'Permissão negada nas configurações do navegador' : 'Aguardando permissão') }}
+                </span>
+              </div>
+              <button
+                :disabled="push.loading"
+                :class="[
+                  'px-4 py-2.5 rounded-xl text-label-md font-bold transition-all flex items-center gap-2',
+                  push.activeSubscription
+                    ? 'bg-error/10 text-error hover:bg-error/20'
+                    : 'bg-primary text-on-primary hover:brightness-110'
+                ]"
+                @click="push.activeSubscription ? push.unsubscribe() : push.subscribe()"
+              >
+                <span class="material-symbols-outlined text-[18px]">
+                  {{ push.loading ? 'hourglass_empty' : (push.activeSubscription ? 'notifications_off' : 'notifications_active') }}
+                </span>
+                {{ push.loading ? 'Processando...' : (push.activeSubscription ? 'Desativar' : 'Ativar') }}
+              </button>
+            </div>
+            <p v-if="push.errorMessage" class="mt-2 text-caption text-error">
+              {{ push.errorMessage }}
+            </p>
           </div>
         </section>
 
