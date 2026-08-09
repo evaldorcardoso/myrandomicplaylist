@@ -3,7 +3,7 @@ import { supabase } from '@/support/supabaseClient'
 const TABLE = 'push_subscriptions'
 
 export async function saveSubscription(sub) {
-  const { endpoint, keys } = sub
+  const { endpoint, keys } = sub.toJSON()
   const { data, error } = await supabase
     .from(TABLE)
     .insert({ endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: navigator.userAgent })

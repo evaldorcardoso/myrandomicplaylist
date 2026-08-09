@@ -1,6 +1,6 @@
 {
   "name": "mrplaylist",
-  "version": "3.25.2",
+  "version": "3.25.3",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -36,6 +36,7 @@
     "vite": "^6.0.6",
     "vite-plugin-pwa": "^1.0.2",
     "workbox-cacheable-response": "^7.4.1",
+    "workbox-core": "^7.4.1",
     "workbox-expiration": "^7.4.1",
     "workbox-precaching": "^7.3.0",
     "workbox-routing": "^7.4.1",

@@ -15,7 +15,8 @@ export default defineConfig({
     filename: 'sw.ts',
     devOptions: {
       enabled: true,
-      type: 'module'
+      type: 'module',
+      navigateFallback: 'index.html'
     },
     injectManifest: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],

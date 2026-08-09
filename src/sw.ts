@@ -3,6 +3,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
+import { clientsClaim } from 'workbox-core'
 
 declare let self: ServiceWorkerGlobalScope
 
@@ -77,4 +78,4 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 self.skipWaiting()
-self.clientsClaim()
+clientsClaim()
