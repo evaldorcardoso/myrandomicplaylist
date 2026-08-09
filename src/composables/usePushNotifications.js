@@ -1,5 +1,10 @@
-import { ref } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { saveSubscription, deleteSubscription } from '@/services/PushService'
+
+const SW_READY_TIMEOUT_MS = 10000
+const SUBSCRIBE_TIMEOUT_MS = 15000
+const SAVE_TIMEOUT_MS = 10000
+const UNSUBSCRIBE_TIMEOUT_MS = 10000
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -12,6 +17,15 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray
 }
 
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms)
+    })
+  ])
+}
+
 export function usePushNotifications() {
   const isSupported = ref(
     'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -21,16 +35,26 @@ export function usePushNotifications() {
   const errorMessage = ref('')
   const activeSubscription = ref(null)
 
+  const cleanup = []
+  onUnmounted(() => {
+    for (const fn of cleanup) fn()
+  })
+
   const getRegistration = async () => {
-    if (!navigator.serviceWorker.controller) {
-      await navigator.serviceWorker.ready
-    }
-    return navigator.serviceWorker.ready
+    return withTimeout(
+      navigator.serviceWorker.ready,
+      SW_READY_TIMEOUT_MS,
+      'O service worker não ativou. Recarregue a página e tente novamente.'
+    )
   }
 
   const getCurrentSubscription = async () => {
     const registration = await getRegistration()
-    return registration.pushManager.getSubscription()
+    return withTimeout(
+      registration.pushManager.getSubscription(),
+      SW_READY_TIMEOUT_MS,
+      'O navegador demorou para consultar a assinatura push. Tente novamente.'
+    )
   }
 
   const subscribe = async () => {
@@ -41,12 +65,21 @@ export function usePushNotifications() {
 
     loading.value = true
     errorMessage.value = ''
+    activeSubscription.value = null
 
     try {
-      const permissionResult = await Notification.requestPermission()
+      const permissionResult = await withTimeout(
+        Notification.requestPermission(),
+        SUBSCRIBE_TIMEOUT_MS,
+        'A solicitação de permissão de notificação demorou demais. Conceda pelo site settings do navegador.'
+      )
       permission.value = permissionResult
+      if (permissionResult === 'denied') {
+        errorMessage.value = 'Permissão de notificação negada nas configurações do navegador.'
+        return false
+      }
       if (permissionResult !== 'granted') {
-        errorMessage.value = 'Permissão de notificação negada.'
+        errorMessage.value = 'Permissão não concedida. Clique em Ativar e permita quando o navegador perguntar.'
         return false
       }
 
@@ -57,17 +90,25 @@ export function usePushNotifications() {
       }
 
       const registration = await getRegistration()
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(applicationServerKey)
-      })
+      const subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(applicationServerKey)
+        }),
+        SUBSCRIBE_TIMEOUT_MS,
+        'O navegador demorou para criar a assinatura push. Tente novamente.'
+      )
 
-      await saveSubscription(subscription)
+      await withTimeout(
+        saveSubscription(subscription),
+        SAVE_TIMEOUT_MS,
+        'Não foi possível salvar a assinatura no servidor. Verifique sua conexão.'
+      )
       activeSubscription.value = subscription
       return true
     } catch (e) {
       console.error(e)
-      errorMessage.value = 'Não foi possível ativar as notificações.'
+      errorMessage.value = e.message || 'Não foi possível ativar as notificações.'
       return false
     } finally {
       loading.value = false
@@ -82,14 +123,22 @@ export function usePushNotifications() {
     try {
       const subscription = await getCurrentSubscription()
       if (subscription) {
-        await subscription.unsubscribe()
-        await deleteSubscription(subscription.endpoint)
+        await withTimeout(
+          subscription.unsubscribe(),
+          UNSUBSCRIBE_TIMEOUT_MS,
+          'O navegador demorou para remover a assinatura push. Tente novamente.'
+        )
+        await withTimeout(
+          deleteSubscription(subscription.endpoint),
+          UNSUBSCRIBE_TIMEOUT_MS,
+          'Não foi possível remover a assinatura no servidor. Verifique sua conexão.'
+        )
       }
       activeSubscription.value = null
       return true
     } catch (e) {
       console.error(e)
-      errorMessage.value = 'Não foi possível desativar as notificações.'
+      errorMessage.value = e.message || 'Não foi possível desativar as notificações.'
       return false
     } finally {
       loading.value = false
@@ -98,15 +147,37 @@ export function usePushNotifications() {
 
   const getErrorMessage = () => errorMessage.value
 
-  const init = async () => {
+  const syncState = async () => {
     if (!isSupported.value) return
     permission.value = Notification.permission
     if (permission.value === 'granted') {
-      activeSubscription.value = await getCurrentSubscription()
+      try {
+        activeSubscription.value = await getCurrentSubscription()
+      } catch (e) {
+        console.error(e)
+        activeSubscription.value = null
+      }
+    } else {
+      activeSubscription.value = null
     }
   }
 
-  return {
+  const init = async () => {
+    loading.value = false
+    errorMessage.value = ''
+    await syncState()
+    const resync = () => {
+      if (document.visibilityState === 'visible') syncState()
+    }
+    window.addEventListener('focus', resync)
+    document.addEventListener('visibilitychange', resync)
+    cleanup.push(() => {
+      window.removeEventListener('focus', resync)
+      document.removeEventListener('visibilitychange', resync)
+    })
+  }
+
+  return reactive({
     isSupported,
     permission,
     loading,
@@ -115,5 +186,5 @@ export function usePushNotifications() {
     subscribe,
     unsubscribe,
     init
-  }
+  })
 }
