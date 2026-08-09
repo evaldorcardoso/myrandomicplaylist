@@ -37,3 +37,11 @@ export async function listSubscriptions() {
   if (error) throw error
   return data
 }
+
+export async function sendExpirationPush({ title, body, url }) {
+  const { data, error } = await supabase.functions.invoke('notify-expiration', {
+    body: { title, body, url: url || '/' }
+  })
+  if (error) throw error
+  return data
+}

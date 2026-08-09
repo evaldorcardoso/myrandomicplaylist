@@ -6,6 +6,7 @@
   import { useUserStore } from '@/stores/user'
   import { PlaylistService } from '@/services/PlaylistService'
   import { TrackRequestService } from '@/services/TrackRequestService'
+  import { sendExpirationPush as notifyExpirationPush } from '@/services/PushService'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import { useGeneral } from '@/support/spotifyApi'
   import { invalidateOccupancy } from '@/support/occupancyCache'
@@ -39,6 +40,8 @@
   const slotManagementRequest = ref(null)
   const slotManagementPlaylistId = ref('')
   const slotManagementPlaylist = ref(null)
+
+  const notifyingIds = reactive(new Set())
 
   const pad = (value) => String(value).padStart(2, '0')
 
@@ -177,6 +180,49 @@
         text: 'Erro ao substituir a música!',
         type: 'error'
       })
+    }
+  }
+
+  const formatDueDateBR = (date) => {
+    if (!date) return ''
+    const [year, month, day] = String(date).split('-')
+    if (!year || !month || !day) return date
+    return `${day}/${month}/${year}`
+  }
+
+  const sendExpirationPush = async (expiration) => {
+    const id = expiration.id
+    if (notifyingIds.has(id)) return
+    if (!expiration.request || !expiration.track) {
+      invalidateOccupancy()
+      await loadDashboardData()
+      const fresh = state.data.expirations.find(item => item.id === id)
+      if (!fresh?.request || !fresh?.track) {
+        notify({ title: 'Ops', text: 'Música não encontrada!', type: 'error' })
+        return
+      }
+      expiration = fresh
+    }
+    const trackName = expiration.track?.track?.name ?? expiration.request?.name ?? ''
+    const artistName = expiration.track?.track?.artists?.map(artist => artist.name).join(', ') ?? ''
+    const curatorName = expiration.request?.curator?.trim() ?? ''
+    const artistLabel = curatorName ? `${artistName} by ${curatorName}` : artistName
+    const playlistName = expiration.playlist?.name ?? ''
+    const position = (expiration.track?.id ?? 0) + 1
+    const dueDateBR = formatDueDateBR(expiration.request?.due_date)
+    const body = `Música vencendo na playlist: A música ${trackName} do artista ${artistLabel}, posição ${position} na playlist ${playlistName}, vence no dia ${dueDateBR}. Avise caso queira renovar, senão será removida em até 3 dias.`
+    notifyingIds.add(id)
+    try {
+      const result = await notifyExpirationPush({ title: 'MR Playlist — Música vencendo na playlist', body, url: '/' })
+      const text = result?.sent > 0
+        ? `Notificação enviada para ${result.sent} dispositivo${result.sent === 1 ? '' : 's'}!`
+        : 'Nenhum dispositivo com notificações ativas.'
+      notify({ title: 'Alright', text, type: 'success' })
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Não foi possível enviar a notificação!', type: 'error' })
+    } finally {
+      notifyingIds.delete(id)
     }
   }
 
@@ -391,16 +437,19 @@
                     RENOVAR
                   </button>
                   <button
-                    v-if="expiration.urgent"
-                    class="px-3 bg-surface-container-highest text-on-surface-variant rounded-lg hover:text-on-surface transition-colors flex items-center justify-center"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">notifications_active</span>
-                  </button>
-                  <button
                     v-else
                     class="flex-1 bg-surface-container-highest text-on-surface py-2 rounded-lg text-label-sm font-bold border border-outline-variant/20 hover:bg-surface-container transition-all"
                   >
                     NOTIFICAR CLIENTE
+                  </button>
+                  <button
+                    class="px-3 bg-surface-container-highest text-on-surface-variant rounded-lg hover:text-on-surface transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Enviar push de expiração para todos os dispositivos"
+                    :disabled="notifyingIds.has(expiration.id)"
+                    @click="sendExpirationPush(expiration)"
+                  >
+                    <span v-if="notifyingIds.has(expiration.id)" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                    <span v-else class="material-symbols-outlined text-[18px]">notifications_active</span>
                   </button>
                 </div>
               </div>
