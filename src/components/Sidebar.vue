@@ -67,7 +67,7 @@
 
   <aside
     :class="[
-      'fixed left-0 top-0 h-full w-72 bg-surface-container-lowest z-50 flex flex-col border-r border-outline-variant/10',
+      'fixed left-0 top-0 h-full w-56 bg-surface-container-lowest z-50 flex flex-col border-r border-outline-variant/10',
       'transition-transform duration-300 ease-in-out lg:translate-x-0',
       props.open ? 'translate-x-0' : '-translate-x-full'
     ]"

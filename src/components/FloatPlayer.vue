@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>    
-    <div class="fixed bottom-0 left-0 lg:left-72 right-0 z-30" v-if="currentPlaying && route.name != 'Player'">
+    <div class="fixed bottom-0 left-0 lg:left-56 right-0 z-30" v-if="currentPlaying && route.name != 'Player'">
         <div class="relative h-20 bg-surface-container-lowest/95 backdrop-blur-2xl border-t border-outline-variant/10 px-gutter md:px-10 flex items-center justify-between gap-4">
             <div class="flex items-center gap-4 w-1/3 min-w-0">
                 <router-link to="/player" class="h-20 w-20 rounded bg-surface-container-highest overflow-hidden flex-shrink-0 border border-outline-variant/20">

@@ -95,8 +95,8 @@
         @update-step-data="onUpdateStepData"
         @open-menu="menuOpen = true"
     />
-    <div class="pl-0 lg:pl-72">
-        <main class="pt-20 bg-surface h-screen overflow-y-auto px-gutter md:px-lg" :class="floatPlayerData ? 'pb-20' : 'pb-lg'">
+    <div class="pl-0 lg:pl-56">
+        <main class="pt-20 bg-surface h-screen overflow-y-auto" :class="floatPlayerData ? 'pb-20' : 'pb-lg'">
             <router-view 
                 :step-data="step" 
                 :remove-track="removeTrack"

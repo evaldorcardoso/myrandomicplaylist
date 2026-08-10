@@ -45,7 +45,7 @@
 
 <template>
   <header
-    class="fixed top-0 left-0 lg:left-72 right-0 h-20 bg-surface/60 backdrop-blur-2xl z-40 flex items-center justify-between px-gutter md:px-lg border-b border-outline-variant/10"
+    class="fixed top-0 left-0 lg:left-56 right-0 h-20 bg-surface/60 backdrop-blur-2xl z-40 flex items-center justify-between px-gutter md:px-lg border-b border-outline-variant/10"
   >
     <div class="flex items-center gap-1 flex-1 min-w-0">
       <button

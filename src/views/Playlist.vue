@@ -1125,7 +1125,7 @@
     @close="closeOrphanDelete"
     @confirm="handleOrphanDelete"
   />
-  <div class="page px-gutter md:px-lg py-md space-y-lg">
+  <div class="page py-md space-y-lg">
     <div v-if="isProcessing" class="fixed top-20 right-4 z-50 flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-on-surface text-body-sm shadow-xl">
       <font-awesome-icon icon="spinner" spin class="text-primary" />
       <span>Processing...</span>

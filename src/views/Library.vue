@@ -103,7 +103,7 @@
 </script>
 
 <template>
-  <div class="page px-gutter md:px-lg py-md space-y-lg">
+  <div class="page py-md space-y-lg">
     <!-- Header Section -->
     <section class="relative flex flex-col gap-md pt-2 pb-sm">
       <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>

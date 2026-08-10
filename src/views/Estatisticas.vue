@@ -147,7 +147,7 @@
   <div v-if="!state.playlist" class="px-gutter md:px-lg py-md">
     <div class="animate-pulse h-8 w-48 rounded bg-surface-container-high"></div>
   </div>
-  <div v-else class="page px-gutter md:px-lg py-md space-y-lg">
+  <div v-else class="page py-md space-y-lg">
     <button class="flex items-center gap-2 text-on-surface-variant text-label-sm hover:text-on-surface transition-colors" @click="backToPlaylist">
       <font-awesome-icon icon="chevron-left" />
       Voltar para a playlist

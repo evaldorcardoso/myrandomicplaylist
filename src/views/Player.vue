@@ -245,7 +245,7 @@
     @close="onCloseSellSlot"
     @confirm="onCloseSellSlot"
   />
-  <div class="page px-gutter md:px-lg py-md space-y-lg"> 
+  <div class="page py-md space-y-lg"> 
     <p v-if="state.message" class="text-center text-label-sm text-primary">{{ state.message }}</p>     
 
     <div v-if="state.devices.length === 0" class="flex flex-col items-center justify-center gap-4 py-20 text-center">
