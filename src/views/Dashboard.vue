@@ -309,8 +309,8 @@
 
       <!-- Main Grid Content -->
       <div class="grid grid-cols-12 gap-lg items-start mt-lg">
-        <!-- Left Column: Playlist Management (8 Cols) -->
-        <div class="col-span-12 lg:col-span-8 flex flex-col gap-md">
+         <!-- Left Column: Playlist Management (8 Cols) -->
+         <div class="col-span-12 xl:col-span-8 flex flex-col gap-md">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-3">
               <h2 class="text-headline-md font-display text-on-surface">Gestão de Playlists</h2>
@@ -391,8 +391,8 @@
 
         </div>
 
-        <!-- Right Column: Alerts & Side Widgets (4 Cols) -->
-        <div class="col-span-12 lg:col-span-4 flex flex-col gap-lg">
+         <!-- Right Column: Alerts & Side Widgets (4 Cols) -->
+         <div class="col-span-12 xl:col-span-4 flex flex-col gap-lg">
           <!-- Expiration Widget -->
           <div v-if="state.data.expirations.length > 0" class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
             <div class="flex items-center gap-3">
@@ -553,7 +553,7 @@
       <!-- Main Grid Content Skeleton -->
       <div class="grid grid-cols-12 gap-lg items-start mt-lg">
         <!-- Left Column Skeleton -->
-        <div class="col-span-12 lg:col-span-8 flex flex-col gap-md">
+        <div class="col-span-12 xl:col-span-8 flex flex-col gap-md">
           <div class="flex items-center gap-3">
             <div class="h-7 w-48 rounded animate-pulse bg-surface-container-high"></div>
             <div class="h-5 w-24 rounded animate-pulse bg-surface-container-high"></div>
@@ -604,7 +604,7 @@
         </div>
 
         <!-- Right Column Skeleton -->
-        <div class="col-span-12 lg:col-span-4 flex flex-col gap-lg">
+        <div class="col-span-12 xl:col-span-4 flex flex-col gap-lg">
           <!-- Expiration Widget Skeleton -->
           <div class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 shadow-xl">
             <div class="flex items-center gap-3">
