@@ -268,7 +268,7 @@ const { data, error } = await supabase
   const fetchExpirationItems = async () => {
     const { data, error } = await supabase
       .from(TRACK_REQUESTS_TABLE)
-      .select('id, playlist_id, track_id, name, due_date, status, value, requester_id, requesters(name, curator)')
+      .select('id, playlist_id, track_id, name, due_date, status, value, requester_id, position, requesters(name, curator)')
 
     if (error) {
       console.error(error.message)
@@ -317,6 +317,7 @@ const { data, error } = await supabase
         dueTs: request.dueTs,
         playlistId: request.playlist_id,
         track: trackItem ?? null,
+        position: request.position,
         request: {
           id: String(request.id),
           status: request.status,
@@ -324,6 +325,7 @@ const { data, error } = await supabase
           value: request.value,
           requester_id: request.requester_id,
           requester_name: requesterName,
+          position: request.position,
           curator
         },
         playlist: playlist ? { id: playlist.id, name: playlist.name } : null
@@ -354,7 +356,7 @@ const { data, error } = await supabase
   const loadRecentOrders = async () => {
     const { data, error } = await supabase
       .from(TRACK_REQUESTS_TABLE)
-      .select('id, created_at, status, name, requesters(name, curator)')
+      .select('id, created_at, status, name, position, requesters(name, curator)')
       .order('created_at', { ascending: false })
       .limit(3)
 
@@ -372,6 +374,7 @@ const { data, error } = await supabase
         icon: paid ? 'radio' : 'pending',
         title: request.name ?? 'Faixa',
         subtitle: curator ? `${requesterName} by ${curator}` : (requesterName ?? ''),
+        position: request.position,
         status: paid ? 'PAGO' : 'PENDENTE',
         tone: paid ? 'primary' : 'tertiary',
         time: timeAgo(request.created_at)

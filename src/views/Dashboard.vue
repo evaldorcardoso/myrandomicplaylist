@@ -409,10 +409,10 @@
                 <div class="flex justify-between items-start">
                   <div class="flex gap-3 min-w-0">
                     <div
-                      class="w-10 h-10 rounded flex items-center justify-center flex-shrink-0"
+                      class="min-w-10 h-10 px-2 rounded flex items-center justify-center flex-shrink-0 font-mono font-bold text-body-md"
                       :class="expiration.urgent ? 'bg-error/10 text-error' : 'bg-on-surface-variant/10 text-on-surface-variant'"
                     >
-                      <span class="material-symbols-outlined font-bold">{{ expiration.icon }}</span>
+                      #{{ expiration.position != null ? String(expiration.position).padStart(2, '0') : '--' }}
                     </div>
                     <div class="flex flex-col min-w-0">
                       <span class="text-body-md font-bold text-on-surface truncate">{{ expiration.title }}</span>
@@ -477,9 +477,9 @@
                 <div class="flex justify-between items-start gap-3">
                   <div class="flex gap-3 min-w-0">
                     <div
-                      class="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 bg-on-surface-variant/10 text-on-surface-variant"
+                      class="min-w-10 h-10 px-2 rounded flex items-center justify-center flex-shrink-0 font-mono font-bold text-body-md bg-on-surface-variant/10 text-on-surface-variant"
                     >
-                      <span class="material-symbols-outlined font-bold">{{ expiration.icon }}</span>
+                      #{{ expiration.position != null ? String(expiration.position).padStart(2, '0') : '--' }}
                     </div>
                     <div class="flex flex-col min-w-0">
                       <span class="text-body-md font-bold text-on-surface truncate">{{ expiration.title }}</span>
@@ -508,10 +508,10 @@
               >
                 <div class="flex items-center gap-3 min-w-0">
                   <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                    class="min-w-10 h-10 px-2 rounded-xl flex items-center justify-center flex-shrink-0 font-mono font-bold text-body-md"
                     :class="order.tone === 'primary' ? 'bg-primary/10 text-primary' : 'bg-tertiary-container/10 text-tertiary'"
                   >
-                    <span class="material-symbols-outlined">{{ order.icon }}</span>
+                    #{{ order.position != null ? String(order.position).padStart(2, '0') : '--' }}
                   </div>
                   <div class="flex flex-col min-w-0">
                     <span class="text-body-md font-bold text-on-surface line-clamp-1">{{ order.title }}</span>
