@@ -5,6 +5,7 @@ import { invalidateOccupancy } from '@/support/occupancyCache'
 const TRACK_REQUESTS_TABLE = 'track_requests'
 const REQUESTERS_TABLE = 'requesters'
 const PRICE_POSITIONS_TABLE = 'price_positions'
+const EARNINGS_LEDGER_TABLE = 'earnings_ledger'
 
 export function TrackRequestService() {
     const getTrackRequests = async (playlistId) => {
@@ -292,6 +293,33 @@ export function TrackRequestService() {
         return { data: created[0], error: null }
     }
 
+    const recordEarning = async ({ track_request_id, playlist_id, playlist_name, track_id, track_name, requester_name, curator, amount, type }) => {
+        const { data, error } = await supabase
+            .from(EARNINGS_LEDGER_TABLE)
+            .insert({ track_request_id, playlist_id, playlist_name, track_id, track_name, requester_name, curator, amount, type })
+            .select()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        return { data, error: null }
+    }
+
+    const hasEarnings = async (track_request_id) => {
+        const { data, error } = await supabase
+            .from(EARNINGS_LEDGER_TABLE)
+            .select('id')
+            .eq('track_request_id', track_request_id)
+            .maybeSingle()
+
+        if (error) {
+            console.error(error.message)
+            return false
+        }
+        return !!data
+    }
+
     return {
         getTrackRequests,
         createTrackRequest,
@@ -309,6 +337,8 @@ export function TrackRequestService() {
         createPriceGroup,
         getAllPricePositions,
         updatePricePosition,
-        deletePricePosition
+        deletePricePosition,
+        recordEarning,
+        hasEarnings
     }
 }
