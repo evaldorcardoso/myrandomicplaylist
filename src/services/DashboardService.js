@@ -75,10 +75,10 @@ const getMonthStart = (year, month) => new Date(year, month, 1)
 const sumEarnings = (rows, start, end) => {
   let total = 0
   for (const row of rows) {
-    if (row.status !== 'paid' || row.value == null) continue
+    if (row.amount == null) continue
     const at = new Date(row.created_at)
     if (Number.isNaN(at.getTime())) continue
-    if (at >= start && at < end) total += row.value
+    if (at >= start && at < end) total += row.amount
   }
   return total
 }
@@ -189,9 +189,9 @@ export function DashboardService() {
     const nextStart = getMonthStart(now.getFullYear(), now.getMonth() + 1)
     const prevStart = getMonthStart(now.getFullYear(), now.getMonth() - 1)
 
-    const { data, error } = await supabase
-      .from(TRACK_REQUESTS_TABLE)
-      .select('value, status, created_at')
+const { data, error } = await supabase
+      .from('earnings_ledger')
+      .select('amount, created_at')
       .gte('created_at', prevStart.toISOString())
 
     if (error) {

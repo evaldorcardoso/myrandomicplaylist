@@ -9,6 +9,7 @@ import Randomic from "@/views/Randomic.vue"
 import Playlist from "@/views/Playlist.vue"
 import Estatisticas from "@/views/Estatisticas.vue"
 import Configuracoes from "@/views/Configuracoes.vue"
+import Financeiro from "@/views/Financeiro.vue"
 import helpers from "@/support/helpers"
 
 const isLogged = (to, from, next) => {
@@ -66,6 +67,11 @@ const routes = [
         path: "/configuracoes",
         name: "Configuracoes",
         component: Configuracoes,
+      },
+      {
+        path: "/financeiro",
+        name: "Financeiro",
+        component: Financeiro,
       }
     ]
   },

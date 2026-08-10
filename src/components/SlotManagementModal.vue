@@ -40,7 +40,7 @@
     }
   })
 
-  const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester, getPricePosition } = TrackRequestService()
+  const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester, getPricePosition, recordEarning, hasEarnings } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
   const { getTracks } = useGeneral()
   const { executePlaylist } = useProfile()
@@ -310,6 +310,20 @@
         payload.status = 'paid'
         const { error } = await updateTrackRequest(props.request.id, payload)
         if (error) throw error
+        const currentAmount = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : props.request?.value ?? null
+        const ledgerType = await hasEarnings(props.request.id) ? 'renewal' : 'new'
+        const { error: ledgerError } = await recordEarning({
+          track_request_id: props.request.id,
+          playlist_id: props.request?.playlist_id ?? props.playlistId,
+          playlist_name: props.playlist?.name ?? null,
+          track_id: props.request?.track_id ?? trackData.value?.id ?? null,
+          track_name: props.request?.name ?? trackData.value?.name ?? null,
+          requester_name: requesterName.value.trim() || (props.request?.requester_name ?? null),
+          curator: curator.value.trim() || (props.request?.curator ?? null),
+          amount: currentAmount,
+          type: ledgerType
+        })
+        if (ledgerError) console.error(ledgerError.message)
         submitState.value = 'success'
         emit('updated', 'paid')
       } else {

@@ -42,7 +42,7 @@
     }
   })
 
-  const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition, createPricePosition } = TrackRequestService()
+  const { createTrackRequest, getRequesters, getRequesterByName, getOrCreateRequester, getPricePosition, createPricePosition, recordEarning } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
   const { getTracks, addTracksToPlaylist, updateTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
@@ -269,6 +269,21 @@
       const [trackResult, priceResult] = await Promise.all([trackRequestPromise, pricePositionPromise])
       if (trackResult.error) throw trackResult.error
       if (priceResult?.error) console.error(priceResult.error.message)
+
+      if (paid.value) {
+        const { error: ledgerError } = await recordEarning({
+          track_request_id: trackResult.data?.[0]?.id,
+          playlist_id: selectedPlaylist.value || props.playlistId,
+          playlist_name: props.playlist?.name ?? null,
+          track_id: payload.track_id ?? null,
+          track_name: payload.name ?? null,
+          requester_name: (requester?.name ?? requesterName.value.trim()) || null,
+          curator: (requester?.curator ?? curator.value.trim()) || null,
+          amount: parseValue(),
+          type: 'new'
+        })
+        if (ledgerError) console.error(ledgerError.message)
+      }
 
       if (mutated) {
         playlistStore.bumpPlaylistRevision(selectedPlaylist.value || props.playlistId)

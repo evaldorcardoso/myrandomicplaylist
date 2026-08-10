@@ -25,7 +25,7 @@
   const { updateTracksOfPlaylist, updatePlaylist, uploadPlaylistCoverImage, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
-  const { getTrackRequests, getPricePositions, deleteTrackRequest, updateTrackRequest } = TrackRequestService()
+  const { getTrackRequests, getPricePositions, deleteTrackRequest, updateTrackRequest, recordEarning, hasEarnings } = TrackRequestService()
 
   const PAGE_SIZE = 20
 
@@ -824,8 +824,28 @@
         payload.status = formData.status
       }
 
+      const previousStatus = editingRequestData.value.status
       const { error } = await updateTrackRequest(editingRequestData.value.id, payload)
       if (error) throw error
+
+      if (formData?.status === 'paid' && previousStatus !== 'paid') {
+        const storedRaw = String(editingRequestData.value.value ?? '').trim()
+        const storedValue = storedRaw === '' ? null : parseFloat(storedRaw.replace(/\./g, '').replace(',', '.'))
+        const amount = Number.isFinite(parsedValue) ? parsedValue : (Number.isFinite(storedValue) ? storedValue : null)
+        const ledgerType = await hasEarnings(editingRequestData.value.id) ? 'renewal' : 'new'
+        const { error: ledgerError } = await recordEarning({
+          track_request_id: editingRequestData.value.id,
+          playlist_id: playlistId.value ?? null,
+          playlist_name: state.playlist?.name ?? null,
+          track_id: editingRequestData.value.track_id ?? null,
+          track_name: editingRequestData.value.name ?? null,
+          requester_name: editingRequestData.value.requester_name ?? null,
+          curator: editingRequestData.value.curator ?? null,
+          amount,
+          type: ledgerType
+        })
+        if (ledgerError) console.error(ledgerError.message)
+      }
 
       notify({ title: 'Alright', text: 'Request atualizado!', type: 'success' })
       orphanEditOpened.value = false

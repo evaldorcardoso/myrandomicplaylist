@@ -303,6 +303,7 @@ export function TrackRequestService() {
             console.error(error.message)
             return { data: null, error }
         }
+        invalidateOccupancy()
         return { data, error: null }
     }
 
