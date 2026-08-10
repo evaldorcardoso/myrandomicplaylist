@@ -698,15 +698,17 @@
             class="p-2 rounded-xl space-y-3"
             :class="positionMismatch
               ? 'bg-[#ff1717]/5 border-l-4 border-[#ff1717]'
-              : isPending
-                ? 'bg-tertiary-container/5 border-l-4 border-tertiary-container'
-                : 'bg-primary/5 border-l-4 border-primary'"
+              : isExpired
+                ? 'bg-[#ff1717]/5 border-l-4 border-[#ff1717]'
+                : isPending
+                  ? 'bg-tertiary-container/5 border-l-4 border-tertiary-container'
+                  : 'bg-primary/5 border-l-4 border-primary'"
           >
-            <div class="flex items-center gap-2" :class="positionMismatch ? 'text-[#ff1717]' : (isPending ? 'text-tertiary-container' : 'text-primary')">
+            <div class="flex items-center gap-2" :class="positionMismatch ? 'text-[#ff1717]' : (isExpired ? 'text-[#ff1717]' : (isPending ? 'text-tertiary-container' : 'text-primary'))">
               <font-awesome-icon :icon="positionMismatch ? 'exclamation-triangle' : (isPending ? 'hourglass' : 'clock')" class="text-[20px]" />
               <span class="text-label-md font-bold uppercase tracking-tight">Status da Posição</span>
             </div>
-            <p class="text-body-sm text-on-surface-variant leading-relaxed">
+            <p class="text-body-sm leading-relaxed" :class="isExpired ? 'text-[#ff1717]' : 'text-on-surface-variant'">
               <template v-if="positionMismatch">
                 Posição divergente entre o Spotify e o registro de venda. O slot está registrado na posição <strong class="text-[#ff1717]">#{{ storedPosition }}</strong> mas a música está na <strong class="text-[#ff1717]">#{{ position }}</strong> no Spotify.
               </template>
@@ -714,7 +716,7 @@
                 Esta posição está aguardando pagamento. Realize o pagamento para confirmar sua permanência.
               </template>
               <template v-else-if="isExpired">
-                Esta posição está <strong class="text-tertiary">expirada</strong>. Renove agora para garantir a permanência na grade.
+                Esta posição está <strong class="text-[#ff1717]">expirada</strong>. Renove agora para garantir a permanência na grade.
               </template>
               <template v-else>
                 Esta posição está ativa e expira <strong class="text-primary">{{ expiresLabel }}</strong>. Renove agora para garantir a permanência na grade.
