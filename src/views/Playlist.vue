@@ -5,6 +5,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
   import SortConfirmModal from '@/components/SortConfirmModal.vue'
+  import SortingProgressModal from '@/components/SortingProgressModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import SlotManagementModal from '@/components/SlotManagementModal.vue'
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
@@ -87,6 +88,9 @@
   const sortPosition = ref(0)
   const sortDropdownOpen = ref(false)
   const sortConfirmOpened = ref(false)
+  const sortProgressOpen = ref(false)
+  const sortProgressProcessed = ref(0)
+  const sortProgressTotal = ref(0)
   const differentSort = ref(false)
   const isProcessing = ref(false)
   const lastUpdatedLabel = ref('')
@@ -982,32 +986,41 @@
 
   const updateTracksOrder = async() => {
     isProcessing.value = true
-    const raw = toRaw(state.tracks)
-    const moves = []
-    for (let i = 0; i < raw.length; i++) {
-      if (raw[i].id !== i) {
-        moves.push({ from: raw[i].id, to: i })
+    let i = 0
+    let changes = 0
+    const total = state.tracks.length
+    sortProgressTotal.value = total
+    sortProgressProcessed.value = 0
+    sortProgressOpen.value = total > 0
+    while (i < total) {
+      const id = state.tracks[i].id
+      if (id == i) {
+        i++
+        continue
       }
-    }
-
-    if (moves.length > 0) {
-      notify({ title: 'Please, wait', text: `Sorting songs... (0/${moves.length})`, type: 'info' })
-    }
-
-    for (let m = 0; m < moves.length; m++) {
-      const { from, to } = moves[m]
+      changes++
+      sortProgressProcessed.value = changes
       const formData = {
-        'range_start': from,
-        'insert_before': to
+        'range_start': id,
+        'insert_before': i
       }
       await updateTracksOfPlaylist(playlistId.value, formData)
-      if (m % 5 === 0 || m === moves.length - 1) {
-        notify({ title: 'Please, wait', text: `Sorting songs... (${m + 1}/${moves.length})`, type: 'info' })
+      state.tracks.sort((a, b) => a.id - b.id)
+      const temp = state.tracks.splice(id, 1)
+      state.tracks.splice(i, 0, temp[0])
+      for (let j = 0; j < state.tracks.length; j++) {
+        state.tracks[j].id = j
       }
+      sortUserPlaylist(false)
+      i = 0
     }
 
-    if (moves.length > 0) {
-      notify({ title: 'Alright!', text: 'Playlist updated with ' + moves.length + ' changes!', type: 'success' })
+    sortProgressOpen.value = false
+    sortProgressProcessed.value = 0
+    sortProgressTotal.value = 0
+
+    if (changes > 0) {
+      notify({ title: 'Alright!', text: 'Playlist updated with ' + changes + ' changes!', type: 'success' })
     }
     sortPosition.value = 0
     await handleRefresh()
@@ -1089,6 +1102,11 @@
     :open="sortConfirmOpened"
     @close="closeSortConfirm"
     @confirm="confirmSortApply"
+  />
+  <SortingProgressModal
+    :open="sortProgressOpen"
+    :processed="sortProgressProcessed"
+    :total="sortProgressTotal"
   />
   <SellSlotModal
     :open="sellSlotOpened"
