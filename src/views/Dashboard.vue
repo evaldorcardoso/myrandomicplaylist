@@ -54,6 +54,9 @@
   }
 
   const formatExpiration = (secondsLeft) => {
+    if (secondsLeft <= 0) {
+      return { value: 'Expirada', label: '', urgent: true }
+    }
     if (secondsLeft > 86400) {
       return { value: Math.ceil(secondsLeft / 86400), label: 'Dias Restantes' }
     }
@@ -424,7 +427,7 @@
                       class="text-label-sm font-mono tracking-tighter"
                       :class="expiration.urgent ? 'text-error' : 'text-on-surface'"
                     >{{ formatExpiration(expiration.secondsLeft).value }}</span>
-                    <span class="text-[10px] text-on-surface-variant uppercase">{{ formatExpiration(expiration.secondsLeft).label }}</span>
+                    <span v-if="formatExpiration(expiration.secondsLeft).label" class="text-[10px] text-on-surface-variant uppercase">{{ formatExpiration(expiration.secondsLeft).label }}</span>
                   </div>
                 </div>
                 <div class="flex gap-2 pt-2">
