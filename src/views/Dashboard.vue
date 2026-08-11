@@ -1,25 +1,22 @@
 <script setup>
-  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { DashboardService } from '@/services/DashboardService'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
+  import { useNotificationsStore } from '@/stores/notifications'
   import { PlaylistService } from '@/services/PlaylistService'
-  import { TrackRequestService } from '@/services/TrackRequestService'
   import { sendExpirationPush as notifyExpirationPush } from '@/services/PushService'
-  import SlotManagementModal from '@/components/SlotManagementModal.vue'
-  import { useGeneral } from '@/support/spotifyApi'
   import { invalidateOccupancy } from '@/support/occupancyCache'
   import { useSettingsStore } from '@/stores/settings'
   import { notify } from "@kyvg/vue3-notification";
 
   const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
-  const { deleteTrackRequest } = TrackRequestService()
-  const { removeTracksOfPlaylist, getTracks, updateTracksOfPlaylist } = useGeneral()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const settingsStore = useSettingsStore()
+  const notificationsStore = useNotificationsStore()
   const router = useRouter()
   const state = reactive({
     data: null
@@ -34,12 +31,6 @@
   })
 
   let countdownInterval = null
-
-  const slotManagementOpened = ref(false)
-  const slotManagementTrack = ref(null)
-  const slotManagementRequest = ref(null)
-  const slotManagementPlaylistId = ref('')
-  const slotManagementPlaylist = ref(null)
 
   const notifyingIds = reactive(new Set())
 
@@ -87,104 +78,14 @@
       if (!fresh?.request || !fresh?.track) return
       expiration = fresh
     }
-    slotManagementTrack.value = expiration.track
-    slotManagementRequest.value = expiration.request
-    slotManagementPlaylistId.value = expiration.playlistId
-    slotManagementPlaylist.value = expiration.playlist
-    slotManagementOpened.value = true
+    notificationsStore.openSlot(expiration)
   }
 
-  const closeSlotManagement = () => {
-    slotManagementOpened.value = false
-    slotManagementTrack.value = null
-    slotManagementRequest.value = null
-    slotManagementPlaylistId.value = ''
-    slotManagementPlaylist.value = null
-  }
-
-  const onSlotUpdated = async () => {
-    closeSlotManagement()
-    await loadDashboardData()
-  }
-
-  const onSlotRemoveTrack = async ({ request, track }) => {
-    const playlistId = slotManagementPlaylistId.value
-    closeSlotManagement()
-    try {
-      if (request?.id) {
-        const { error } = await deleteTrackRequest(request.id)
-        if (error) throw error
-      }
-      if (track?.track?.uri) {
-        await removeTracksOfPlaylist(playlistId, {
-          tracks: [{ uri: track.track.uri }]
-        })
-        playlistStore.removeTrack(playlistId, track.track.uri)
-      }
+  watch(() => notificationsStore.slotRevision, async () => {
+    if (state.data) {
       await loadDashboardData()
-    } catch (error) {
-      console.error(error)
     }
-  }
-
-  const onSlotReplaceTrack = async ({ request, track, replacement }) => {
-    const playlistId = slotManagementPlaylistId.value
-    closeSlotManagement()
-    try {
-      if (request?.id) {
-        const { error } = await deleteTrackRequest(request.id)
-        if (error) throw error
-      }
-
-      const targetUri = track?.track?.uri ?? track?.uri
-      const replacementUri = replacement?.track?.uri ?? replacement?.uri
-
-      let tracks = await playlistStore.getTracks(playlistId) ?? []
-      if (tracks.length === 0) {
-        playlistStore.loadTracks(playlistId, await getTracks(playlistId))
-        tracks = await playlistStore.getTracks(playlistId)
-      }
-
-      const replacementTrack = tracks.find(t => (t.track?.uri ?? t.uri) === replacementUri)
-      const removalTrack = tracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
-
-      if (!replacementTrack || !removalTrack) {
-        notify({ title: 'Ops', text: 'Música não encontrada!', type: 'error' })
-        return
-      }
-
-      const moveFormData = {
-        'range_start': replacementTrack.id,
-        'insert_before': removalTrack.id
-      }
-      await updateTracksOfPlaylist(playlistId, moveFormData)
-
-      const updatedTracks = await getTracks(playlistId)
-      const newRemovalTrack = updatedTracks.find(t => (t.track?.uri ?? t.uri) === targetUri)
-
-      if (newRemovalTrack) {
-        await removeTracksOfPlaylist(playlistId, {
-          'tracks': [{ 'uri': targetUri }]
-        })
-      }
-
-      playlistStore.loadTracks(playlistId, await getTracks(playlistId))
-      await loadDashboardData()
-
-      notify({
-        title: 'Alright',
-        text: 'Música substituída!',
-        type: 'success'
-      })
-    } catch (error) {
-      console.error(error)
-      notify({
-        title: 'Ops',
-        text: 'Erro ao substituir a música!',
-        type: 'error'
-      })
-    }
-  }
+  })
 
   const formatDueDateBR = (date) => {
     if (!date) return ''
@@ -659,17 +560,4 @@
       </div>
     </div>
   </div>
-
-  <SlotManagementModal
-    :open="slotManagementOpened"
-    :track="slotManagementTrack"
-    :request="slotManagementRequest"
-    :playlist-id="slotManagementPlaylistId"
-    :playlist="slotManagementPlaylist"
-    :select-playlist="false"
-    @close="closeSlotManagement"
-    @updated="onSlotUpdated"
-    @remove-track="onSlotRemoveTrack"
-    @replace-track="onSlotReplaceTrack"
-  />
 </template>

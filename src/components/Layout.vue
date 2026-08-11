@@ -3,8 +3,10 @@
     import Sidebar from '@/components/Sidebar.vue'
     import TopBar from '@/components/TopBar.vue'
     import FloatPlayer from '@/components/FloatPlayer.vue'
+    import SlotManagementModal from '@/components/SlotManagementModal.vue'
     import { useProfile } from '@/support/spotifyApi'
     import { useUserStore } from '@/stores/user'
+    import { useNotificationsStore } from '@/stores/notifications'
 
     const { getPlaybackState, getProfile } = useProfile()
     const floatPlayerData = ref(null)
@@ -16,6 +18,7 @@
     const refresh = ref(null)
     const removeTrackRef = ref('')
     const userStore = useUserStore()
+    const notificationsStore = useNotificationsStore()
 
     const currentData = computed(() => {
         const data = floatPlayerData.value
@@ -108,5 +111,17 @@
     </div>
     <FloatPlayer v-if="floatPlayerData" 
         :current-data="currentData"
+    />
+    <SlotManagementModal
+        :open="notificationsStore.slotOpened"
+        :track="notificationsStore.slotTrack"
+        :request="notificationsStore.slotRequest"
+        :playlist-id="notificationsStore.slotPlaylistId"
+        :playlist="notificationsStore.slotPlaylist"
+        :select-playlist="false"
+        @close="notificationsStore.closeSlot()"
+        @updated="notificationsStore.runSlotUpdated()"
+        @remove-track="notificationsStore.runSlotRemoveTrack"
+        @replace-track="notificationsStore.runSlotReplaceTrack"
     />
 </template>
