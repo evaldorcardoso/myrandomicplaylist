@@ -1,8 +1,6 @@
 name: "Send Expiration Push Notifications"
 
 on:
-  schedule:
-    - cron: "0 12 * * *" # 12:00 UTC = 9:00 BRT
   workflow_dispatch:
     inputs:
       dry_run:
