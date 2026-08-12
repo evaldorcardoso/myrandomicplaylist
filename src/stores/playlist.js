@@ -14,8 +14,9 @@ export const usePlaylistStore = defineStore('playlist', {
             this.playlistRevision[playlistId] = (this.playlistRevision[playlistId] ?? 0) + 1
         },
         loadAll(playlists) {
-            this.playlists = [ ...this.playlists, ...playlists ]
-            // this.playlists = playlists
+            const existingIds = new Set(this.playlists.map(playlist => playlist.id))
+            const uniqueNewPlaylists = playlists.filter(playlist => !existingIds.has(playlist.id))
+            this.playlists = [ ...this.playlists, ...uniqueNewPlaylists ]
         },
         load(playlist) {
             const index = this.playlists.findIndex(element => element.id === playlist.id)

@@ -46,7 +46,14 @@ const getCompatiblePlaylists = ({ playlists, currentUser, excludePlaylistId = nu
     ? ownedPlaylists.filter(playlist => playlist.id !== excludePlaylistId)
     : ownedPlaylists
 
-  const playlistsWithGenreMap = targetPlaylists.map(playlist => ({
+  const uniquePlaylists = targetPlaylists.reduce((accumulator, playlist) => {
+    if (!accumulator.some(existing => existing.id === playlist.id)) {
+      accumulator.push(playlist)
+    }
+    return accumulator
+  }, [])
+
+  const playlistsWithGenreMap = uniquePlaylists.map(playlist => ({
     ...playlist,
     genreMap: convertToGenreMap(playlist.genres)
   }))

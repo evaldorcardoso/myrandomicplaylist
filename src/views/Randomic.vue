@@ -548,11 +548,11 @@
               </div>
               <div class="list-item-content">
                 <div class="list-item-image">
-                  <img :src="playlist.images?.[0]?.url" style="width: 40px; height: 40px;margin-right: 20px;" />
+                   <img :src="playlist.images?.length > 0 ? playlist.images[0].url : playlist.image" style="width: 40px; height: 40px;margin-right: 20px;" />
                 </div>
                 <div class="list-item-text">
                   <div class="list-item-title">{{playlist.name}}</div>
-                  <div class="list-item-subtitle">{{playlist.tracks.total}} songs</div>
+                  <div class="list-item-subtitle">{{ playlist.tracks ? (playlist.tracks.total || playlist.tracks.length) : (playlist.items ?? 0) }} songs</div>
                 </div>
               </div>
             </li>

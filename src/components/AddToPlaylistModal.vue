@@ -181,6 +181,8 @@
 
       if (playlists.value.length > 0) {
         await selectPlaylist(playlists.value[0].id)
+      } else {
+        selectedPlaylistId.value = ''
       }
     } catch (error) {
       console.error(error)
