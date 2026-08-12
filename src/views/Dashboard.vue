@@ -229,8 +229,8 @@
                   <tr class="bg-surface-container text-label-sm text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
                     <th class="px-4 py-4">Playlist</th>
                     <th class="w-[90px] px-4 py-4 text-center">Total Posições</th>
-                    <th class="w-[150px] px-4 py-4">Ocupação</th>
-                    <th class="w-[110px] px-4 py-4 text-right">Valor Médio</th>
+                    <th class="w-[150px] px-4 py-4 hidden xl:table-cell">Ocupação</th>
+                    <th class="w-[110px] px-4 py-4 text-right hidden xl:table-cell">Valor Médio</th>
                     <th class="w-[44px] px-4 py-4"></th>
                   </tr>
                 </thead>
@@ -263,7 +263,7 @@
                     <td class="px-4 py-4 text-center">
                       <span class="font-mono text-body-md text-on-surface">{{ playlist.totalPositions }}</span>
                     </td>
-                    <td class="px-4 py-4">
+                    <td class="px-4 py-4 hidden xl:table-cell">
                       <div class="flex flex-col gap-1.5">
                         <div class="flex justify-between text-label-sm">
                           <span class="text-on-surface">{{ playlist.filledPositions }}/{{ playlist.totalPositions }}</span>
@@ -279,7 +279,7 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-4 text-right">
+                    <td class="px-4 py-4 text-right hidden xl:table-cell">
                       <span class="font-mono text-body-md text-on-surface">{{ playlist.avgValue }}</span>
                     </td>
                     <td class="px-4 py-4 text-right">

@@ -339,7 +339,7 @@
       if (pos >= range.min_position && pos <= range.max_position) {
         const label = range.min_position === range.max_position
           ? formatCurrency(range.value)
-          : `${formatCurrency(range.value)} (faixa ${range.min_position}-${range.max_position})`
+          : `${formatCurrency(range.value)}`
         return { value: label, range }
       }
     }
@@ -1417,7 +1417,7 @@
               :class="{ 'opacity-40': track.track?.available_markets && !track.track.available_markets.includes('BR') }"
               @click="openTrackSlotModal(track)"
             >
-              <td class="px-6 py-4">
+              <td class="px-2 py-2 xl:px-6 xl:py-4">
                 <div class="flex items-center gap-2">
                   <div class="flex flex-col items-center gap-0.5">
                     <div
@@ -1450,11 +1450,11 @@
                   />
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-2 py-2 xl:px-6 xl:py-4">
                 <div class="flex items-center gap-4">
                   <img class="w-10 h-10 rounded-lg object-cover" :src="track.track?.album?.images?.[0]?.url" />
-                  <div class="flex flex-col">
-                    <span class="text-on-surface text-body-md" :class="{ 'text-primary': track.track?.uri === currentPlaying?.item?.uri }">
+                  <div class="flex flex-col min-w-0">
+                    <span class="block truncate text-on-surface text-body-md" :class="{ 'text-primary': track.track?.uri === currentPlaying?.item?.uri }">
                       <font-awesome-icon v-if="track.track?.tracked" icon="heart" class="text-primary mr-1" />
                       {{ track.track?.name }}
                     </span>
@@ -1462,8 +1462,8 @@
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
-              <td v-if="hasSoldSlots" class="px-6 py-4 text-center">
+              <td class="px-2 py-2 xl:px-6 xl:py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
+              <td v-if="hasSoldSlots" class="px-2 py-2 xl:px-6 xl:py-4 text-center">
                 <div v-if="!track._slot" class="flex flex-col items-center gap-1">
                   <div class="animate-pulse h-3 w-16 rounded bg-surface-container-high"></div>
                   <div class="animate-pulse h-2 w-10 rounded bg-surface-container-high"></div>
@@ -1477,7 +1477,7 @@
                   </span>
                 </div>
               </td>
-              <td v-if="playlistSaved" class="px-6 py-4">
+              <td v-if="playlistSaved" class="px-2 py-2 xl:px-6 xl:py-4">
                 <div v-if="!track._slot" class="animate-pulse h-5 w-16 rounded-full bg-surface-container-high"></div>
                 <button
                   v-else-if="track._slot.status === 'free'"
@@ -1498,11 +1498,11 @@
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-<td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
-                  <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
-                  <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track).value }}</span>
-                </td>
-              <td class="px-6 py-4">
+              <td v-if="hasSoldSlots || hasPriceValues" class="px-2 py-2 xl:px-6 xl:py-4">
+                <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
+                <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track).value }}</span>
+              </td>
+              <td class="px-2 py-2 xl:px-6 xl:py-4">
                 <div class="flex items-center gap-1 text-label-md text-on-surface">
                   <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
                   {{ track.track?.popularity }}%
