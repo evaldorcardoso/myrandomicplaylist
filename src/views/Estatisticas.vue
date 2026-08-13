@@ -2,7 +2,6 @@
   import { onMounted, computed, ref, inject } from 'vue'
   import { useRouter } from 'vue-router'
   import { Line } from 'vue-chartjs'
-  import Notification from '@/components/Notification.vue'
   import { usePlaylistData } from '@/composables/usePlaylistData'
 
   const router = useRouter()
@@ -14,9 +13,6 @@
   const {
     state,
     playlistId,
-    notificationOpened,
-    notificationData,
-    onNotificationAction,
     init,
     executeUserPlaylist,
     avgPopularity,
@@ -139,11 +135,6 @@
 </script>
 
 <template>
-  <Notification
-    :open="notificationOpened"
-    :data="notificationData"
-    @notification-action="onNotificationAction"
-  />
   <div v-if="!state.playlist" class="px-gutter md:px-lg py-md">
     <div class="animate-pulse h-8 w-48 rounded bg-surface-container-high"></div>
   </div>
