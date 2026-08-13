@@ -59,8 +59,15 @@ const getCurrentTrackIds = async (playlist, playlistStore, getTracks) => {
 }
 
 const getCurrentTracksFullMap = async (playlist, playlistStore, getTracks) => {
+  if (!playlist?.id) return new Map()
   const loaded = await playlistStore.getTracks(playlist.id)
-  const source = (Array.isArray(loaded) && loaded.length > 0) ? loaded : await getTracks(playlist.id)
+  let source
+  try {
+    source = (Array.isArray(loaded) && loaded.length > 0) ? loaded : await getTracks(playlist.id)
+  } catch (err) {
+    console.error(`Failed to load tracks for playlist ${playlist.id}:`, err)
+    return new Map()
+  }
   const tracksMap = new Map()
   source?.forEach((item, index) => {
     const track = item?.track
@@ -68,6 +75,16 @@ const getCurrentTracksFullMap = async (playlist, playlistStore, getTracks) => {
     tracksMap.set(track.id, { ...item, id: index })
   })
   return tracksMap
+}
+
+// Wrap getCurrentTracksFullMap to handle undefined values gracefully
+const getCurrentTracksFullMapSafe = (playlist, playlistStore, getTracks) => {
+  try {
+    return getCurrentTracksFullMap(playlist, playlistStore, getTracks)
+  } catch (err) {
+    console.error(`Failed to process tracks for playlist ${playlist?.id}:`, err)
+    return Promise.resolve(new Map())
+  }
 }
 
 const getMonthStart = (year, month) => new Date(year, month, 1)
@@ -292,7 +309,7 @@ const { data, error } = await supabase
     await Promise.all([...playlistIds].map(async (playlistId) => {
       const playlist = playlistsById.get(playlistId)
       if (!playlist) return
-      tracksByPlaylist[playlistId] = await getCurrentTracksFullMap(playlist, playlistStore, getTracks)
+      tracksByPlaylist[playlistId] = await getCurrentTracksFullMapSafe(playlist, playlistStore, getTracks)
     }))
 
     const items = []

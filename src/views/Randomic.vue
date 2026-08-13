@@ -7,7 +7,7 @@ import { usePlaylistStore } from '@/stores/playlist'
 import { NOTIFICATIONS_TYPE } from '../support/helpers'
 import { notify } from "@kyvg/vue3-notification"
 
-const { getPlaylists, executePlaylist, getPlaybackState, getDevices, transferPlayback, skipToNext, startResumePlayback, addTrackToQueue, getTopItens } = useProfile()
+const { getPlaylists, addTrackToQueue, getTopItens } = useProfile()
 const { getTracks, addTracksToPlaylist, savePlaylist } = useGeneral()
 
 const userStore = useUserStore()
@@ -98,7 +98,7 @@ const getPlaylistTracks = async (playlistId) => {
 
 const getUserTopItems = async () => {
   const { data } = await getTopItens(state.numberTracks)
-data.items.map(item => markRaw(item)).forEach(item => state.tracks.push(item))
+  data.items.map(item => markRaw(item)).forEach(item => state.tracks.push(item))
   if (state.orderMode === 'bottom') {
     state.tracks.reverse()
   }
@@ -186,14 +186,22 @@ const generatePlaylist = async () => {
   step.value = 2
 }
 
+const RANDOM_PLAYLIST_NAMES = [
+  'Nova Vibração', 'Sons da Semana', 'Mix das Calorias', 'Hora do Mix', 'Energia Total',
+  'Surpresa Musical', 'Batidão Aleatório', 'Trilha do Dia', 'Aleatórias Top', 'Flow da Vez',
+  'Cara ou Coroa', 'Mix Surpresa', 'Sextou', 'Domingão', 'Ritmo do Momento'
+]
+
+const generatePlaylistName = () => {
+  const word = RANDOM_PLAYLIST_NAMES[Math.floor(Math.random() * RANDOM_PLAYLIST_NAMES.length)]
+  const number = Math.floor(Math.random() * 900) + 100
+  return `${word} ${number}`
+}
+
 const saveUserPlaylist = async () => {
   state.isProcessing = true
-  try {
-    const res = await fetch('https://random-word-api.vercel.app/api?words=1&type=capitalized')
-    const data = await res.json()
-    state.playlistName = data[0]
-  } catch (e) {
-    console.log(e)
+  if (!state.playlistName || state.playlistName === 'Random Playlist') {
+    state.playlistName = generatePlaylistName()
   }
   const description = 'Playlist created by MyRandomicPlaylist App from @evaldorcardoso'
   const formData = {
@@ -222,31 +230,26 @@ const saveUserPlaylist = async () => {
   router.push('/playlist/' + data.id)
 }
 
-const executeUserPlaylist = async () => {
+const addToUserQueue = async () => {
   state.isProcessing = true
-  if (!state.randomPlaylist) {
-    // fallback: add to queue
+  try {
     const tracks = state.tracks.filter(t => t.checked).map(t => t.uri)
     for (let i = 0; i < tracks.length; i++) {
       state.processingStart = i + 1
-      await new Promise(r => setTimeout(r, 200))
       await addTrackToQueue(tracks[i])
     }
-    state.isProcessing = false
-    return
-  }
-  try {
-    await executePlaylist({
-      context_uri: 'spotify:playlist:' + state.randomPlaylist.id,
-      offset: { position: 0 },
-      position_ms: 0
-    })
-    state.isProcessing = false
+    notify({ title: 'Alright', text: `${tracks.length} músicas adicionadas à fila`, type: 'success' })
   } catch (error) {
     console.log(error)
-    state.isProcessing = false
-    notify({ title: 'Ops', text: error.response, type: NOTIFICATIONS_TYPE.danger })
+    notify({ title: 'Ops', text: 'Erro ao adicionar à fila', type: NOTIFICATIONS_TYPE.danger })
   }
+  state.isProcessing = false
+}
+
+const backToStep1 = () => {
+  state.tracks = []
+  currentPage.value = 1
+  step.value = 1
 }
 
 // Computed
@@ -279,63 +282,12 @@ onMounted(async () => {
 <template>
   <div class="page">
     <!-- Step 1: Configura -->
-    <section v-if="step === 1" class="max-w-[680px] mx-auto px-md py-lg space-y-xl">
+    <section v-if="step === 1" class="max-w-[680px] lg:max-w-[960px] xl:max-w-[1100px] mx-auto px-md py-lg space-y-xl">
       <!-- Header -->
       <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-sm py-sm border-b border-outline-variant/10">
         <h1 class="text-headline-sm text-on-surface">Mixar Playlist</h1>
-        <p class="text-body-sm text-on-surface-variant mt-1">Configure a origem, quantidade e modo de geração</p>
+        <p class="text-body-sm text-on-surface-variant mt-1">Configure a quantidade, modo de geração e origens</p>
       </header>
-
-      <!-- Origens rápidas -->
-      <section>
-        <h2 class="text-label-lg text-on-surface mb-md">Origens rápidas</h2>
-        <div class="grid grid-cols-2 gap-3">
-          <article @click="() => { state.filters = ['liked']; filterPlaylists('liked'); }"
-                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition p-md flex flex-col gap-sm cursor-pointer">
-            <span class="material-symbols-outlined text-primary text-4xl">favorite</span>
-            <div>
-              <h3 class="text-body-md text-on-surface">Liked Songs</h3>
-              <p class="text-body-sm text-on-surface-variant">Suas músicas curtidas</p>
-            </div>
-          </article>
-          <article @click="() => { state.pickMode = 'usertopitems'; }"
-                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition p-md flex flex-col gap-sm cursor-pointer">
-            <span class="material-symbols-outlined text-primary text-4xl">trending_up</span>
-            <div>
-              <h3 class="text-body-md text-on-surface">Top Items</h3>
-              <p class="text-body-sm text-on-surface-variant">Suas músicas e artistas top</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- Suas playlists -->
-      <section>
-        <h2 class="text-label-lg text-on-surface mb-md">Suas playlists</h2>
-        <!-- Filter chips -->
-        <div class="flex flex-wrap gap-2 mb-md">
-          <button @click="filterPlaylists('all')" class="rounded-full bg-surface-container-high px-md py-1 text-label-md hover:bg-primary/15 transition" :class="{ 'bg-primary text-on-primary': state.filters[0] === 'all' }">All</button>
-          <button @click="filterPlaylists('private')" class="rounded-full bg-surface-container-high px-md py-1 text-label-md hover:bg-primary/15 transition" :class="{ 'bg-primary text-on-primary': state.filters[0] === 'private' }">My</button>
-          <button @click="filterPlaylists('liked')" class="rounded-full bg-surface-container-high px-md py-1 text-label-md hover:bg-primary/15 transition" :class="{ 'bg-primary text-on-primary': state.filters[0] === 'liked' }">Liked</button>
-          <button @click="selectAllPlaylists" class="rounded-full bg-surface-container-high px-md py-1 text-label-md hover:bg-primary/15 transition">Select all</button>
-        </div>
-        <!-- Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <article v-for="playlist in state.playlists" :key="playlist.id"
-                   @click="playlist.checked = !playlist.checked"
-                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition cursor-pointer relative"
-                   :class="{ 'ring-2 ring-primary bg-primary/10': playlist.checked }">
-            <img :src="playlist.images?.length > 0 ? playlist.images[0].url : 'https://via.placeholder.com/150'" class="aspect-square w-full bg-surface-container-high object-cover" />
-            <div class="p-sm">
-              <h4 class="text-label-md text-on-surface truncate">{{ playlist.name }}</h4>
-              <p class="text-label-sm text-on-surface-variant truncate">{{ playlist.tracks?.total || playlist.tracks?.length || playlist.items || 0 }} songs</p>
-            </div>
-            <div v-if="playlist.checked" class="absolute inset-0 bg-primary/10 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary">check_circle</span>
-            </div>
-          </article>
-        </div>
-      </section>
 
       <!-- Quantidade -->
       <section>
@@ -346,8 +298,10 @@ onMounted(async () => {
         </div>
         <div class="grid grid-cols-5 gap-2">
           <button v-for="n in [10,20,30,50,100]" :key="n" @click="state.numberTracks = n"
-                  class="rounded-full bg-surface-container-high px-md py-1 text-label-md hover:bg-primary/15 transition"
-                  :class="{ 'bg-primary text-on-primary': state.numberTracks === n }">{{ n }}</button>
+                  class="rounded-full px-md py-1 text-label-md transition"
+                  :class="state.numberTracks === n
+                    ? 'bg-primary text-white font-bold shadow-md ring-2 ring-primary/60'
+                    : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/15'">{{ n }}</button>
         </div>
       </section>
 
@@ -370,20 +324,84 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- Modo de ordenação (conditional) -->
-      <section v-if="state.pickMode === 'popularity' || state.pickMode === 'usertopitems'">
-        <h2 class="text-label-lg text-on-surface mb-md">Como as músicas serão ordenadas?</h2>
-        <div class="grid grid-cols-2 gap-3">
-          <article @click="state.orderMode = 'top'" class="rounded-xl p-md border border-outline-variant/10 flex flex-col gap-sm cursor-pointer transition" :class="{ 'border-primary bg-primary/5': state.orderMode === 'top' }">
-            <span class="material-symbols-outlined text-3xl" :class="state.orderMode === 'top' ? 'text-primary' : 'text-on-surface-variant'">vertical_align_top</span>
-            <span class="text-body-md text-on-surface text-center">Top first</span>
+      <!-- Listagem de playlists (combines quick origins + suas playlists) -->
+      <section>
+        <h2 class="text-label-lg text-on-surface mb-md">Suas playlists</h2>
+        <!-- Filter chips -->
+        <div class="flex flex-wrap gap-2 mb-md">
+          <button @click="filterPlaylists('all')" class="rounded-full px-md py-1 text-label-md transition" :class="state.filters[0] === 'all' ? 'bg-primary text-white font-bold shadow-md ring-2 ring-primary/60' : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/15'">All</button>
+          <button @click="filterPlaylists('private')" class="rounded-full px-md py-1 text-label-md transition" :class="state.filters[0] === 'private' ? 'bg-primary text-white font-bold shadow-md ring-2 ring-primary/60' : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/15'">My</button>
+          <button @click="filterPlaylists('liked')" class="rounded-full px-md py-1 text-label-md transition" :class="state.filters[0] === 'liked' ? 'bg-primary text-white font-bold shadow-md ring-2 ring-primary/60' : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/15'">Liked</button>
+          <button @click="selectAllPlaylists" class="rounded-full bg-surface-container-high text-on-surface-variant px-md py-1 text-label-md hover:bg-primary/15 transition">Select all</button>
+        </div>
+        <!-- Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <article v-for="playlist in state.playlists" :key="playlist.id"
+                   @click="playlist.checked = !playlist.checked"
+                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition cursor-pointer relative"
+                   :class="{ 'ring-2 ring-primary bg-primary/10': playlist.checked }">
+            <img :src="playlist.images?.length > 0 ? playlist.images[0].url : playlist.image || 'https://via.placeholder.com/150'" class="aspect-square w-full bg-surface-container-high object-cover" />
+            <div class="p-sm">
+              <h4 class="text-label-md text-on-surface truncate">{{ playlist.name }}</h4>
+              <p class="text-label-sm text-on-surface-variant truncate">{{ playlist.tracks?.total || playlist.tracks?.length || playlist.items || 0 }} songs</p>
+            </div>
+            <div v-if="playlist.checked" class="absolute inset-0 bg-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary">check_circle</span>
+            </div>
           </article>
-          <article @click="state.orderMode = 'bottom'" class="rounded-xl p-md border border-outline-variant/10 flex flex-col gap-sm cursor-pointer transition" :class="{ 'border-primary bg-primary/5': state.orderMode === 'bottom' }">
-            <span class="material-symbols-outlined text-3xl" :class="state.orderMode === 'bottom' ? 'text-primary' : 'text-on-surface-variant'">vertical_align_bottom</span>
-            <span class="text-body-md text-on-surface text-center">Top last</span>
+        </div>
+        <!-- Origens rápidas integradas abaixo do grid -->
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <article @click="() => { state.filters = ['liked']; filterPlaylists('liked'); }"
+                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition p-md flex flex-col gap-sm cursor-pointer">
+            <span class="material-symbols-outlined text-primary text-4xl">favorite</span>
+            <div>
+              <h3 class="text-body-md text-on-surface">Liked Songs</h3>
+              <p class="text-body-sm text-on-surface-variant">Suas músicas curtidas</p>
+            </div>
+          </article>
+          <article @click="() => { state.pickMode = 'usertopitems'; }"
+                   class="rounded-xl bg-surface-container-low overflow-hidden border border-outline-variant/10 hover:border-primary/40 transition p-md flex flex-col gap-sm cursor-pointer">
+            <span class="material-symbols-outlined text-primary text-4xl">trending_up</span>
+            <div>
+              <h3 class="text-body-md text-on-surface">Top Items</h3>
+              <p class="text-body-sm text-on-surface-variant">Suas músicas e artistas top</p>
+            </div>
           </article>
         </div>
       </section>
+
+      <!-- Bottom bar (Step 1) -->
+      <div class="fixed bottom-0 left-0 right-0 lg:left-56 px-md lg:px-lg bg-surface-container-low/95 backdrop-blur-md border-t border-outline-variant/10 p-md flex items-center justify-between z-30 h-16">
+        <div class="text-label-md text-on-surface-variant">
+          {{ selectedCount }} origens · {{ state.numberTracks }} músicas · {{ state.pickMode === 'random' ? 'Random' : state.pickMode === 'popularity' ? 'Popularity' : 'Top items' }}
+        </div>
+        <div class="flex items-center gap-2">
+          <button @click="generatePlaylist"
+                  :disabled="selectedCount < 1 || state.numberTracks < 1"
+                  class="flex items-center gap-2 px-lg py-sm rounded-xl font-medium transition"
+                  :class="selectedCount < 1 || state.numberTracks < 1
+                    ? 'bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed'
+                    : 'bg-primary text-on-primary hover:bg-primary/90'">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            Mixar
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Step 2: Resultado -->
+    <section v-else class="max-w-[680px] lg:max-w-[960px] xl:max-w-[1100px] mx-auto px-md py-lg space-y-lg">
+<!-- Header -->
+      <header class="h-14 rounded-2xl bg-surface-container-low border border-outline-variant/10 flex items-center justify-between px-md sticky top-0 z-10">
+        <button @click="backToStep1" class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition" title="Voltar">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <div class="text-body-md text-on-surface"> 
+          {{ includedCount }} de {{ state.tracks.length }} tracks
+        </div>
+      </header>
 
       <!-- Nome da playlist -->
       <section>
@@ -392,40 +410,6 @@ onMounted(async () => {
                class="w-full rounded-xl bg-surface-container-low px-md py-2 text-body-md text-on-surface border border-outline-variant/10 focus:border-primary focus:outline-none"
                placeholder="Random Playlist" />
       </section>
-
-      <!-- Bottom bar (Step 1) -->
-      <div class="fixed bottom-20 lg:bottom-16 left-0 right-0 mx-xl rounded-2xl bg-surface-container-low/95 backdrop-blur-md border border-outline-variant/10 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.4)] p-md flex items-center justify-between">
-        <div class="text-label-md text-on-surface-variant">
-          {{ selectedCount }} origens · {{ state.numberTracks }} músicas · {{ state.pickMode === 'random' ? 'Random' : state.pickMode === 'popularity' ? 'Popularity' : 'Top items' }}
-        </div>
-        <button @click="generatePlaylist"
-                :disabled="selectedCount < 1 || state.numberTracks < 1"
-                class="flex items-center gap-2 px-lg py-sm rounded-xl font-medium transition"
-                :class="selectedCount < 1 || state.numberTracks < 1
-                  ? 'bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed'
-                  : 'bg-primary text-on-primary hover:bg-primary/90'">
-          <span class="material-symbols-outlined">auto_awesome</span>
-          Generate
-        </button>
-      </div>
-      <p v-if="(selectedCount < 1 || state.numberTracks < 1)" class="text-label-sm text-on-surface-variant px-md fixed bottom-12 lg:bottom-8 left-0 right-0 mx-xl text-center">
-        {{ selectedCount < 1 ? 'Selecione ao menos uma origem' : 'Defina a quantidade' }}
-      </p>
-
-    </section>
-
-    <!-- Step 2: Resultado -->
-    <section v-else class="max-w-[680px] mx-auto px-md py-lg space-y-lg">
-      <!-- Header -->
-      <header class="h-14 rounded-2xl bg-surface-container-low border border-outline-variant/10 flex items-center justify-between px-md sticky top-0 z-10">
-        <button @click="() => { state.tracks = []; step.value = 1; }" class="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition" title="Regenerar">
-          <span class="material-symbols-outlined">restart_alt</span>
-        </button>
-        <div class="text-body-md text-on-surface">{{ includedCount }} de {{ state.tracks.length }} tracks</div>
-        <button @click="executeUserPlaylist" class="p-2 rounded-lg text-primary hover:text-primary/80 hover:bg-primary/10 transition" title="Executar">
-          <span class="material-symbols-outlined">play_circle</span>
-        </button>
-      </header>
 
       <!-- Loading skeleton -->
       <div v-if="state.isProcessing" class="space-y-3">
@@ -503,12 +487,20 @@ onMounted(async () => {
       </div>
 
       <!-- Bottom bar (Step 2) -->
-      <div class="fixed bottom-20 lg:bottom-16 left-0 right-0 mx-xl rounded-2xl bg-surface-container-low/95 backdrop-blur-md border border-outline-variant/10 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.4)] p-md flex items-center justify-between">
+      <div class="fixed bottom-0 left-0 right-0 lg:left-56 px-md lg:px-lg bg-surface-container-low/95 backdrop-blur-md border-t border-outline-variant/10 p-md flex items-center justify-between z-30">
         <div class="text-label-md text-on-surface-variant">{{ includedCount }} tracks incluídas</div>
-        <button @click="saveUserPlaylist" :disabled="state.isProcessing"
-                class="px-lg py-sm rounded-xl font-medium bg-primary text-on-primary hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed">
-          Save
-        </button>
+        <div class="flex items-center gap-3">
+          <button @click="addToUserQueue" :disabled="state.isProcessing"
+                  class="flex items-center gap-2 px-lg py-sm rounded-xl font-medium bg-surface-container-high text-on-surface-variant hover:bg-primary/10 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined">queue_music</span>
+            Adicionar à fila
+          </button>
+          <button @click="saveUserPlaylist" :disabled="state.isProcessing"
+                  class="flex items-center gap-2 px-lg py-sm rounded-xl font-medium bg-primary text-on-primary hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined">save</span>
+            Salvar playlist
+          </button>
+        </div>
       </div>
     </section>
   </div>
