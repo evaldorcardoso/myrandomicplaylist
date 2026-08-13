@@ -1,6 +1,6 @@
 import { createWebHistory, createRouter } from "vue-router"
 import Dashboard from "@/views/Dashboard.vue"
-import Inicio from "@/views/Inicio.vue"
+
 import Player from "@/views/Player.vue"
 import Callback from "@/views/Callback.vue"
 import Login from "@/views/Login.vue"
@@ -38,11 +38,7 @@ const routes = [
         name: "Library",
         component: Library,
       },
-      {
-        path: "/random",
-        name: "Random",
-        component: Inicio,
-      },
+      
       {
         path: "/playlist/:id",
         name: "Playlist",
@@ -53,11 +49,11 @@ const routes = [
         name: "PlaylistStats",
         component: Estatisticas,
       },
-      {
-        path: "/randomic",
-        name: "Randomic",
-        component: Randomic,
-      },
+{
+    path: "/random",
+    name: "Random",
+    component: Randomic,
+  },
       {
         path: "/player",
         name: "Player",
