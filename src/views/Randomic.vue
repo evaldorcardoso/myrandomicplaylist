@@ -1,13 +1,12 @@
 <script setup>
-  import { onMounted, computed, reactive, ref } from 'vue'
-  import { useRouter } from 'vue-router'
-  import VueBasicAlert from 'vue-basic-alert'
-  import { useProfile, useGeneral } from '@/support/spotifyApi'
-  import { useUserStore } from '@/stores/user'
-  import { usePlaylistStore } from '@/stores/playlist'
-  import Notification from '@/components/Notification.vue'
-  import { NOTIFICATIONS_TYPE } from '../support/helpers'
-  import { notify } from "@kyvg/vue3-notification";
+import { onMounted, computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import VueBasicAlert from 'vue-basic-alert'
+import { useProfile, useGeneral } from '@/support/spotifyApi'
+import { useUserStore } from '@/stores/user'
+import { usePlaylistStore } from '@/stores/playlist'
+import { NOTIFICATIONS_TYPE } from '../support/helpers'
+import { notify } from "@kyvg/vue3-notification";
 
   const { 
     getPlaylists,  
@@ -43,35 +42,8 @@
     pickMode: 'random',
     orderMode: 'top'
   })
-  const isNotificationOpened = ref(null)
-  const notificationDataReactive = ref(null)
-
   const router = useRouter()
   const alert = ref(null)
-
-  const notificationOpened = computed(() => {
-    return isNotificationOpened.value;
-  })
-
-  const notificationData = computed(() => {
-    return notificationDataReactive.value
-  })
-
-  const showNotification = (type, title, message, action = false, auto = false) => {
-    let notificationData = {
-      type,
-      title,
-      message,
-      action,
-      auto
-    }
-    notificationDataReactive.value = notificationData
-    isNotificationOpened.value = true
-  }
-
-  const onNotificationAction = (value) => {
-    isNotificationOpened.value = false
-  }
   
   const getUserPlaylists = async() => {
     state.isProcessing = true
@@ -217,7 +189,7 @@
     }
     catch(error){
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
+      notify({ title: 'Ops', text: error.response, type: NOTIFICATIONS_TYPE.danger })
     }
   }
 
@@ -239,7 +211,7 @@
       }    
     }catch(error){
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
+      notify({ title: 'Ops', text: error.response, type: NOTIFICATIONS_TYPE.danger })
     }
   }
 
@@ -301,9 +273,9 @@
       }, 1000)
     }catch(error){
       console.log(error)
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
-    } 
-    state.isProcessing = false  
+      notify({ title: 'Ops', text: error.response, type: NOTIFICATIONS_TYPE.danger })
+    }
+    state.isProcessing = false
   }
 
   const tryTransferPLaybackState = async() => {
@@ -312,7 +284,7 @@
     if(state.devices.length == 0){
       let message = 'No device connected!'
       state.message = message
-      showNotification(NOTIFICATIONS_TYPE.warning, 'Ops', message, false, false)
+      notify({ title: 'Ops', text: message, type: NOTIFICATIONS_TYPE.warning })
       state.isProcessing = false
       return
     }
@@ -343,7 +315,7 @@
       }
       let message = "It's not possible to add song to the playlist! Try again."
       state.message = message
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', message)
+      notify({ title: 'Ops', text: message, type: NOTIFICATIONS_TYPE.danger })
       state.isProcessing = false
       return
     }
@@ -378,7 +350,7 @@
     }catch(error){
       console.log(error)
       state.isProcessing = false
-      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response)
+      notify({ title: 'Ops', text: error.response, type: NOTIFICATIONS_TYPE.danger })
     }
   }
 
@@ -480,11 +452,6 @@
 </script>
 
 <template>
-  <Notification 
-    :open="notificationOpened"
-    :data="notificationData"
-    @notification-action="onNotificationAction"
-  />
   <div class="page">
     <vue-basic-alert :duration="300" :closeIn="3000" ref="alert" />    
     <div class="footer-fixed" v-if="currentStep == 99">
