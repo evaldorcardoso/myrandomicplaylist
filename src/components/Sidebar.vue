@@ -24,7 +24,7 @@ const navItems = [
     { label: 'Financeiro', icon: 'payments', to: '/financeiro' },
     { label: 'Minhas Playlists', icon: 'queue_music', to: '/library' },
     { label: 'Player', icon: 'play_circle', to: '/player' },
-    { label: 'Random', icon: 'shuffle', to: '/random' }
+    { label: 'Mixar', icon: 'shuffle', to: '/random' }
   ]
 
   const isActive = (item) => {
