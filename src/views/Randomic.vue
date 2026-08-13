@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, reactive, ref, watch } from 'vue'
+import { onMounted, computed, reactive, ref, watch, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfile, useGeneral } from '@/support/spotifyApi'
 import { useUserStore } from '@/stores/user'
@@ -78,7 +78,7 @@ const pickTracksRandom = async (allTracks) => {
       tracks.push(track)
     }
   }
-  state.tracks = tracks
+  state.tracks = tracks.map(track => markRaw(track))
 }
 
 const getPlaylistTracks = async (playlistId) => {
@@ -98,10 +98,7 @@ const getPlaylistTracks = async (playlistId) => {
 
 const getUserTopItems = async () => {
   const { data } = await getTopItens(state.numberTracks)
-  data.items.forEach(item => {
-    item.checked = true
-    state.tracks.push(item)
-  })
+data.items.map(item => markRaw(item)).forEach(item => state.tracks.push(item))
   if (state.orderMode === 'bottom') {
     state.tracks.reverse()
   }
