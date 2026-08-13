@@ -1,10 +1,11 @@
 <script setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { useRouter, useRoute } from 'vue-router'
   import { useUserStore } from '@/stores/user'
   import { useNotificationsStore } from '@/stores/notifications'
 
   const router = useRouter()
+  const route = useRoute()
   const userStore = useUserStore()
   const notificationsStore = useNotificationsStore()
 
@@ -59,30 +60,17 @@
 
   const currentUser = computed(() => userStore.getUser)
 
-  const currentStep = computed(() => props.stepData)
-
   const displayName = computed(() => currentUser.value?.display_name ?? '')
 
   const userAvatar = computed(() => currentUser.value?.images?.[0]?.url ?? '')
 
-  const increaseStep = () => {
-    emit('update-step-data', currentStep.value + 1)
-  }
+  const isRandomRoute = computed(() => route.name === 'Random')
+  const currentStep = computed(() => props.stepData)
 
-  const decreaseStep = () => {
-    if (currentStep.value == 1) {
-      emit('update-step-data', 0)
-      router.push('/')
-      return
-    }
-
-    if (currentStep.value == 99) {
-      emit('update-step-data', 3)
-      return
-    }
-
-    emit('update-step-data', currentStep.value - 1)
-  }
+  const stepTitle = computed(() => {
+    if (!isRandomRoute.value) return ''
+    return currentStep.value === 2 ? 'Mixar · Result' : 'Mixar · Configuration'
+  })
 </script>
 
 <template>
@@ -97,23 +85,14 @@
         <span class="material-symbols-outlined">menu</span>
       </button>
 
-      <template v-if="currentStep > 0">
-        <button
-          class="p-2 text-on-surface-variant hover:text-on-surface transition-colors"
-          @click="decreaseStep()"
-        >
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-        <button
-          v-if="currentStep < 99"
-          class="p-2 text-on-surface-variant hover:text-on-surface transition-colors"
-          @click="increaseStep()"
-        >
-          <span class="material-symbols-outlined">chevron_right</span>
-        </button>
-      </template>
-
       <div class="flex-1"></div>
+    </div>
+
+    <div class="flex items-center justify-center flex-1 min-w-0">
+      <div v-if="isRandomRoute" class="flex items-center gap-3">
+        <span class="bg-primary/15 text-primary text-label-sm rounded-full px-sm py-1">1/2</span>
+        <span class="text-body-md text-on-surface">{{ stepTitle }}</span>
+      </div>
     </div>
 
     <div class="flex items-center gap-3 md:gap-6 flex-shrink-0">
