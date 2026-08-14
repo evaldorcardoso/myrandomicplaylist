@@ -178,7 +178,8 @@
 
   const tableColumns = computed(() => {
     const base = 5 + (hasSoldSlots.value ? 1 : 0) + ((hasSoldSlots.value || hasPriceValues.value) ? 1 : 0)
-    return playlistSaved.value ? base : base - 1
+    const cols = playlistSaved.value ? base : base - 1
+    return activeTab.value === 'Pendentes' ? cols - 1 : cols
   })
 
   const filteredTracks = computed(() => {
@@ -1406,7 +1407,7 @@
               <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
               <th v-if="playlistSaved" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
               <th v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
+              <th v-if="activeTab !== 'Pendentes'" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/10">
@@ -1502,7 +1503,7 @@
                 <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
                 <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track).value }}</span>
               </td>
-              <td class="px-2 py-2 xl:px-6 xl:py-4">
+              <td v-if="activeTab !== 'Pendentes'" class="px-2 py-2 xl:px-6 xl:py-4">
                 <div class="flex items-center gap-1 text-label-md text-on-surface">
                   <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
                   {{ track.track?.popularity }}%
@@ -1543,7 +1544,7 @@
                 <td v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4">
                   <div class="h-4 w-14 rounded animate-pulse bg-surface-container-high"></div>
                 </td>
-                <td class="px-6 py-4">
+                <td v-if="activeTab !== 'Pendentes'" class="px-6 py-4">
                   <div class="flex items-center gap-1">
                     <div class="w-4 h-4 rounded animate-pulse bg-surface-container-high"></div>
                     <div class="h-3 w-8 rounded animate-pulse bg-surface-container-high"></div>
