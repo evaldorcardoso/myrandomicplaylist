@@ -1170,113 +1170,122 @@
       <span>Processing...</span>
     </div>
 
-    <!-- Header Section: Playlist Profile -->
-    <section class="relative flex flex-col md:flex-row gap-lg items-end">
+<!-- Header Section: Playlist Profile -->
+    <section class="relative flex flex-col mb-0 mx-4 items-start">
       <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div class="relative shrink-0">
-        <div class="w-40 h-40 md:w-64 md:h-64 shadow-2xl rounded-xl overflow-hidden bg-surface-container">
-          <div v-if="isLoading || !(state.playlist?.images?.[0]?.url || state.playlist?.image)" class="w-full h-full animate-pulse bg-surface-container-high"></div>
-          <img
-            v-else
-            class="w-full h-full object-cover"
-            :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image"
-          />
-        </div>
+      <div class="flex-1 flex flex-col gap-sm pb-2">
+        <h1 class="text-headline-lg md:text-display-lg text-on-surface{{ state.playlist?.name ? ' pl-4' : '' }}">{{ state.playlist?.name }}</h1>
       </div>
 
-      <div class="flex-1 flex flex-col gap-sm pb-2">
-        <h1 class="text-headline-lg md:text-display-lg text-on-surface">{{ state.playlist?.name }}</h1>
-        <div v-if="state.playlist?.owner?.display_name" class="flex items-center gap-2 text-primary lowercase tracking-widest text-label-sm">
-          <font-awesome-icon icon="check-circle" class="text-[16px]" />
-          by @{{ state.playlist.owner.display_name }}
+      <!-- Layout flexível: imagem com tamanho natural + info ocupando o restante -->
+      <div class="flex flex-col sm:flex-row gap-8 pb-2 w-full min-w-0">
+        <!-- Left: Playlist image column (tamanho natural, não porcentagem) -->
+        <div class="relative shrink-0 min-w-0">
+          <div class="w-40 h-40 md:w-64 md:h-64 shadow-2xl rounded-xl overflow-hidden bg-surface-container">
+            <div v-if="isLoading || !(state.playlist?.images?.[0]?.url || state.playlist?.image)" class="w-full h-full animate-pulse bg-surface-container-high"></div>
+            <img
+              v-else
+              class="w-full h-full object-cover"
+              :src="state.playlist?.images ? state.playlist?.images[0]?.url : state.playlist?.image"
+            />
+          </div>
         </div>
-        <div>
+
+        <!-- Right: Info column (ocupando espaço restante) -->
+        <div class="flex-1 min-w-0 flex flex-col gap-sm pb-2">
+          <!-- Creator -->
+          <div v-if="state.playlist?.owner?.display_name" class="flex items-center gap-2 text-primary lowercase tracking-widest text-label-sm">
+            <font-awesome-icon icon="check-circle" class="text-[16px]" />
+            by @{{ state.playlist.owner.display_name }}
+          </div>
+          <!-- Description -->
+          <div>
             <div v-if="isLoading" class="animate-pulse h-4 w-48 max-w-2xl rounded bg-surface-container-high"></div>
             <p v-else class="text-on-surface-variant max-w-2xl text-body-md">
               {{ state.playlist?.description || 'Sem descrição.' }}
             </p>
           </div>
-        <div class="flex flex-wrap items-center gap-xl mt-4">
-          <div v-if="!followersReady" class="flex flex-col gap-1">
-            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
-            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+          <!-- Followers and other stats -->
+          <div class="flex flex-wrap items-center gap-xl mt-4 min-w-0">
+            <div v-if="!followersReady" class="flex flex-col gap-1 min-w-0">
+              <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+              <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+            </div>
+            <div v-else class="flex flex-col min-w-0">
+              <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
+              <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
+            </div>
+            <div v-if="playlistSaved && !growthReady" class="flex flex-col gap-1 min-w-0">
+              <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+              <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+            </div>
+            <div v-if="playlistSaved && growthReady" class="flex flex-col min-w-0">
+              <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
+              <span class="text-headline-md" :class="details.growth.negative ? 'text-[#ff1717]' : 'text-primary'">{{ details.growth.value }}</span>
+            </div>
+            <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1 min-w-0">
+              <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+              <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+            </div>
+            <div v-if="playlistSaved && slotsReady" class="flex flex-col min-w-0">
+              <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
+              <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
+            </div>
+            <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1 min-w-0">
+              <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
+              <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
+            </div>
+            <div v-if="playlistSaved && slotsReady" class="flex flex-col min-w-0">
+              <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Faturamento Mensal</span>
+              <span class="text-headline-md text-on-surface">{{ details.monthlyRevenue }}</span>
+            </div>
           </div>
-          <div v-else class="flex flex-col">
-            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Seguidores</span>
-            <span class="text-headline-md text-primary">{{ formatNumber(state.playlist?.followers?.total) }}</span>
-          </div>
-          <div v-if="playlistSaved && !growthReady" class="flex flex-col gap-1">
-            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
-            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
-          </div>
-          <div v-if="playlistSaved && growthReady" class="flex flex-col">
-            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider cursor-help" :title="growthHint">Crescimento ({{ details.growth.days }}d)</span>
-            <span class="text-headline-md" :class="details.growth.negative ? 'text-[#ff1717]' : 'text-primary'">{{ details.growth.value }}</span>
-          </div>
-          <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1">
-            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
-            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
-          </div>
-          <div v-if="playlistSaved && slotsReady" class="flex flex-col">
-            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Slots Ocupados</span>
-            <span class="text-headline-md text-on-surface">{{ details.filledPositions }}/{{ details.totalPositions }}</span>
-          </div>
-          <div v-if="playlistSaved && !slotsReady" class="flex flex-col gap-1">
-            <div class="animate-pulse h-3 w-20 rounded bg-surface-container-high"></div>
-            <div class="animate-pulse h-7 w-24 rounded bg-surface-container-high"></div>
-          </div>
-          <div v-if="playlistSaved && slotsReady" class="flex flex-col">
-            <span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Faturamento Mensal</span>
-            <span class="text-headline-md text-on-surface">{{ details.monthlyRevenue }}</span>
-          </div>
-        </div>
-      </div>
 
-      <div class="flex flex-col gap-4 self-center md:self-end items-end">
-        <div class="flex gap-2">
-          <button
-            class="w-12 h-12 bg-primary rounded-full text-on-primary hover:bg-primary-fixed hover:scale-105 transition-all flex items-center justify-center shadow-lg hover:shadow-primary/20"
-            @click="executeUserPlaylist(currentPlaying)"
-          >
-            <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" />
-          </button>
-        </div>
-        <div class="flex gap-2">
-          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Estatísticas" @click="onOpenStatistics">
-            <font-awesome-icon icon="chart-bar" />
-          </button>
-          <button class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors" title="Compartilhar" @click="sharePlaylist">
-            <font-awesome-icon icon="share" />
-          </button>
-          <button
-            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors"
-            title="Editar Playlist"
-            @click="openEditPlaylist"
-          >
-            <font-awesome-icon icon="edit" />
-          </button>
-          <button
-            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-surface-variant transition-colors"
-            :title="playlistSaved ? 'Update on Database' : 'Save'"
-            @click="handleSavePlaylist"
-          >
-            <font-awesome-icon icon="save" />
-          </button>
-          <button
-            v-if="playlistSaved"
-            class="p-3 bg-surface-container-high rounded-xl text-on-surface hover:bg-error hover:text-on-error transition-colors"
-            title="Remover da gestão"
-            @click="confirmRemoveFromManagement"
-          >
-            <font-awesome-icon icon="trash" />
-          </button>
+<!-- Action buttons -->
+           <div class="flex flex-row items-center justify-between mt-4 min-w-0">
+             <!-- Left: Play/Pause button -->
+             <button
+               class="w-12 h-12 bg-primary rounded-full text-on-primary hover:bg-primary-fixed hover:scale-105 transition-all flex items-center justify-center shadow-lg hover:shadow-primary/20"
+               @click="executeUserPlaylist(currentPlaying)"
+             >
+               <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" />
+             </button>
+
+             <!-- Right: Other buttons -->
+             <div class="flex gap-2 min-w-0">
+               <button class="p-3 bg-surface-container-highest text-on-surface hover:bg-surface-variant transition-colors" title="Estatísticas" @click="onOpenStatistics">
+                 <font-awesome-icon icon="chart-bar" />
+               </button>
+               <button class="p-3 bg-surface-container-highest text-on-surface hover:bg-surface-variant transition-colors" title="Compartilhar" @click="sharePlaylist">
+                 <font-awesome-icon icon="share" />
+               </button>
+               <button class="p-3 bg-surface-container-highest text-on-surface hover:bg-surface-variant transition-colors" title="Editar Playlist" @click="openEditPlaylist">
+                 <font-awesome-icon icon="edit" />
+               </button>
+               <button
+                 class="p-3 bg-surface-container-highest text-on-surface hover:bg-surface-variant transition-colors"
+                 :title="playlistSaved ? 'Update on Database' : 'Save'"
+                 @click="handleSavePlaylist"
+               >
+                 <font-awesome-icon icon="save" />
+               </button>
+               <button
+                 v-if="playlistSaved"
+                 class="p-3 bg-surface-container-highest text-on-surface hover:bg-error hover:text-on-error transition-colors"
+                 title="Remover da gestão"
+                 @click="confirmRemoveFromManagement"
+               >
+                 <font-awesome-icon icon="trash" />
+               </button>
+             </div>
+           </div>
         </div>
       </div>
     </section>
 
     <!-- Search Box -->
-    <div class="relative w-full group">
+    <div class="relative w-full group mb-0">
       <font-awesome-icon
         icon="search"
         class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors"
