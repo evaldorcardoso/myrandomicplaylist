@@ -7,7 +7,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '@/services/PlaylistService'
 
-  const PERMANENCE_DAYS = 30
+  const PERMANENCE_MONTHS = 1
 
   const emit = defineEmits(['close', 'confirm'])
 
@@ -81,16 +81,31 @@
 
   const position = computed(() => props.position ?? ((props.track?.id ?? 0) + 1))
 
-  const calcDueDateISO = (days) => {
+  const calcDueDateISO = (months) => {
     const date = new Date()
-    date.setDate(date.getDate() + days)
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
+    let month = date.getMonth() + 1 + months
+    let year = date.getFullYear()
+
+    // Handle year overflow
+    if (month > 12) {
+      year += Math.floor((month - 1) / 12)
+      month = ((month - 1) % 12) + 1
+    }
+
+    // Get the day, but clamp to last day of month if necessary
+    let day = date.getDate()
+    const lastDayOfMonth = new Date(year, month, 0).getDate()
+    if (day > lastDayOfMonth) {
+      day = lastDayOfMonth
+    }
+
+    const y = String(year)
+    const m = String(month).padStart(2, '0')
+    const d = String(day).padStart(2, '0')
     return `${y}-${m}-${d}`
   }
 
-  const dueDateInput = ref(calcDueDateISO(PERMANENCE_DAYS))
+  const dueDateInput = ref(calcDueDateISO(PERMANENCE_MONTHS))
 
   const parseValue = () => {
     const raw = String(value.value ?? '').trim()
@@ -111,7 +126,7 @@
     curator.value = ''
     requesters.value = []
     dropdownOpen.value = false
-    dueDateInput.value = calcDueDateISO(PERMANENCE_DAYS)
+    dueDateInput.value = calcDueDateISO(PERMANENCE_MONTHS)
     value.value = ''
     isSubmitting.value = false
     submitState.value = 'idle'
