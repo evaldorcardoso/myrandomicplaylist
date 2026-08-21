@@ -6,14 +6,16 @@ const DEFAULT_SETTINGS = {
   tracksPageSize: 100,
   artistsBatchSize: 50,
   topGenresCount: 10,
-  dashboardExpirationsDisplay: 5
+  dashboardExpirationsDisplay: 5,
+  playlistUiPageSize: 100,
+  selectedTab: 'settings'
 }
 
 export const useSettingsStore = defineStore('settings', {
   state: () => {
     let stored = {}
     try {
-      const raw = helpers.getLocalStorage()[LOCALSTORAGE_KEYS.settings]
+      const raw = helpers.getLocalStorage().settings
       if (raw) stored = JSON.parse(raw)
     } catch (e) {
       console.warn('Failed to parse stored settings', e)

@@ -4,6 +4,7 @@
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
+  import { useSettingsStore } from '@/stores/settings'
   import SortConfirmModal from '@/components/SortConfirmModal.vue'
   import SortingProgressModal from '@/components/SortingProgressModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
@@ -22,13 +23,14 @@
   const router = useRouter()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
+  const settingsStore = useSettingsStore()
   const progress = inject("progress")
   const { updateTracksOfPlaylist, updatePlaylist, uploadPlaylistCoverImage, removeTracksOfPlaylist, getTracks } = useGeneral()
   const { updatePlaylistTotalTracks, savePlaylist, removeFromDatabase } = PlaylistService()
   const { getPlaylistDetails, getTrackSlot, getGrowth } = PlaylistDetailsService()
   const { getTrackRequests, getPricePositions, deleteTrackRequest, updateTrackRequest, recordEarning, hasEarnings } = TrackRequestService()
 
-  const PAGE_SIZE = 20
+  const PAGE_SIZE = computed(() => settingsStore.settings.playlistUiPageSize)
 
   const props = defineProps({
     forceRefresh: {
@@ -245,14 +247,15 @@
     })
   })
 
-  const totalPages = computed(() => Math.max(1, Math.ceil(searchedTracks.value.length / PAGE_SIZE)))
+  const totalPages = computed(() => Math.max(1, Math.ceil(searchedTracks.value.length / PAGE_SIZE.value)))
 
   const pagedTracks = computed(() => {
     if (activeTab.value !== 'Todas') {
       return searchedTracks.value
     }
-    const start = (currentPage.value - 1) * PAGE_SIZE
-    return searchedTracks.value.slice(start, start + PAGE_SIZE)
+    const start = (currentPage.value - 1) * PAGE_SIZE.value
+    const end = start + PAGE_SIZE.value
+    return searchedTracks.value.slice(start, end)
   })
 
   watch(activeTab, () => {

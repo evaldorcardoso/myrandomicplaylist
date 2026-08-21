@@ -17,7 +17,7 @@
 
   const activeTab = ref('settings')
 
-  const SETTINGS_FIELDS = [
+const SETTINGS_FIELDS = [
     {
       key: 'playlistPageSize',
       label: 'Playlists por página',
@@ -299,6 +299,34 @@
                 />
               </div>
             </div>
+          </div>
+
+          <!-- UI Settings -->
+          <div class="pt-md border-t border-outline-variant/10">
+            <section class="bg-surface-container-low rounded-xl border border-outline-variant/10 p-lg flex flex-col gap-md">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-secondary">settings</span>
+                <h2 class="text-headline-sm font-display text-on-surface">Configurações de UI</h2>
+              </div>
+
+              <div class="flex flex-col divide-y divide-outline-variant/10">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-md">
+                  <div class="flex flex-col min-w-0 pr-4">
+                    <span class="text-body-md font-bold text-on-surface">Músicas por página na playlist</span>
+                    <span class="text-label-sm text-on-surface-variant">Quantidade de músicas exibidas por página na listagem da playlist.</span>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <input
+                      v-model.number="form.playlistUiPageSize"
+                      type="number"
+                      :min="60"
+                      :max="100"
+                      class="w-24 bg-surface-container-high border border-outline-variant/20 rounded-lg px-3 py-2 text-body-md font-mono text-on-surface text-center focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
 
           <!-- Notificações Push -->

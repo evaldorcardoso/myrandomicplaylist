@@ -38,7 +38,8 @@ export default {
           refreshToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.refreshToken),
           expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
           //timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
-          filterLibrary: window.localStorage.getItem(LOCALSTORAGE_KEYS.filterLibrary)
+          filterLibrary: window.localStorage.getItem(LOCALSTORAGE_KEYS.filterLibrary),
+          settings: window.localStorage.getItem(LOCALSTORAGE_KEYS.settings)
         };
 
         return LOCALSTORAGE_VALUES
