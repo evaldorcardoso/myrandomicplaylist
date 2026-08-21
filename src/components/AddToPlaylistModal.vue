@@ -544,7 +544,7 @@
             </div>
 
             <!-- Info Box -->
-            <div class="bg-primary/10 p-2 rounded-lg flex items-start gap-3 border-l-4 border-primary">
+            <div v-if="position" class="bg-primary/10 p-2 rounded-lg flex items-start gap-3 border-l-4 border-primary">
               <font-awesome-icon icon="info" class="text-primary shrink-0" />
               <p class="text-body-sm text-on-surface opacity-90">
                 <strong class="text-primary">Aviso de Reordenamento:</strong> Se uma música já existir na posição escolhida, ela será movida automaticamente para o final da playlist para preservar a integridade da grade.
