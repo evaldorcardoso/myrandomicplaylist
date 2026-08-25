@@ -451,6 +451,57 @@
     }
   }
 
+  const fixAllPositionMismatches = async () => {
+    const mismatched = state.tracks.filter(track => track._slot?.positionMismatch)
+    if (mismatched.length === 0) return
+
+    let updated = 0
+    let skipped = 0
+    const skippedTracks = []
+
+    for (const track of mismatched) {
+      const request = findTrackRequest(track)
+      if (!request) {
+        skipped++
+        continue
+      }
+
+      const storedPosition = request.position
+      const spotifyPosition = (track.id ?? 0) + 1
+
+      const priceStored = getPriceByPosition(storedPosition)?.value
+      const priceSpotify = getPriceByPosition(spotifyPosition)?.value
+
+      if (priceStored === priceSpotify) {
+        try {
+          const { error } = await updateTrackRequest(request.id, { position: spotifyPosition })
+          if (!error) updated++
+          else { skipped++; skippedTracks.push(track) }
+        } catch { skipped++; skippedTracks.push(track) }
+      } else {
+        skipped++
+        skippedTracks.push(track)
+      }
+    }
+
+    await reloadSlots()
+
+    if (updated > 0) {
+      notify({
+        title: 'Alright',
+        text: `${updated} posição(ões) atualizada(s) automaticamente`,
+        type: 'success'
+      })
+    }
+    if (skipped > 0) {
+      notify({
+        title: 'Atenção',
+        text: `${skipped} música(s) pulada(s) - mudança de preço do slot. Ajuste manualmente no modal.`,
+        type: 'warning'
+      })
+    }
+  }
+
   const openSellSlot = (track) => {
     sellSlotTrack.value = track
     sellSlotOpened.value = true
@@ -1397,13 +1448,22 @@
             {{ positionMismatchCount === 1 ? 'posição divergente' : 'posições divergentes' }} entre o Spotify e o registro de venda.
           </span>
         </div>
-        <button
-          class="flex items-center gap-2 rounded-full bg-tertiary-container/10 border border-tertiary-container/40 px-4 py-1.5 text-label-sm font-bold text-tertiary hover:bg-tertiary-container/20 transition-colors"
-          @click="onFixPositionMismatch"
-        >
-          <font-awesome-icon icon="sync" />
-          Corrigir
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            class="flex items-center gap-2 rounded-full bg-tertiary-container/10 border border-tertiary-container/40 px-4 py-1.5 text-label-sm font-bold text-tertiary hover:bg-tertiary-container/20 transition-colors"
+            @click="onFixPositionMismatch"
+          >
+            <font-awesome-icon icon="sync" />
+            Corrigir
+          </button>
+          <button
+            class="flex items-center gap-2 rounded-full bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 text-label-sm font-bold hover:bg-primary/20 transition-colors"
+            @click="fixAllPositionMismatches"
+          >
+            <font-awesome-icon icon="sync" />
+            Corrigir todas
+          </button>
+        </div>
       </div>
 
       <div class="overflow-x-auto">
