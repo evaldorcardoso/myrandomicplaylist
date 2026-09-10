@@ -241,7 +241,7 @@
                     class="hover:bg-surface-container-high/50 transition-colors"
                   >
                     <td class="px-4 py-4 min-w-0">
-                      <div class="flex items-center gap-3 min-w-0">
+                      <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="openPlaylist(playlist.id)">
                         <div class="w-10 h-10 rounded bg-surface-container-highest flex-shrink-0 overflow-hidden">
                           <img
                             v-if="playlist.image"
