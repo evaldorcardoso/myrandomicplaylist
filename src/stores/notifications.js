@@ -49,6 +49,60 @@ export const useNotificationsStore = defineStore('notifications', {
       this.slotPlaylist = expiration?.playlist ?? null
       this.slotOpened = true
     },
+    async openSlotFromId(id) {
+      if (!id) return
+      try {
+        const { getTrackRequestById } = TrackRequestService()
+        const { data: request, error } = await getTrackRequestById(id)
+        if (error || !request) {
+          console.error('Track request not found:', id)
+          return
+        }
+
+        const playlistStore = usePlaylistStore()
+        if (!playlistStore.isLoaded) {
+          const playlists = await PlaylistService().loadAllFromDatabase()
+          playlistStore.loadAll(playlists)
+        }
+
+        const playlistId = request.playlist_id
+        const playlist = playlistStore.playlists.find(p => p.id === playlistId)
+
+        const { getTracks } = useGeneral()
+        let tracks = await playlistStore.getTracks(playlistId)
+        if (!tracks || tracks.length === 0) {
+          tracks = await getTracks(playlistId)
+          playlistStore.loadTracks(playlistId, tracks)
+          tracks = await playlistStore.getTracks(playlistId)
+        }
+
+        const trackId = request.track_id
+        const trackIndex = tracks.findIndex(t => t.track?.id === trackId || t.id === request.position - 1)
+        const trackItem = trackIndex >= 0 ? tracks[trackIndex] : null
+
+        const expiration = {
+          id: String(request.id),
+          track: trackItem ? { ...trackItem, id: trackIndex } : null,
+          request: {
+            id: String(request.id),
+            status: request.status,
+            due_date: request.due_date,
+            value: request.value,
+            requester_id: request.requester_id,
+            requester_name: request.requester_name,
+            position: request.position,
+            curator: request.curator,
+            notified_at: request.notified_at
+          },
+          playlistId,
+          playlist: playlist ? { id: playlist.id, name: playlist.name } : null
+        }
+
+        this.openSlot(expiration)
+      } catch (error) {
+        console.error('Error opening slot from ID:', error)
+      }
+    },
     closeSlot() {
       this.slotOpened = false
       this.slotTrack = null

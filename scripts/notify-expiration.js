@@ -58,27 +58,13 @@ async function getSubscriptions() {
   return data ?? []
 }
 
-function buildPayload(tracks) {
-  if (tracks.length === 0) {
-    return null
-  }
-
-  if (tracks.length === 1) {
-    const t = tracks[0]
-    const playlistName = t.playlists?.name || 'playlist'
-    return {
-      title: 'MR Playlist — Música expira hoje',
-      body: `"${t.name}" expira hoje em "${playlistName}"`,
-      url: '/'
-    }
-  }
-
-  const names = tracks.map(t => t.name).slice(0, 5).join(', ')
-  const suffix = tracks.length > 5 ? ` e mais ${tracks.length - 5}` : ''
+function buildPayloadForTrack(track) {
+  const playlistName = track.playlists?.name || 'playlist'
   return {
-    title: `MR Playlist — ${tracks.length} músicas expiram hoje`,
-    body: names + suffix,
-    url: '/'
+    title: 'MR Playlist — Música expira hoje',
+    body: `"${track.name}" expira hoje em "${playlistName}"`,
+    url: `/?notify=${track.id}`,
+    icon: '/launchericon-192x192.png'
   }
 }
 
@@ -102,18 +88,19 @@ async function run() {
   console.log(`[${new Date().toISOString()}] Expiration notification job started${DRY_RUN ? ' (DRY RUN)' : ''}`)
 
   const tracks = await getExpiringToday()
-  const payload = buildPayload(tracks)
 
-  if (!payload) {
+  if (tracks.length === 0) {
     console.log('No tracks expiring today. Nothing to send.')
     return
   }
 
   console.log(`Found ${tracks.length} track(s) expiring today.`)
-  console.log(`Notification title: ${payload.title}`)
-  console.log(`Notification body: ${payload.body}`)
 
   if (DRY_RUN) {
+    for (const track of tracks) {
+      const payload = buildPayloadForTrack(track)
+      console.log(`  → ${payload.body}`)
+    }
     console.log('Dry run — skipping push send.')
     return
   }
@@ -129,20 +116,25 @@ async function run() {
   let success = 0
   let failed = 0
 
-  for (const sub of subscriptions) {
-    const result = await sendToSubscription(sub, payload)
-    if (result.success) {
-      success++
-    } else {
-      failed++
-      console.error(`Failed to send to ${sub.endpoint.slice(-20)}: ${result.statusCode} — ${result.message}`)
-      if (result.statusCode === 410 || result.statusCode === 404) {
-        const { error } = await supabase
-          .from('push_subscriptions')
-          .delete()
-          .eq('endpoint', sub.endpoint)
-        if (error) console.error('Failed to clean up stale subscription:', error.message)
-        else console.log(`Cleaned up stale subscription: ...${sub.endpoint.slice(-20)}`)
+  for (const track of tracks) {
+    const payload = buildPayloadForTrack(track)
+    console.log(`Sending notification for: "${track.name}"`)
+
+    for (const sub of subscriptions) {
+      const result = await sendToSubscription(sub, payload)
+      if (result.success) {
+        success++
+      } else {
+        failed++
+        console.error(`Failed to send to ${sub.endpoint.slice(-20)}: ${result.statusCode} — ${result.message}`)
+        if (result.statusCode === 410 || result.statusCode === 404) {
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('endpoint', sub.endpoint)
+          if (error) console.error('Failed to clean up stale subscription:', error.message)
+          else console.log(`Cleaned up stale subscription: ...${sub.endpoint.slice(-20)}`)
+        }
       }
     }
   }

@@ -495,6 +495,25 @@
     return `${day}/${month}/${year}`
   }
 
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    if (Number.isNaN(d.getTime())) return ''
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
+
+  const notifiedAt = computed(() => props.request?.notified_at ?? null)
+
+  const notifiedAtLabel = computed(() => {
+    if (!notifiedAt.value) return ''
+    return formatDateTime(notifiedAt.value)
+  })
+
   const notifyRequester = async () => {
     if (isSubmitting.value) return
     const trackName = trackData.value?.name ?? ''
@@ -506,6 +525,10 @@
     const message = `Música vencendo na playlist: A música *${trackName}* do artista *${artistLabel}*, posição *${position.value}* na playlist ${playlistName}, vence no dia *${dueDateBR}*. Avise caso queira renovar, senão será *removida* em até *3 dias*.`
     try {
       await navigator.clipboard.writeText(message)
+      if (props.request?.id) {
+        const { error } = await updateTrackRequest(props.request.id, { notified_at: new Date().toISOString() })
+        if (error) console.error('Failed to save notified_at:', error.message)
+      }
       notify({
         title: 'Alright',
         text: 'Mensagem copiada! Cole no WhatsApp do solicitante.',
@@ -844,6 +867,10 @@
               <font-awesome-icon :icon="['fab', 'whatsapp']" class="text-[18px]" />
               <span>Notificar solicitante</span>
             </button>
+            <div v-if="!isFree && isExpired && notifiedAtLabel" class="flex items-center justify-center gap-2 text-label-sm text-on-surface-variant">
+              <font-awesome-icon icon="check-circle" class="text-[14px] text-primary" />
+              <span>Notificado em {{ notifiedAtLabel }}</span>
+            </div>
             <button
               v-if="!isFree && !positionMismatch"
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"

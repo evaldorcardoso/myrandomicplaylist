@@ -8,6 +8,32 @@ const PRICE_POSITIONS_TABLE = 'price_positions'
 const EARNINGS_LEDGER_TABLE = 'earnings_ledger'
 
 export function TrackRequestService() {
+    const getTrackRequestById = async (id) => {
+        const { data, error } = await supabase
+            .from(TRACK_REQUESTS_TABLE)
+            .select('*, requesters(name, curator), playlists(name)')
+            .eq('id', id)
+            .maybeSingle()
+
+        if (error) {
+            console.error(error.message)
+            return { data: null, error }
+        }
+        if (!data) {
+            return { data: null, error: null }
+        }
+        const request = {
+            ...data,
+            requester_name: data.requesters?.name ?? null,
+            curator: data.requesters?.curator ?? null,
+            playlist_name: data.playlists?.name ?? null
+        }
+        if (request.requester_name) {
+            setRequester(request.requester_name, request.requester_id, request.curator)
+        }
+        return { data: request, error: null }
+    }
+
     const getTrackRequests = async (playlistId) => {
         const { data, error } = await supabase
             .from(TRACK_REQUESTS_TABLE)
@@ -322,6 +348,7 @@ export function TrackRequestService() {
     }
 
     return {
+        getTrackRequestById,
         getTrackRequests,
         createTrackRequest,
         updateTrackRequest,

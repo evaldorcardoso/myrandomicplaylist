@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Erro ao buscar assinaturas push' }, 500)
     }
 
-    const message = JSON.stringify({ title, body: messageBody, url })
+    const message = JSON.stringify({ title, body: messageBody, url, icon: '/launchericon-192x192.png' })
     let sent = 0
     let failed = 0
 
