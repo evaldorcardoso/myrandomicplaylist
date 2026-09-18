@@ -50,13 +50,14 @@ export const useNotificationsStore = defineStore('notifications', {
       this.slotOpened = true
     },
     async openSlotFromId(id) {
-      if (!id) return
+      if (!id) return false
       try {
         const { getTrackRequestById } = TrackRequestService()
         const { data: request, error } = await getTrackRequestById(id)
         if (error || !request) {
           console.error('Track request not found:', id)
-          return
+          notify({ title: 'Ops', text: 'Não foi possível encontrar a música da notificação!', type: 'error' })
+          return false
         }
 
         const playlistStore = usePlaylistStore()
@@ -99,8 +100,11 @@ export const useNotificationsStore = defineStore('notifications', {
         }
 
         this.openSlot(expiration)
+        return true
       } catch (error) {
         console.error('Error opening slot from ID:', error)
+        notify({ title: 'Ops', text: 'Não foi possível abrir a música da notificação!', type: 'error' })
+        return false
       }
     },
     closeSlot() {

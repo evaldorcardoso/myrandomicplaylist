@@ -3,6 +3,11 @@ import helpers, { LOCALSTORAGE_KEYS } from './support/helpers'
 
 let isRefreshing = false
 let refreshSubscribers = []
+let axiosInstance = null
+
+export function getAxios() {
+    return axiosInstance
+}
 
 function subscribeTokenRefresh(callback) {
     refreshSubscribers.push(callback)
@@ -108,6 +113,7 @@ export default {
             )
 		}
 
+		axiosInstance = useAxios
 		app.provide("useAxios", useAxios)
 	},
 }

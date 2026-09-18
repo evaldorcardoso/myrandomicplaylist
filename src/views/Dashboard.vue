@@ -117,7 +117,7 @@
     const body = `Música vencendo na playlist: A música ${trackName} do artista ${artistLabel}, posição ${position} na playlist ${playlistName}, vence no dia ${dueDateBR}. Avise caso queira renovar, senão será removida em até 3 dias.`
     notifyingIds.add(id)
     try {
-      const result = await notifyExpirationPush({ title: 'MR Playlist — Música vencendo na playlist', body, url: '/' })
+      const result = await notifyExpirationPush({ title: 'MR Playlist — Música vencendo na playlist', body, url: `/?notify=${id}` })
       const text = result?.sent > 0
         ? `Notificação enviada para ${result.sent} dispositivo${result.sent === 1 ? '' : 's'}!`
         : 'Nenhum dispositivo com notificações ativas.'

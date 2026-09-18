@@ -1,8 +1,9 @@
-import { inject } from "vue"
+import { inject, hasInjectionContext } from "vue"
 import { useSettingsStore } from "@/stores/settings"
+import { getAxios } from "@/axios-plugin"
 
 export function useProfile() {
-    const $axios = inject("useAxios")
+    const $axios = hasInjectionContext() ? inject("useAxios") : getAxios()
     const settingsStore = useSettingsStore()
 
     const getProfile = async () => {
@@ -99,7 +100,7 @@ export function useProfile() {
 }
 
 export function useGeneral() {
-    const $axios = inject("useAxios")
+    const $axios = hasInjectionContext() ? inject("useAxios") : getAxios()
     const settingsStore = useSettingsStore()
 
     const getPlaylist = async (playlistId) => {

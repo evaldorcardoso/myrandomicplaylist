@@ -15,8 +15,11 @@
 
   const handleNotifyParam = async (notifyId) => {
     if (!notifyId) return
-    await notificationsStore.openSlotFromId(notifyId)
-    router.replace({ query: { ...route.query, notify: undefined } })
+    console.log('Opening slot from notification:', notifyId)
+    const opened = await notificationsStore.openSlotFromId(notifyId)
+    if (opened) {
+      router.replace({ query: { ...route.query, notify: undefined } })
+    }
   }
 
   onMounted(async () => {
