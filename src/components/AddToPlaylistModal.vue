@@ -18,6 +18,14 @@
     track: {
       type: Object,
       default: null
+    },
+    excludePlaylistId: {
+      type: String,
+      default: ''
+    },
+    lockOrganic: {
+      type: Boolean,
+      default: false
     }
   })
 
@@ -171,7 +179,7 @@
       playlists.value = getCompatiblePlaylists({
         playlists: playlistStore.playlists,
         currentUser: userStore.getUser,
-        excludePlaylistId: null,
+        excludePlaylistId: props.excludePlaylistId || null,
         trackGenres: topGenres.reduce((map, genre) => {
           map[genre.genre] = genre.count
           return map
@@ -443,7 +451,7 @@
           </div>
 
           <!-- Mode Selection Toggle -->
-          <div class="grid grid-cols-2 gap-md mb-lg">
+          <div v-if="!lockOrganic" class="grid grid-cols-2 gap-md mb-lg">
             <button
               type="button"
               class="relative p-2 rounded-lg border-2 transition-all duration-300 text-left"

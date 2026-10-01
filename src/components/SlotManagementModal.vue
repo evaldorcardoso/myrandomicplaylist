@@ -6,6 +6,7 @@
   import { useGeneral, useProfile } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '@/services/PlaylistService'
+  import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
 
   const PERMANENCE_DAYS = 30
   const DUE_DATE_DEADLINE_HOUR = 9
@@ -55,6 +56,7 @@
   const submitState = ref('idle')
   const removalOpen = ref(false)
   const removalMode = ref('')
+  const moveToPlaylistOpen = ref(false)
   const searchQuery = ref('')
   const availableTracks = ref([])
   const selectedReplacement = ref(null)
@@ -396,11 +398,28 @@
     searchQuery.value = ''
     selectedReplacement.value = null
     availableTracks.value = []
+    moveToPlaylistOpen.value = false
   }
 
   const onRemoveTrack = () => {
     if (isSubmitting.value) return
     removalOpen.value = true
+  }
+
+  const onMoveToPlaylist = () => {
+    if (isSubmitting.value) return
+    moveToPlaylistOpen.value = true
+  }
+
+  const onMovedToPlaylist = () => {
+    moveToPlaylistOpen.value = false
+    notify({
+      title: 'Alright',
+      text: 'Música movida para outra playlist!',
+      type: 'success'
+    })
+    emit('remove-track', { request: props.request, track: props.track })
+    emit('close')
   }
 
   const onMoveTrack = () => {
@@ -770,6 +789,13 @@
                 <font-awesome-icon icon="exchange-alt" :class="removalMode === 'replace' ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'" class="text-3xl mb-2" />
                 <span :class="removalMode === 'replace' ? 'text-primary' : 'text-on-surface'" class="text-label-md">Substituir por outra</span>
               </button>
+              <button
+                class="col-span-2 flex flex-col items-center justify-center p-6 rounded-xl border border-outline-variant/30 bg-surface-container-high/40 hover:border-primary/60 transition-all group"
+                @click="onMoveToPlaylist"
+              >
+                <font-awesome-icon icon="arrow-right" class="text-3xl mb-2 text-on-surface-variant group-hover:text-primary" />
+                <span class="text-label-md text-on-surface">Mover para outra playlist</span>
+              </button>
             </div>
 
             <div v-if="removalMode === 'replace' || removalMode === 'move'" class="space-y-4">
@@ -937,6 +963,14 @@
       </div>
     </div>
   </transition>
+  <AddToPlaylistModal
+    :open="moveToPlaylistOpen"
+    :track="trackData"
+    :exclude-playlist-id="props.playlistId"
+    :lock-organic="true"
+    @close="moveToPlaylistOpen = false"
+    @added="onMovedToPlaylist"
+  />
 </template>
 
 <style scoped lang="scss">
