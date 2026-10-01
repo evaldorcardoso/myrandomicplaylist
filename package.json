@@ -1,6 +1,6 @@
 {
   "name": "mrplaylist",
-  "version": "3.25.15",
+  "version": "3.25.16",
   "engines": {
     "node": ">=22.0.0"
   },

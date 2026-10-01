@@ -1378,6 +1378,19 @@
           </nav>
         </div>
         <div class="flex items-center gap-4">
+          <div class="text-on-surface-variant text-body-sm italic">
+            Última atualização: {{ lastUpdatedLabel }}
+          </div>
+          <button
+            class="flex items-center gap-1.5 text-primary hover:underline text-label-sm font-medium transition-colors"
+            :disabled="isLoading"
+            @click="handleRefresh"
+          >
+            <font-awesome-icon icon="sync" :spin="isLoading" />
+            Atualizar do Spotify
+          </button>
+        </div>
+        <div class="w-full flex items-center justify-end gap-4">
           <div class="relative">
             <button
               class="flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors border border-outline-variant/20"
@@ -1424,19 +1437,6 @@
             <font-awesome-icon icon="check" />
             Aplicar
           </button>
-          <div class="flex items-center gap-4">
-            <div class="text-on-surface-variant text-body-sm italic">
-              Última atualização: {{ lastUpdatedLabel }}
-            </div>
-            <button
-              class="flex items-center gap-1.5 text-primary hover:underline text-label-sm font-medium transition-colors"
-              :disabled="isLoading"
-              @click="handleRefresh"
-            >
-              <font-awesome-icon icon="sync" :spin="isLoading" />
-              Atualizar do Spotify
-            </button>
-          </div>
         </div>
       </div>
 
