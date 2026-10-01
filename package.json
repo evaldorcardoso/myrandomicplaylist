@@ -1,6 +1,9 @@
 {
   "name": "mrplaylist",
-  "version": "3.25.13",
+  "version": "3.25.14",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
