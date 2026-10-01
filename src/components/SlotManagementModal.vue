@@ -835,11 +835,11 @@
               v-if="isFree"
               class="group relative w-full bg-primary hover:bg-primary-fixed text-on-primary text-headline-sm py-3 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               :disabled="isSubmitting"
-              @click="onSellSlot"
+              @click="playTrack"
             >
               <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-              <font-awesome-icon icon="bolt" class="relative z-10" />
-              <span class="relative z-10">Vender slot</span>
+              <font-awesome-icon icon="play-circle" class="relative z-10" />
+              <span class="relative z-10">Reproduzir agora</span>
             </button>
             <button
               v-if="!isFree && !positionMismatch"
@@ -899,6 +899,16 @@
               </button>
             </template>
             <button
+              v-if="isFree"
+              class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+              :disabled="isSubmitting"
+              @click="onSellSlot"
+            >
+              <font-awesome-icon icon="bolt" class="text-[18px]" />
+              <span>Vender slot</span>
+            </button>
+            <button
+              v-if="!isFree"
               class="w-full border border-primary/30 hover:border-primary/60 hover:text-primary text-on-surface-variant text-label-md py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
               :disabled="isSubmitting"
               @click="playTrack"
