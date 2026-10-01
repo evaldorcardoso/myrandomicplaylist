@@ -125,7 +125,7 @@ const dashboardData = {
     activePositions: 0,
     occupancyLabel: '0% de ocupação total',
     expiringSoon: 8,
-    expiringLabel: 'Ação imediata necessária'
+    expiringLabel: 'Nenhuma música expirada'
   },
   expirations: [
     {
@@ -263,16 +263,16 @@ const { data, error } = await supabase
 
   const buildExpirationItems = (items = []) => {
     const enriched = enrichExpirationItems(items)
-    const urgentOnly = enriched.filter(expiration => expiration.secondsLeft <= SECONDS_PER_DAY)
-    const count = urgentOnly.length
+    const expiredOnly = enriched.filter(expiration => expiration.secondsLeft <= 0)
+    const count = expiredOnly.length
     return {
       stats: {
         expiringSoon: count,
         expiringLabel: count === 0
-          ? 'Nenhuma expiração iminente'
-          : (count === 1 ? '1 expiração iminente' : `${count} expirações iminentes`)
+          ? 'Nenhuma música expirada'
+          : (count === 1 ? '1 música expirada' : `${count} músicas expiradas`)
       },
-      expirations: urgentOnly
+      expirations: expiredOnly
     }
   }
 
@@ -285,7 +285,7 @@ const { data, error } = await supabase
   const fetchExpirationItems = async () => {
     const { data, error } = await supabase
       .from(TRACK_REQUESTS_TABLE)
-      .select('id, playlist_id, track_id, name, due_date, status, value, requester_id, position, requesters(name, curator)')
+      .select('id, playlist_id, track_id, name, due_date, status, value, requester_id, position, notified_at, requesters(name, curator)')
 
     if (error) {
       console.error(error.message)
@@ -343,7 +343,8 @@ const { data, error } = await supabase
           requester_id: request.requester_id,
           requester_name: requesterName,
           position: request.position,
-          curator
+          curator,
+          notified_at: request.notified_at
         },
         playlist: playlist ? { id: playlist.id, name: playlist.name } : null
       })

@@ -7,12 +7,14 @@
   import { useNotificationsStore } from '@/stores/notifications'
   import { PlaylistService } from '@/services/PlaylistService'
   import { sendExpirationPush as notifyExpirationPush } from '@/services/PushService'
+  import { TrackRequestService } from '@/services/TrackRequestService'
   import { invalidateOccupancy } from '@/support/occupancyCache'
   import { useSettingsStore } from '@/stores/settings'
   import { notify } from "@kyvg/vue3-notification";
 
   const { getDashboardData, loadOccupancy, loadEarnings, loadExpirations, loadUpcomingExpirations, loadRecentOrders } = DashboardService()
   const { loadAllFromDatabase } = PlaylistService()
+  const { updateTrackRequest } = TrackRequestService()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
   const settingsStore = useSettingsStore()
@@ -33,6 +35,7 @@
   let countdownInterval = null
 
   const notifyingIds = reactive(new Set())
+  const copyingIds = reactive(new Set())
 
   const pad = (value) => String(value).padStart(2, '0')
 
@@ -130,6 +133,64 @@
     }
   }
 
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    if (Number.isNaN(d.getTime())) return ''
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
+
+  const notifiedAtLabel = (expiration) => {
+    return formatDateTime(expiration?.request?.notified_at)
+  }
+
+  const notifyRequesterWhatsapp = async (expiration) => {
+    const id = expiration.id
+    if (copyingIds.has(id)) return
+    if (!expiration.request || !expiration.track) {
+      invalidateOccupancy()
+      await loadDashboardData()
+      const fresh = state.data.expirations.find(item => item.id === id)
+      if (!fresh?.request || !fresh?.track) {
+        notify({ title: 'Ops', text: 'Música não encontrada!', type: 'error' })
+        return
+      }
+      expiration = fresh
+    }
+    const trackName = expiration.track?.track?.name ?? expiration.request?.name ?? ''
+    const artistName = expiration.track?.track?.artists?.map(artist => artist.name).join(', ') ?? ''
+    const curatorName = expiration.request?.curator?.trim() ?? ''
+    const artistLabel = curatorName ? `${artistName} by ${curatorName}` : artistName
+    const playlistName = expiration.playlist?.name ?? ''
+    const position = (expiration.track?.id ?? 0) + 1
+    const dueDateBR = formatDueDateBR(expiration.request?.due_date)
+    const message = `Música vencendo na playlist: A música *${trackName}* do artista *${artistLabel}*, posição *${position}* na playlist ${playlistName}, vence no dia *${dueDateBR}*. Avise caso queira renovar, senão será *removida* em até *3 dias*.`
+    copyingIds.add(id)
+    try {
+      await navigator.clipboard.writeText(message)
+      if (expiration.request?.id) {
+        const notifiedAt = new Date().toISOString()
+        const { error } = await updateTrackRequest(expiration.request.id, { notified_at: notifiedAt })
+        if (error) {
+          console.error('Failed to save notified_at:', error.message)
+        } else {
+          expiration.request.notified_at = notifiedAt
+        }
+      }
+      notify({ title: 'Alright', text: 'Mensagem copiada! Cole no WhatsApp do solicitante.', type: 'success' })
+    } catch (error) {
+      console.error(error)
+      notify({ title: 'Ops', text: 'Não foi possível copiar a mensagem!', type: 'error' })
+    } finally {
+      copyingIds.delete(id)
+    }
+  }
+
   onMounted(async () => {
     await loadDashboardData()
     isLoading.value = false
@@ -183,7 +244,7 @@
 
         <div class="bg-surface-container-low p-lg rounded-xl flex flex-col gap-xs shadow-sm hover:bg-surface-container transition-colors relative overflow-hidden">
           <div class="flex items-center justify-between relative z-10">
-            <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Expirações &lt; 24h</span>
+            <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Expiradas</span>
             <span class="material-symbols-outlined text-error text-headline-sm animate-pulse">timer</span>
           </div>
           <div class="flex flex-col relative z-10">
@@ -214,7 +275,7 @@
       <!-- Main Grid Content -->
       <div class="grid grid-cols-12 gap-lg items-start mt-lg">
          <!-- Left Column: Playlist Management (8 Cols) -->
-         <div class="col-span-12 xl:col-span-8 flex flex-col gap-md">
+         <div class="col-span-12 xl:col-span-8 order-2 xl:order-1 flex flex-col gap-md">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-3">
               <h2 class="text-headline-md font-display text-on-surface">Gestão de Playlists</h2>
@@ -296,9 +357,9 @@
         </div>
 
          <!-- Right Column: Alerts & Side Widgets (4 Cols) -->
-         <div class="col-span-12 xl:col-span-4 flex flex-col gap-lg">
+         <div class="col-span-12 xl:col-span-4 xl:order-2 contents xl:flex xl:flex-col xl:gap-lg">
           <!-- Expiration Widget -->
-          <div v-if="state.data.expirations.length > 0" class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
+          <div v-if="state.data.expirations.length > 0" class="order-1 max-xl:col-span-12 bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
             <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-error">notification_important</span>
               <h3 class="text-headline-sm font-display text-on-surface">Alerta de Expiração</h3>
@@ -355,6 +416,22 @@
                     <span v-if="notifyingIds.has(expiration.id)" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
                     <span v-else class="material-symbols-outlined text-[18px]">notifications_active</span>
                   </button>
+                  <button
+                    class="px-3 bg-surface-container-highest text-on-surface-variant rounded-lg hover:text-on-surface transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Copiar mensagem para o WhatsApp do solicitante"
+                    :disabled="copyingIds.has(expiration.id)"
+                    @click="notifyRequesterWhatsapp(expiration)"
+                  >
+                    <span v-if="copyingIds.has(expiration.id)" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                    <font-awesome-icon v-else :icon="['fab', 'whatsapp']" class="text-[18px]" />
+                  </button>
+                </div>
+                <div
+                  v-if="notifiedAtLabel(expiration)"
+                  class="flex items-center gap-2 text-label-sm text-on-surface-variant pt-2 border-t border-outline-variant/10"
+                >
+                  <span class="material-symbols-outlined text-[14px] text-primary">check_circle</span>
+                  <span>Notificado em {{ notifiedAtLabel(expiration) }}</span>
                 </div>
               </div>
             </div>
@@ -363,11 +440,11 @@
               class="text-center text-label-sm text-primary hover:underline mt-2 cursor-pointer"
               href="#"
               @click.prevent="showAllExpirations = !showAllExpirations"
-            >{{ showAllExpirations ? 'Ver menos' : `Ver todas as ${state.data.stats.expiringSoon} expirações` }}</a>
+            >{{ showAllExpirations ? 'Ver menos' : `Ver todas as ${state.data.stats.expiringSoon} expiradas` }}</a>
           </div>
 
           <!-- Upcoming Expirations Widget -->
-          <div v-if="state.data.upcomingExpirations.length > 0" class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
+          <div v-if="state.data.upcomingExpirations.length > 0" class="order-3 max-xl:col-span-12 bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 relative overflow-hidden shadow-xl">
             <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-secondary">event_upcoming</span>
               <h3 class="text-headline-sm font-display text-on-surface">Próximas Expirações</h3>
@@ -400,7 +477,7 @@
           </div>
 
           <!-- Recent Orders Widget -->
-          <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
+          <div class="order-4 max-xl:col-span-12 bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
             <div class="flex items-center justify-between">
               <span class="text-label-sm text-on-surface-variant uppercase tracking-widest">Pedidos Recentes</span>
             </div>
@@ -457,7 +534,7 @@
       <!-- Main Grid Content Skeleton -->
       <div class="grid grid-cols-12 gap-lg items-start mt-lg">
         <!-- Left Column Skeleton -->
-        <div class="col-span-12 xl:col-span-8 flex flex-col gap-md">
+        <div class="col-span-12 xl:col-span-8 order-2 xl:order-1 flex flex-col gap-md">
           <div class="flex items-center gap-3">
             <div class="h-7 w-48 rounded animate-pulse bg-surface-container-high"></div>
             <div class="h-5 w-24 rounded animate-pulse bg-surface-container-high"></div>
@@ -508,9 +585,9 @@
         </div>
 
         <!-- Right Column Skeleton -->
-        <div class="col-span-12 xl:col-span-4 flex flex-col gap-lg">
+        <div class="col-span-12 xl:col-span-4 xl:order-2 contents xl:flex xl:flex-col xl:gap-lg">
           <!-- Expiration Widget Skeleton -->
-          <div class="bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 shadow-xl">
+          <div class="order-1 max-xl:col-span-12 bg-surface-container-low rounded-xl p-lg flex flex-col gap-md border border-outline-variant/10 shadow-xl">
             <div class="flex items-center gap-3">
               <div class="h-6 w-6 rounded animate-pulse bg-surface-container-high"></div>
               <div class="h-5 w-40 rounded animate-pulse bg-surface-container-high"></div>
@@ -538,7 +615,7 @@
           </div>
 
           <!-- Recent Orders Skeleton -->
-          <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
+          <div class="order-3 max-xl:col-span-12 bg-surface-container-low rounded-xl p-lg border border-outline-variant/10 flex flex-col gap-4">
             <div class="h-4 w-32 rounded animate-pulse bg-surface-container-high"></div>
             <div class="flex flex-col gap-3">
               <div v-for="n in 4" :key="'order-skel-' + n" class="flex items-center justify-between gap-3 p-3 bg-surface-container rounded-xl border border-outline-variant/10">
