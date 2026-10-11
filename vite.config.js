@@ -27,7 +27,8 @@ export default defineConfig({
     manifest: {
       name: 'MR Playlist',
       short_name: 'MRP',
-      description: 'Gerador de playlist aleatória do Spotify',
+      description: 'Painel de curadoria de playlists do Spotify',
+      lang: 'pt-BR',
       theme_color: '#62faf5',
       icons: [
         {
@@ -54,5 +55,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  publicPath: process.env.NODE_ENV === 'production' ? '/mrplaylist/' : '/',
+  // The app is served from the domain root (e.g. Vercel). `publicPath` was an
+  // invalid Vite option and was silently ignored, so this preserves the existing
+  // behavior. Change this (and the router base) if you ever host under a subpath.
+  base: '/',
 })

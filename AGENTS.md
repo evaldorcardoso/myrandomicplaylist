@@ -2,7 +2,11 @@
 
 ## Project Overview
 
-Vue 3 + Vite application for generating random Spotify playlists with Supabase backend.
+Vue 3 + Vite PWA for **professional Spotify playlist curation**, with a Supabase backend. The app manages the sale and administration of playlist positions ("slots"), financial control (earnings ledger), expiration/renewal alerts and push notifications — plus a random-playlist generator, library, player and stats.
+
+- **Single-user tool** (the owner-curator). **Not** multi-tenant, and there is no auth other than Spotify OAuth.
+- Scope, requirements and roadmap: [`docs/PRD.md`](docs/PRD.md).
+- UI language: Portuguese (pt-BR).
 
 ## Build Commands
 
@@ -26,11 +30,11 @@ yarn preview
 
 Copy `.env.example` to `.env` and configure:
 - `VITE_SPOTIFY_CLIENT_ID` - Spotify API client ID
-- `VITE_SPOTIFY_CLIENT_SECRET` - Spotify API client secret
+- `VITE_SPOTIFY_CLIENT_SECRET` - Spotify API client secret (⚠️ currently bundled into the frontend — see `docs/PRD.md` Fase 0 / PKCE)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_KEY` - Supabase anon key
-- `VITE_SUPABASE_PLAYLISTS_TABLE` - Supabase table for playlists
-- `VITE_SUPABASE_TRACKS_TABLE` - Supabase table for tracks
+- `VITE_SUPABASE_PLAYLISTS_TABLE` - **misnamed**: it points to the playlist **statistics** table (`playlists_statistics`, likes history), not the tracked-playlists table
+- `VITE_SUPABASE_TRACKS_TABLE` - per-track popularity table (`track_popularity`)
 
 ## Code Style Guidelines
 
@@ -46,7 +50,7 @@ Copy `.env.example` to `.env` and configure:
 - Order: Vue core, external libraries, internal modules, components
 
 ### Naming Conventions
-- **Components**: PascalCase (e.g., `Navbar.vue`, `FloatPlayer.vue`)
+- **Components**: PascalCase (e.g., `Sidebar.vue`, `FloatPlayer.vue`)
 - **Views**: PascalCase (e.g., `Library.vue`, `Playlist.vue`)
 - **Stores**: camelCase with `use` prefix (e.g., `useUserStore`)
 - **Services**: PascalCase (e.g., `PlaylistService.js`)
@@ -108,26 +112,56 @@ Copy `.env.example` to `.env` and configure:
 src/
 ├── App.vue
 ├── main.js              # App initialization, plugin registration
+├── axios-plugin.js      # Axios instance + Spotify token refresh interceptors
+├── sw.ts                # PWA service worker (precache, image cache, push)
 ├── router/
 │   └── index.js         # Route definitions, guards
 ├── stores/              # Pinia stores
-│   ├── user.js
-│   └── playlist.js
-├── services/            # Business logic
-│   └── PlaylistService.js
+│   ├── user.js          # user + track_popularity rows
+│   ├── playlist.js      # playlists (tracks stored with markRaw)
+│   ├── settings.js      # advanced settings (localStorage)
+│   └── notifications.js # expired tracks + slot modal state
+├── services/            # Business logic (factory functions)
+│   ├── PlaylistService.js       # tracked playlists CRUD, cascade delete, genres
+│   ├── DashboardService.js      # occupancy/earnings/expiration aggregation
+│   ├── TrackRequestService.js   # track_requests, requesters, price_positions, earnings_ledger
+│   ├── FinanceService.js        # earnings ledger queries/totals
+│   ├── PlaylistDetailsService.js
+│   └── PushService.js           # push subscriptions + edge-function invoke
 ├── support/             # Utilities
-│   ├── helpers.js
-│   ├── spotifyApi.js
-│   └── supabaseClient.js
+│   ├── helpers.js               # localStorage keys, logout, hexToRgba
+│   ├── spotifyApi.js            # Spotify endpoint wrappers
+│   ├── supabaseClient.js        # Supabase client
+│   ├── occupancyCache.js        # TTL caches (occupancy/earnings/expirations)
+│   ├── requesterCuratorCache.js
+│   └── playlistCompatibility.js # genre-based playlist scoring
 ├── views/               # Page components
-│   ├── Inicio.vue
+│   ├── Dashboard.vue
 │   ├── Library.vue
-│   └── ...
+│   ├── Playlist.vue
+│   ├── Estatisticas.vue
+│   ├── Randomic.vue
+│   ├── Player.vue
+│   ├── Financeiro.vue
+│   ├── Configuracoes.vue
+│   ├── Login.vue
+│   └── Callback.vue
 ├── components/          # Reusable components
-│   ├── Navbar.vue
-│   └── ...
-├── composables/         # Vue composables
-└── axios-plugin.js
+│   ├── Layout.vue / Sidebar.vue / TopBar.vue / FloatPlayer.vue
+│   ├── SellSlotModal.vue / SlotManagementModal.vue / OrphanRequestModal.vue
+│   ├── AddToPlaylistModal.vue / EditPlaylistModal.vue
+│   ├── ConfirmRemovePlaylistModal.vue
+│   ├── SortConfirmModal.vue / SortingProgressModal.vue
+│   └── ReloadPWA.vue
+└── composables/         # Vue composables
+    ├── requestToken.js
+    ├── usePlaylistData.js
+    ├── usePushNotifications.js
+    └── useCuratorSuggestions.js
+
+supabase/functions/notify-expiration/index.ts   # Deno edge function (web-push)
+scripts/notify-expiration.js                    # standalone sender (--dry-run)
+docs/PRD.md                                     # product requirements + roadmap
 ```
 
 ## Path Aliases
@@ -155,10 +189,10 @@ notify({ type: 'success', title: 'Message' })
 
 ## Development Notes
 
-- App uses PWA with Workbox for offline caching
+- App uses PWA with Workbox for offline caching (`injectManifest`, source `src/sw.ts`)
 - Spotify images cached for 30 days
-- Production build uses `/myrandomicplaylist/` base path
-- Development uses `/` as base path
+- ⚠️ `vite.config.js` sets `publicPath: '/mrplaylist/'`, which is **not a valid Vite option** (the correct key is `base`), so the production base path is effectively the host default. Verify before touching deploy config.
+- ⚠️ The PWA manifest `description` in `vite.config.js` still reads "Gerador de playlist aleatória do Spotify" (stale — see `docs/PRD.md`).
 - No linting or tests configured - ensure code quality manually before commits
 
 ## Performance Rules
