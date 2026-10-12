@@ -18,6 +18,7 @@
   import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
   import { PlaylistDetailsService } from '@/services/PlaylistDetailsService'
   import { TrackRequestService } from '@/services/TrackRequestService'
+  import { track, EVENTS } from '@/support/telemetry'
 
   const router = useRouter()
   const playlistStore = usePlaylistStore()
@@ -1118,6 +1119,7 @@
 
   onMounted(async () => {
     progress.start()
+    const loadStartedAt = performance.now()
     try {
       await Promise.all([
         init({ topArtistsLimit: 10 }),
@@ -1125,6 +1127,11 @@
       ])
       buildSlots()
       lastUpdatedLabel.value = 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      track(EVENTS.PLAYLIST_LOAD, {
+        playlist_id: playlistId.value ?? null,
+        tracks: state.tracks.length,
+        ms: Math.round(performance.now() - loadStartedAt)
+      })
     } finally {
       isLoading.value = false
       progress.finish()

@@ -6,6 +6,7 @@ import { DashboardService } from '@/services/DashboardService'
 import { TrackRequestService } from '@/services/TrackRequestService'
 import { useGeneral } from '@/support/spotifyApi'
 import { notify } from "@kyvg/vue3-notification";
+import { track, EVENTS } from '@/support/telemetry'
 
 export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
@@ -48,6 +49,10 @@ export const useNotificationsStore = defineStore('notifications', {
       this.slotPlaylistId = expiration?.playlistId ?? ''
       this.slotPlaylist = expiration?.playlist ?? null
       this.slotOpened = true
+      track(EVENTS.RENEWAL_STARTED, {
+        track_request_id: expiration?.request?.id ?? null,
+        playlist_id: expiration?.playlistId ?? null
+      })
     },
     async openSlotFromId(id) {
       if (!id) return false

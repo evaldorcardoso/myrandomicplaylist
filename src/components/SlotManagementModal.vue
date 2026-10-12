@@ -7,6 +7,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '@/services/PlaylistService'
   import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
+  import { track as trackEvent, EVENTS } from '@/support/telemetry'
 
   const PERMANENCE_DAYS = 30
   const DUE_DATE_DEADLINE_HOUR = 9
@@ -326,6 +327,10 @@
           type: ledgerType
         })
         if (ledgerError) console.error(ledgerError.message)
+        trackEvent(EVENTS.RENEWAL_COMPLETED, {
+          track_request_id: props.request.id,
+          type: ledgerType
+        })
         submitState.value = 'success'
         emit('updated', 'paid')
       } else {
