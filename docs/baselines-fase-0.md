@@ -2,7 +2,7 @@
 
 **Snapshot:** 12/10/2026
 **Fonte:** banco de produção do projeto Supabase, via SQL (`execute_sql`).
-**Issue:** [#63](https://github.com/evaldorcardoso/myrandomicplaylist/issues/63) — complementa o [`PLANO-FASE-0.md`](../PLANO-FASE-0.md) (§2, D6 e Anexo A) e o [`docs/PRD.md`](PRD.md).
+**Issue:** [#63](https://github.com/evaldorcardoso/myrandomicplaylist/issues/63) — complementa o [`docs/PRD.md`](PRD.md) (§6.1, D6 e §4.7).
 **Owner:** Curador proprietário (uso pessoal, dono único).
 
 > Este arquivo registra o **baseline** da Fase 0: os valores de partida dos 4 KPIs

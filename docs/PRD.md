@@ -6,10 +6,10 @@
 **Autor / Owner:** Curador proprietário (uso pessoal)
 **Status:** Aprovado — Fase 0 (Fundação & Segurança) concluída (ver §5.1 e §6)
 
-> Este PRD passa a ser o **destino durável** do contexto da Fase 0: decisões
-> travadas (§6), arquitetura-alvo do fluxo de auth (§6), telemetria (§4.7) e
-> itens adiados / débito conhecido (§7). O `PLANO-FASE-0.md` permanece apenas
-> como registro histórico da fase.
+> Este PRD é o **destino durável** do contexto da Fase 0: decisões travadas
+> (§6), arquitetura-alvo do fluxo de auth (§6), telemetria (§4.7) e itens
+> adiados / débito conhecido (§7). O antigo `PLANO-FASE-0.md` foi removido após
+> a migração (recuperável no histórico do git).
 
 ---
 
@@ -397,7 +397,7 @@ Browser                         Supabase                     Spotify
 
 ## 7. Itens adiados / débito conhecido (fora da Fase 0)
 
-Registrados ao fim da Fase 0 e absorvidos por este PRD. A maioria tem origem no antigo `PLANO-FASE-0.md`; os itens de banco vêm dos advisors do Supabase. Não bloqueiam a Fase 1.
+Registrados ao fim da Fase 0 e absorvidos por este PRD. A maioria tem origem no antigo `PLANO-FASE-0.md` (removido na #64; recuperável no git); os itens de banco vêm dos advisors do Supabase. Não bloqueiam a Fase 1.
 
 | Item | Descrição | Quando |
 |---|---|---|
