@@ -15,7 +15,6 @@
 
   const handleNotifyParam = async (notifyId) => {
     if (!notifyId) return
-    console.log('Opening slot from notification:', notifyId)
     const opened = await notificationsStore.openSlotFromId(notifyId)
     if (opened) {
       router.replace({ query: { ...route.query, notify: undefined } })
@@ -29,7 +28,6 @@
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .select("*")
       userStore.loadAllTracks(databaseTracks)
-      console.log('Tracks statistics loaded!')
       progress.finish()
     }
     if (route.query.notify) {

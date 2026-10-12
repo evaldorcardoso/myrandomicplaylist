@@ -2,25 +2,6 @@ import { supabase } from '@/support/supabaseClient'
 
 const EARNINGS_LEDGER_TABLE = 'earnings_ledger'
 
-const sumLedger = (rows = []) => {
-  let total = 0
-  for (const row of rows) {
-    if (row.amount == null) continue
-    total += row.amount
-  }
-  return total
-}
-
-const sumLedgerByType = (rows = []) => {
-  const totals = { new: 0, renewal: 0 }
-  for (const row of rows) {
-    if (row.amount == null) continue
-    const kind = row.type === 'renewal' ? 'renewal' : 'new'
-    totals[kind] += row.amount
-  }
-  return totals
-}
-
 export function FinanceService() {
   const loadEarningsLedger = async ({ start, end }) => {
     const startISO = start ? new Date(start).toISOString() : null
@@ -47,8 +28,6 @@ export function FinanceService() {
   }
 
   return {
-    loadEarningsLedger,
-    sumLedger,
-    sumLedgerByType
+    loadEarningsLedger
   }
 }

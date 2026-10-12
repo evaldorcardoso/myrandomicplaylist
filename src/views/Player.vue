@@ -203,7 +203,6 @@
       await getPlaybackUserState()
       getTrackStatistics()
     } catch(error) {
-      console.log('error on get playback state')
       console.error(error)
     }
   }, 10000)

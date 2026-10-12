@@ -75,7 +75,7 @@ async function refreshAccessToken() {
     }
     if (data.warning) {
         // Rotação do refresh token não pôde ser persistida no servidor.
-        console.warn('spotify-token:', data.warning)
+        console.error('spotify-token:', data.warning)
     }
     accessToken = data.access_token
     const expiresInSeconds = Number(data.expires_in) || DEFAULT_EXPIRES_IN_S

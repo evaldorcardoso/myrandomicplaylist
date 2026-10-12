@@ -40,7 +40,7 @@ export const useUserStore = defineStore('user', {
                 }
                 this.tracks.push(track)
             } catch (e) {
-                console.log(e)
+                console.error(e)
             }
 
         },

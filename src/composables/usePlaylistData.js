@@ -141,7 +141,7 @@ export function usePlaylistData(callbacks = {}) {
           }
         }
       } catch (error) {
-        console.log(error)
+        console.error(error)
       } finally {
         isSavingTracksStatistics.value = false
       }
@@ -155,7 +155,7 @@ export function usePlaylistData(callbacks = {}) {
         await saveTrackStatistics(track)
       }
     } catch (error) {
-      console.log(error)
+      console.error(error)
     }
     progress.finish()
   }
@@ -178,7 +178,7 @@ export function usePlaylistData(callbacks = {}) {
           .select()
 
         if (trackUpdatedError) {
-          console.log(trackUpdatedError.message)
+          console.error(trackUpdatedError.message)
         }
         return databaseTrack
       }
@@ -189,12 +189,12 @@ export function usePlaylistData(callbacks = {}) {
           .select()
 
       if (trackInsertedError) {
-        console.log(trackInsertedError.message)
+        console.error(trackInsertedError.message)
       }
 
       return databaseTrack
     } catch (error) {
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -226,14 +226,12 @@ export function usePlaylistData(callbacks = {}) {
       mountLikeStatsChart(state.dataLikes)
       mountPopularityStatsChart()
     } catch (error) {
-      console.log(error)
-      console.log(error.message)
+      console.error(error)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
   }
 
   const deleteStatistic = async(id) => {
-    console.log('delete statistic for id ' + id)
     let { error, status } = await supabase
         .from(import.meta.env.VITE_SUPABASE_PLAYLISTS_TABLE)
         .delete()
@@ -260,7 +258,7 @@ export function usePlaylistData(callbacks = {}) {
       }
       state.dataLikes = data
     } catch (error) {
-      console.log(error.message)
+      console.error(error)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.message)
     }
   }
@@ -443,14 +441,13 @@ export function usePlaylistData(callbacks = {}) {
         return
       }
     } catch (error) {
-      console.log(error.response)
+      console.error(error.response)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response?.data?.error?.message ?? 'Não foi possível executar a playlist')
     }
   }
 
   const identifyPlaylistChanges = async(data) => {
     if (await hasChangedFromDatabase(data)) {
-      console.log('Playlist changed from database')
       showNotification(
         NOTIFICATIONS_TYPE.info,
         'Info',
@@ -464,7 +461,6 @@ export function usePlaylistData(callbacks = {}) {
 
     if (await hasSilentChangesFromDatabase(data)) {
       const result = await savePlaylist(data)
-      console.log(result)
       if (!result) {
         notify({
           title: 'Ops',

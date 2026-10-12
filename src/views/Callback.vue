@@ -25,7 +25,7 @@
 				// A credencial de longa duração fica só no servidor.
 				await storeProviderRefreshToken(session.provider_refresh_token)
 			} else if (cameFromOAuthCallback) {
-				console.warn('O Spotify não retornou provider_refresh_token; será preciso autorizar novamente na primeira renovação.')
+				console.error('O Spotify não retornou provider_refresh_token; será preciso autorizar novamente na primeira renovação.')
 			}
 
 			// Navegação única: o redirect anterior acontecia aqui e de novo no

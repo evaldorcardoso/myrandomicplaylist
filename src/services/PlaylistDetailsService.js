@@ -86,16 +86,10 @@ const getPlaylistDetails = (playlist = null, tracksLength = 0, filledPositionsCo
   }
 }
 
-const getAudience = () => [
-  { label: 'Brasil (Top)', value: 64, tone: 'primary' },
-  { label: 'EUA', value: 12, tone: 'secondary' }
-]
-
 export function PlaylistDetailsService() {
   return {
     getTrackSlot,
     getPlaylistDetails,
-    getGrowth,
-    getAudience
+    getGrowth
   }
 }

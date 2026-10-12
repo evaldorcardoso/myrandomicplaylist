@@ -76,7 +76,7 @@
             const { data } = await getPlaybackState()
             floatPlayerData.value = data
         } catch(error) {
-            console.log('error on get playback state')
+            console.error('error on get playback state', error)
         }
     }, 10000)
 

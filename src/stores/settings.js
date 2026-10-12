@@ -18,7 +18,7 @@ export const useSettingsStore = defineStore('settings', {
       const raw = helpers.getLocalStorage().settings
       if (raw) stored = JSON.parse(raw)
     } catch (e) {
-      console.warn('Failed to parse stored settings', e)
+      console.error('Failed to parse stored settings', e)
     }
     return { settings: { ...DEFAULT_SETTINGS, ...stored } }
   },

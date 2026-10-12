@@ -16,11 +16,6 @@ export function useProfile() {
             .get(`${import.meta.env.VITE_API_URL}/me/top/tracks?limit=${limit}&time_range=short_term`)
     }
 
-    const getRecommendations = async(topTracks) => {
-        return $axios
-            .get(`${import.meta.env.VITE_API_URL}/recommendations?seed_tracks=${topTracks}`)
-    }
-
     const getPlaylists = async() => {
         const pageSize = settingsStore.getSessionSetting('playlistPageSize')
         var offset = 0
@@ -85,7 +80,6 @@ export function useProfile() {
     return { 
         getProfile, 
         getTopItens, 
-        getRecommendations,
         getPlaylists,
         executePlaylist,
         getPlaybackState,

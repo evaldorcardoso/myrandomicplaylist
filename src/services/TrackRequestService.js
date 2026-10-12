@@ -183,24 +183,6 @@ export function TrackRequestService() {
         return { data, error: null }
     }
 
-    const getPricePositionsWithMetadata = async (playlistId) => {
-        const { data, error } = await supabase
-            .from(PRICE_POSITIONS_TABLE)
-            .select('*, playlists(name, image)')
-            .eq('playlist_id', playlistId)
-
-        if (error) {
-            console.error(error.message)
-            return { data: null, error }
-        }
-        const items = (data ?? []).map(item => ({
-            ...item,
-            playlist_name: item.playlists?.name ?? null,
-            playlist_image: item.playlists?.image ?? null
-        }))
-        return { data: items, error: null }
-    }
-
     const getPricePositionByRange = async (playlistId, position) => {
         const { data, error } = await supabase
             .from(PRICE_POSITIONS_TABLE)
@@ -358,7 +340,6 @@ export function TrackRequestService() {
         getOrCreateRequester,
         getCurators,
         getPricePositions,
-        getPricePositionsWithMetadata,
         getPricePositionByRange,
         getPricePosition,
         createPricePosition,

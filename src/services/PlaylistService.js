@@ -49,7 +49,6 @@ export function PlaylistService() {
             console.error(error.message)
             return false
         }
-        console.log('Updated totalTracks on supabase')
         return true
     }
 
@@ -81,8 +80,6 @@ export function PlaylistService() {
                 console.error(error.message)
                 return false
             }
-            console.log('Inserted on supabase:')
-            console.log(data)
             try {
                 data[0].isOwner = true
                 data[0].owner = { display_name: userStore.getUser.display_name }
@@ -104,8 +101,6 @@ export function PlaylistService() {
             console.error(error.message)
             return false
         }
-        console.log('Updated on supabase:')
-        console.log(data)
         return true
     }
 

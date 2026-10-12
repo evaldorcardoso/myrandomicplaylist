@@ -240,7 +240,7 @@ const addToUserQueue = async () => {
     }
     notify({ title: 'Alright', text: `${tracks.length} músicas adicionadas à fila`, type: 'success' })
   } catch (error) {
-    console.log(error)
+    console.error(error)
     notify({ title: 'Ops', text: 'Erro ao adicionar à fila', type: NOTIFICATIONS_TYPE.danger })
   }
   state.isProcessing = false

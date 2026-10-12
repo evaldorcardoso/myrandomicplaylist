@@ -399,7 +399,7 @@
       try {
         await navigator.share({ title: state.playlist?.name, url })
       } catch (error) {
-        console.log(error)
+        console.error(error)
       }
       return
     }
@@ -574,7 +574,7 @@
         type: 'error'
       })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       notify({
         title: 'Ops',
         text: 'An error occurred!',
