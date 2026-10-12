@@ -2,9 +2,10 @@
   import ReloadPWA from "@/components/ReloadPWA.vue"
   import { useUserStore } from '@/stores/user'
   import { useNotificationsStore } from '@/stores/notifications'
-  import { inject, onMounted, watch } from "vue";
+  import { inject, onBeforeUnmount, onMounted, watch } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { supabase } from '@/support/supabaseClient'
+  import { track, EVENTS } from '@/support/telemetry'
 
   const userStore = useUserStore()
   const notificationsStore = useNotificationsStore()
@@ -21,7 +22,19 @@
     }
   }
 
+  const reportError = (scope, error) => {
+    track(EVENTS.ERROR, {
+      scope,
+      message: error?.message ?? String(error ?? '')
+    })
+  }
+
+  const onWindowError = (event) => reportError('window.error', event?.error ?? event?.message)
+  const onUnhandledRejection = (event) => reportError('window.unhandledrejection', event?.reason)
+
   onMounted(async () => {
+    window.addEventListener('error', onWindowError)
+    window.addEventListener('unhandledrejection', onUnhandledRejection)
     if(! userStore.isTracksLoaded) {
       progress.start()
       const { data: databaseTracks } = await supabase
@@ -37,6 +50,11 @@
 
   watch(() => route.query.notify, (newVal) => {
     if (newVal) handleNotifyParam(newVal)
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('error', onWindowError)
+    window.removeEventListener('unhandledrejection', onUnhandledRejection)
   })
 </script>
 <template>
