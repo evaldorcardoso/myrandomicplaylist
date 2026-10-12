@@ -1,10 +1,10 @@
+import { supabase } from './supabaseClient'
+import { clearSpotifyToken } from './spotifyToken'
+
 // Map for localStorage keys
+// As credenciais do Spotify não vivem mais no navegador (Supabase Auth + Edge
+// Function): aqui ficam apenas preferências e o cache do perfil do usuário.
 export const LOCALSTORAGE_KEYS = {
-    code: 'spotify_code',
-    accessToken: 'spotify_access_token',
-    refreshToken: 'spotify_refresh_token',
-    expireTime: 'spotify_token_expire_time',
-    //timestamp: 'spotify_token_timestamp',
     filterLibrary: 'spotify_filter_library',
     user: 'user',
     settings: 'spotify_settings'
@@ -32,12 +32,7 @@ export function hexToRgba(hex, alpha = 0.7) {
 export default {
     getLocalStorage: () => {
         // Map to retrieve localStorage values
-        const LOCALSTORAGE_VALUES = {    
-          code: window.localStorage.getItem(LOCALSTORAGE_KEYS.code),
-          accessToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.accessToken),
-          refreshToken: window.localStorage.getItem(LOCALSTORAGE_KEYS.refreshToken),
-          expireTime: window.localStorage.getItem(LOCALSTORAGE_KEYS.expireTime),
-          //timestamp: window.localStorage.getItem(LOCALSTORAGE_KEYS.timestamp),
+        const LOCALSTORAGE_VALUES = {
           filterLibrary: window.localStorage.getItem(LOCALSTORAGE_KEYS.filterLibrary),
           settings: window.localStorage.getItem(LOCALSTORAGE_KEYS.settings)
         };
@@ -47,10 +42,10 @@ export default {
     setLocalStorage: (key, value) => {
         window.localStorage.setItem(key, value)
     },
-    logout: () => {
-        // Clear all localStorage items
-        for (const property in LOCALSTORAGE_KEYS) {
-            window.localStorage.removeItem(LOCALSTORAGE_KEYS[property]);
-        }
+    logout: async () => {
+        // Encerra a sessão Supabase (que guarda o JWT) e limpa o cache local.
+        clearSpotifyToken()
+        window.localStorage.removeItem(LOCALSTORAGE_KEYS.user)
+        await supabase.auth.signOut()
     }
 }

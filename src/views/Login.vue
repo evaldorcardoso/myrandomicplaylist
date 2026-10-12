@@ -1,25 +1,39 @@
 <script setup>
   import { onMounted, reactive, ref } from 'vue'
+  import { supabase } from '@/support/supabaseClient'
 
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
-  const state = reactive({    
+  const state = reactive({
     user: null,
     message: '',
     version: '',
   })
 
-  const getAuthorizeUrl = () => (
-      `https://accounts.spotify.com/authorize?` +
-      `client_id=${import.meta.env.VITE_SPOTIFY_CLIENT_ID}` +
-      `&response_type=code` +
-      `&redirect_uri=${window.location.origin}/callback` +
-      `&scope=user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read` +
-      `&state=34fFs29kd09`
-    )
+  // Mesmos escopos do OAuth anterior (Authorization Code no frontend).
+  const SPOTIFY_SCOPES = [
+    'user-read-private',
+    'user-read-email',
+    'playlist-read-private',
+    'playlist-modify-public',
+    'playlist-modify-private',
+    'user-read-playback-state',
+    'user-modify-playback-state',
+    'user-top-read',
+  ].join(' ')
 
-  const authorize = () => {
-    window.location.href = getAuthorizeUrl()
+  const authorize = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'spotify',
+      options: {
+        scopes: SPOTIFY_SCOPES,
+        redirectTo: `${window.location.origin}/callback`,
+      },
+    })
+    if (error) {
+      state.message = error.message
+      console.error('Falha ao iniciar o login com o Spotify:', error)
+    }
   }
 
   const openLink = (url) => {

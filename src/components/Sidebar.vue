@@ -45,13 +45,10 @@ const navItems = [
     window.open(link, '_blank')
   }
 
-  const logout = () => {
-    helpers.logout()
+  const logout = async () => {
+    await helpers.logout()
     emit('close')
-    router.push('/')
-    setTimeout(() => {
-      window.location.reload()
-    }, 100)
+    router.push({ name: 'Login' })
   }
 
   onMounted(() => {

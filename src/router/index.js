@@ -10,12 +10,13 @@ import Playlist from "@/views/Playlist.vue"
 import Estatisticas from "@/views/Estatisticas.vue"
 import Configuracoes from "@/views/Configuracoes.vue"
 import Financeiro from "@/views/Financeiro.vue"
-import helpers from "@/support/helpers"
+import { supabase } from "@/support/supabaseClient"
 
-const isLogged = (to, from, next) => {
-	const { accessToken } = helpers.getLocalStorage()
-  if (!accessToken) {
+const isLogged = async (to, from, next) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
     next({ name: 'Login' })
+    return
   }
   next()
 };
