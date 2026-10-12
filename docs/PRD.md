@@ -2,7 +2,7 @@
 
 **Versão do documento:** 1.2
 **Última atualização:** 12/10/2026
-**Versão do produto (as-is):** 3.25.17
+**Versão do produto (as-is):** 3.25.18
 **Autor / Owner:** Curador proprietário (uso pessoal)
 **Status:** Aprovado — Fase 0 (Fundação & Segurança) concluída (ver §5.1 e §6)
 
@@ -298,7 +298,7 @@ Helper `track(event, props)` em `src/support/telemetry.js` — best-effort (nunc
 
 ### 5.1 Roadmap faseado
 
-> Baseline = versão atual (3.25.17) em produção. As fases abaixo são incrementais.
+> Baseline = versão de produção no início da Fase 0 (3.25.17). As fases abaixo são incrementais.
 
 **Fase 0 — Fundação & Segurança (pré-requisito) — ✅ concluída (12/10/2026)**
 - Auth migrada para **Supabase Auth + provider Spotify** (não PKCE), com renovação de token **server-side** pela Edge Function `spotify-token`; client secret fora do bundle (ver §6, D1–D6).
