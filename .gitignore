@@ -5,7 +5,8 @@ dist
 dist-ssr
 *.local
 .env
-.kilo/*
+.kilo/
 dev-dist/sw.js
 dev-dist/sw.js.map
 db.json
+*Zone.Identifier

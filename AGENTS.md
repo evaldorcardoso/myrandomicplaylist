@@ -29,12 +29,15 @@ yarn preview
 ## Environment Setup
 
 Copy `.env.example` to `.env` and configure:
-- `VITE_SPOTIFY_CLIENT_ID` - Spotify API client ID
-- `VITE_SPOTIFY_CLIENT_SECRET` - Spotify API client secret (⚠️ currently bundled into the frontend — see `docs/PRD.md` Fase 0 / PKCE)
+- `VITE_APP_URL` - application URL
+- `VITE_API_URL` - Spotify Web API base URL
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_KEY` - Supabase anon key
 - `VITE_SUPABASE_PLAYLISTS_TABLE` - **misnamed**: it points to the playlist **statistics** table (`playlists_statistics`, likes history), not the tracked-playlists table
 - `VITE_SUPABASE_TRACKS_TABLE` - per-track popularity table (`track_popularity`)
+- `VITE_VAPID_PUBLIC_KEY` - VAPID public key (Web Push)
+
+> Spotify `client_id`/`client_secret` and the VAPID private key live server-side only (Supabase Auth provider + Edge Function envs), never in the frontend bundle.
 
 ## Code Style Guidelines
 

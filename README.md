@@ -43,14 +43,15 @@ O aplicativo conta com uma versão rodando no endereço abaixo:
 
 | Variável | Descrição |
 |---|---|
-| `VITE_SPOTIFY_CLIENT_ID` | Client ID do app Spotify |
-| `VITE_SPOTIFY_CLIENT_SECRET` | Client secret do app Spotify |
+| `VITE_APP_URL` | URL da aplicação |
+| `VITE_API_URL` | Base da Spotify Web API |
 | `VITE_SUPABASE_URL` | URL do projeto Supabase |
 | `VITE_SUPABASE_KEY` | Chave anon do Supabase |
 | `VITE_SUPABASE_PLAYLISTS_TABLE` | Tabela de **estatísticas** de playlists (histórico de likes) |
 | `VITE_SUPABASE_TRACKS_TABLE` | Tabela de popularidade por faixa |
+| `VITE_VAPID_PUBLIC_KEY` | Chave pública VAPID (Web Push) |
 
-> ⚠️ **Segurança:** hoje o `VITE_SPOTIFY_CLIENT_SECRET` é empacotado no frontend. A correção (OAuth PKCE) está priorizada na Fase 0 do roadmap — ver [`docs/PRD.md`](docs/PRD.md).
+> O `client_id`/`client_secret` do Spotify e a chave privada VAPID ficam apenas no servidor (Supabase Auth + Edge Functions); não são mais empacotados no frontend.
 
 ## 📚 Documentação
 
