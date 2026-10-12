@@ -125,7 +125,7 @@
     const query = searchQuery.value.toLowerCase()
     return availableTracks.value.filter(track =>
       (track.track?.name ?? track.name).toLowerCase().includes(query) ||
-      (track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ')).toLowerCase().includes(query)
+      (track.track?.artists?.map(a => a.name).join(', ') ?? track.artists?.map(a => a.name).join(', ') ?? '').toLowerCase().includes(query)
     )
   })
 

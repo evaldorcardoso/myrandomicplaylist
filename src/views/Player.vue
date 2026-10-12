@@ -20,7 +20,7 @@
 
   const { loadAllFromDatabase } = PlaylistService()
 
-  const props = defineProps({
+  defineProps({
     stepData: {
       type: Number,
       default: 0
@@ -135,22 +135,22 @@
   }
 
   const resumeUserPlayback = async() => {
-    const { status } = await startResumePlayback()
+    await startResumePlayback()
     await getPlaybackUserState()
   }
 
   const pauseUserPlayback = async() => {
-      const { status } = await pausePlayback()
+      await pausePlayback()
       await getPlaybackUserState()
   }
 
   const skipToUserNext = async() => {
-      const { status } = await skipToNext()
+      await skipToNext()
       await getPlaybackUserState()
   }
 
   const skipToUserPrevious = async() => {
-      const { status } = await skipToPrevious()
+      await skipToPrevious()
       await getPlaybackUserState()
   }
 

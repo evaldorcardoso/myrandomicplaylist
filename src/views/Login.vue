@@ -48,7 +48,7 @@
 
 <template>
   <h2 class="center" style="margin-top: 50px;color:#fff;text-align:center;">{{ msg }}</h2>
-  <p>
+  <div>
     <div class="login">      
       <img alt="Vue logo" src="../assets/Spotify_Logo_RGB_White.png" />
       <p class="span-login">Para começar, você precisa se autenticar com o Spotify</p>
@@ -60,7 +60,7 @@
       <img class="center" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')" style="width: 50px;"/>
       <p class="center span-login">{{ state.version }}</p>
     </div>
-  </p>
+  </div>
   <br/>
 </template>
 

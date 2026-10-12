@@ -1,4 +1,3 @@
-const SECONDS_PER_DAY = 86400
 const DUE_DATE_DEADLINE_HOUR = 9
 const TIMEZONE_OFFSET = '-03:00'
 const DAY_IN_MS = 24 * 60 * 60 * 1000

@@ -1,4 +1,4 @@
-import { computed, inject, reactive, ref, markRaw, toRaw } from 'vue'
+import { computed, inject, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
 import { useGeneral, useProfile } from '@/support/spotifyApi'
@@ -481,7 +481,7 @@ export function usePlaylistData(callbacks = {}) {
         case NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION:
           if (callbacks.onUpdateDescription) callbacks.onUpdateDescription()
           break
-        case NOTIFICATION_ACTIONS.UPDATE_PLAYLIST:
+        case NOTIFICATION_ACTIONS.UPDATE_PLAYLIST: {
           notify({ title: 'Please, wait', text: 'Saving playlist...', type: 'info' })
           const result = await savePlaylist(state.playlist)
           if (!result) {
@@ -493,6 +493,7 @@ export function usePlaylistData(callbacks = {}) {
           }
           notify({ title: 'Alright', text: 'Playlist saved!', type: 'success' })
           break
+        }
       }
     }
     if ((!value) && (notificationAction.value == NOTIFICATION_ACTIONS.UPDATE_DESCRIPTION)) {

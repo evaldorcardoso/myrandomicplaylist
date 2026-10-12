@@ -40,7 +40,7 @@ export function PlaylistService() {
     }
 
     const updatePlaylistTotalTracks = async(playlistId, totalTracks) => {
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('playlists')
             .update({ items: totalTracks })
             .eq('id', playlistId)
@@ -92,7 +92,7 @@ export function PlaylistService() {
                 return false
             }
         }
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('playlists')
             .update(payload)
             .eq('id', spotifyPlaylist.id)

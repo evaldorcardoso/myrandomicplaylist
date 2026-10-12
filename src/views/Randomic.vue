@@ -37,7 +37,7 @@ const step = ref(1) // 1 = Configura, 2 = Resultado
 
 const emit = defineEmits(['update-step-data'])
 
-const props = defineProps({
+defineProps({
   stepData: {
     type: Number,
     default: 1

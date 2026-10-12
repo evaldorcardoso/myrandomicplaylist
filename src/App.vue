@@ -24,7 +24,7 @@
   onMounted(async () => {
     if(! userStore.isTracksLoaded) {
       progress.start()
-      const { data: databaseTracks, error } = await supabase
+      const { data: databaseTracks } = await supabase
         .from(import.meta.env.VITE_SUPABASE_TRACKS_TABLE)
         .select("*")
       userStore.loadAllTracks(databaseTracks)

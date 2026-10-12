@@ -16,7 +16,7 @@ export function useCuratorSuggestions() {
       const parsed = JSON.parse(raw)
       if (!parsed || !Array.isArray(parsed.curators)) return null
       return parsed
-    } catch (error) {
+    } catch {
       return null
     }
   }

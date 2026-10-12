@@ -29,6 +29,8 @@ const props = defineProps({
     },
 });
 
+const emit = defineEmits(['toggle-playback'])
+
 const currentPlaying = computed(() => {
     return props.currentData;
 });
@@ -74,7 +76,8 @@ watch(() => props.currentData?.is_playing, (isPlaying) => {
 const resumeUserPlayback = async() => {
     const { status } = await startResumePlayback()
     if (status == 204){
-        props.currentData.is_playing = !props.currentData.is_playing
+        // O dono do estado (Layout) atualiza `is_playing` — evita mutar a prop.
+        emit('toggle-playback')
         progress()
     }
 }
@@ -82,7 +85,7 @@ const resumeUserPlayback = async() => {
 const pauseUserPlayback = async() => {
     const { status } = await pausePlayback()
     if (status == 204){
-        props.currentData.is_playing = !props.currentData.is_playing
+        emit('toggle-playback')
         clearInterval(intervalProgress);
     }
 }

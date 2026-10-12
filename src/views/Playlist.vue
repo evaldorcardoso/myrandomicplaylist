@@ -1,6 +1,6 @@
 <script setup>
-  import { onMounted, onUnmounted, computed, reactive, ref, inject, watch, toRaw, markRaw } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
+  import { onMounted, onUnmounted, computed, ref, inject, watch, toRaw } from 'vue'
+  import { useRouter } from 'vue-router'
   import { useGeneral } from '@/support/spotifyApi'
   import { usePlaylistStore } from '@/stores/playlist'
   import { useUserStore } from '@/stores/user'
@@ -12,14 +12,13 @@
   import ConfirmRemovePlaylistModal from '@/components/ConfirmRemovePlaylistModal.vue'
   import EditPlaylistModal from '@/components/EditPlaylistModal.vue'
   import OrphanRequestModal from '@/components/OrphanRequestModal.vue'
-  import { NOTIFICATIONS_TYPE, hexToRgba } from '@/support/helpers'
+  import { hexToRgba } from '@/support/helpers'
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
   import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
   import { PlaylistDetailsService } from '@/services/PlaylistDetailsService'
   import { TrackRequestService } from '@/services/TrackRequestService'
 
-  const route = useRoute()
   const router = useRouter()
   const playlistStore = usePlaylistStore()
   const userStore = useUserStore()
@@ -51,7 +50,7 @@
     }
   });
 
-  const emit = defineEmits(['updateStepData', 'updateMenuData'])
+  defineEmits(['updateStepData', 'updateMenuData'])
 
   const sortOptions = [
     'default',
@@ -69,14 +68,10 @@
   const {
     state,
     playlistId,
-    notificationOpened,
-    notificationData,
     notificationAction,
-    isNotificationOpened,
     init,
     onRefreshPage,
     onNotificationAction,
-    showNotification,
     executeUserPlaylist,
     getPlaylistTracks,
     removeTrackStatistics
@@ -134,7 +129,6 @@
   const bumpSlots = () => slotsVersion.value++
 
    const followersReady = computed(() => state.playlist?.followers != null)
-   const descriptionReady = computed(() => state.playlist?.description != null)
    const growthReady = computed(() => state.dataLikes.length > 0)
   const slotsReady = computed(() =>
     trackRequestsLoaded.value && (state.tracks.length > 0 || !isLoading.value)
@@ -157,7 +151,7 @@
     return getPlaylistDetails(state.playlist ?? {}, state.tracks.length, filledPositions, monthlyRevenue, getGrowth(state.dataLikes, state.playlist?.followers?.total))
   })
   const growthHint = computed(() => {
-    const days = details.growth?.days
+    const days = details.value.growth?.days
     return `Crescimento dos seguidores comparado com a última estatística salva${days ? ` (${days} dias atrás)` : ''}.`
   })
 

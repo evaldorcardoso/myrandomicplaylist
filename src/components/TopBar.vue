@@ -1,10 +1,9 @@
 <script setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue'
-  import { useRouter, useRoute } from 'vue-router'
+  import { useRoute } from 'vue-router'
   import { useUserStore } from '@/stores/user'
   import { useNotificationsStore } from '@/stores/notifications'
 
-  const router = useRouter()
   const route = useRoute()
   const userStore = useUserStore()
   const notificationsStore = useNotificationsStore()

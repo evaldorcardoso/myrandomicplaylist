@@ -41,10 +41,6 @@ const navItems = [
     }
   }
 
-  const openLink = (link) => {
-    window.open(link, '_blank')
-  }
-
   const logout = async () => {
     await helpers.logout()
     emit('close')

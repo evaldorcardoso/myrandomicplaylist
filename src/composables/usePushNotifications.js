@@ -145,8 +145,6 @@ export function usePushNotifications() {
     }
   }
 
-  const getErrorMessage = () => errorMessage.value
-
   const syncState = async () => {
     if (!isSupported.value) return
     permission.value = Notification.permission

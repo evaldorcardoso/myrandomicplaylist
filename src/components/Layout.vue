@@ -11,11 +11,9 @@
     const { getPlaybackState, getProfile } = useProfile()
     const floatPlayerData = ref(null)
     
-    const user = ref(null)
     const step = ref(0)
     const menuOpen = ref(false)
     
-    const refresh = ref(null)
     const removeTrackRef = ref('')
     const userStore = useUserStore()
     const notificationsStore = useNotificationsStore()
@@ -24,26 +22,23 @@
         const data = floatPlayerData.value
         return (data && typeof data === 'object') ? data : {}
     })
-    const currentUser = computed(() => {
-        return user.value;
-    })
-
-    const forceRefresh = computed(() => {
-        return refresh.value;
-    })
-
     const removeTrack = computed(() => {
         return removeTrackRef.value;
     })
 
+    const togglePlayback = () => {
+        if (floatPlayerData.value) {
+            floatPlayerData.value.is_playing = !floatPlayerData.value.is_playing
+        }
+    }
+
     const getUserProfile = async() => {
         const { data } = await getProfile()
         userStore.setUser(data)
-        user.value = data
         step.value = 0
     }
 
-    const props = defineProps({
+    defineProps({
         id: String,
         stepData: {
             type: Number,
@@ -52,14 +47,6 @@
         menuOpened: {
             type: Boolean,
             default: false
-        },
-        forceRefresh: {
-            type: Boolean,
-            default: false,
-        },
-        removeTrack: {
-            type: String,
-            default: ''
         }
     });
 
@@ -111,6 +98,7 @@
     </div>
     <FloatPlayer v-if="floatPlayerData" 
         :current-data="currentData"
+        @toggle-playback="togglePlayback"
     />
     <SlotManagementModal
         :open="notificationsStore.slotOpened"

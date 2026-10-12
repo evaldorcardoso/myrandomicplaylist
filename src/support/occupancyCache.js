@@ -12,7 +12,7 @@ const readCache = () => {
     const parsed = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return null
     return parsed
-  } catch (error) {
+  } catch {
     return null
   }
 }
@@ -43,7 +43,7 @@ const getCachedEarnings = () => {
     if (!parsed || typeof parsed.updatedAt !== 'number') return null
     if (Date.now() - parsed.updatedAt >= CACHE_TTL_MS) return null
     return parsed.earnings ?? null
-  } catch (error) {
+  } catch {
     return null
   }
 }
@@ -78,7 +78,7 @@ const getCachedExpirationItems = () => {
     if (!parsed || typeof parsed.updatedAt !== 'number') return null
     if (Date.now() - parsed.updatedAt >= EXPIRATIONS_CACHE_TTL_MS) return null
     return Array.isArray(parsed.items) ? parsed.items : null
-  } catch (error) {
+  } catch {
     return null
   }
 }

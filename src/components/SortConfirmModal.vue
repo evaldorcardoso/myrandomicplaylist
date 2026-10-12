@@ -1,7 +1,7 @@
 <script setup>
   const emit = defineEmits(['close', 'confirm'])
 
-  const props = defineProps({
+  defineProps({
     open: {
       type: Boolean,
       default: false

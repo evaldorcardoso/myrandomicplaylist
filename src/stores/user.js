@@ -46,8 +46,9 @@ export const useUserStore = defineStore('user', {
         },
         removeTrack(track) {
             const index = this.tracks.findIndex(element => element.id === track.id)
-
-            (index >= 0) ? this.tracks.splice(index, 1) : null
+            if (index >= 0) {
+                this.tracks.splice(index, 1)
+            }
         },
         getTrack(trackId) {
             return this.tracks.find(element => element.track_id === trackId)

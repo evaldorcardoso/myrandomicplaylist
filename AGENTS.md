@@ -22,9 +22,17 @@ yarn build
 
 # Preview production build locally
 yarn preview
+
+# Lint (ESLint flat config) e correção automática
+yarn lint
+yarn lint:fix
+
+# Testes unitários (Vitest)
+yarn test
+yarn test:watch
 ```
 
-**Note**: No test framework or linter is currently configured.
+O CI (`.github/workflows/ci.yml`) roda `lint` → `build` → `test` em push e PR, e falha se `SPOTIFY_CLIENT_SECRET` reaparecer em `src/`.
 
 ## Environment Setup
 
@@ -196,7 +204,7 @@ notify({ type: 'success', title: 'Message' })
 - Spotify images cached for 30 days
 - ⚠️ `vite.config.js` sets `publicPath: '/mrplaylist/'`, which is **not a valid Vite option** (the correct key is `base`), so the production base path is effectively the host default. Verify before touching deploy config.
 - ⚠️ The PWA manifest `description` in `vite.config.js` still reads "Gerador de playlist aleatória do Spotify" (stale — see `docs/PRD.md`).
-- No linting or tests configured - ensure code quality manually before commits
+- Lint with `yarn lint` (ESLint flat config) e rode `yarn test` (Vitest) antes de commitar; ambos rodam no CI.
 
 ## Performance Rules
 

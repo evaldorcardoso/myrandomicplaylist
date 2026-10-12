@@ -16,11 +16,7 @@
     }
   })
 
-  const emit = defineEmits(['close'])
-
-  const close = () => {
-    emit('close')
-  }
+  defineEmits(['close'])
 
   const progress = computed(() => {
     if (!props.total) return 0
