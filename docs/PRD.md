@@ -6,8 +6,6 @@
 **Autor / Owner:** Curador proprietário (uso pessoal)
 **Status:** Aprovado (decisões de escopo resolvidas — ver Seção 6)
 
-> **Nota de contexto.** O `README.md` e o `AGENTS.md` do repositório descrevem o app como um "gerador de playlists aleatórias". Isso já não reflete o produto real, que evoluiu para um **painel profissional de curadoria de playlists**: venda e gestão de posições ("slots"), controle financeiro, ledger de ganhos, expiração/renovação de anúncios e notificações push. Este PRD documenta o produto **como ele é hoje (as-is)** e propõe um **roadmap** de evolução.
-
 ---
 
 ## 1. Sumário Executivo

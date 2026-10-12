@@ -230,3 +230,17 @@ library.add(
 ```
 
 Then use in template with `<font-awesome-icon icon="some-icon" />`. Use `solid` prefix for regular icons: `<font-awesome-icon :icon="['fas', 'some-icon']" />`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
