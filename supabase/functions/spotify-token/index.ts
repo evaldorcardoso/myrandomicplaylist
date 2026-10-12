@@ -81,8 +81,13 @@ async function refreshAccessToken(admin, userId, storedRefreshToken) {
       reason === 'invalid_grant'
         ? 'Credencial do Spotify expirou — é preciso entrar novamente'
         : 'O Spotify recusou a renovação do token'
-    // 400 para o problema de credencial; 401 para falha de autenticação do app.
-    return json({ error: message, code: reason }, response.status === 400 ? 400 : 401)
+    // Preserva o significado do 400 (credencial) e do 401 (auth do app) do
+    // Spotify; qualquer outra falha (429, 5xx) é tratada como indisponibilidade
+    // do upstream, não como sessão inválida.
+    let status = 502
+    if (response.status === 400) status = 400
+    else if (response.status === 401 || response.status === 403) status = 401
+    return json({ error: message, code: reason }, status)
   }
 
   const accessToken = data?.access_token
@@ -93,15 +98,25 @@ async function refreshAccessToken(admin, userId, storedRefreshToken) {
 
   // O Spotify pode devolver um refresh token novo (rotação): persiste o mais recente.
   const rotatedRefreshToken = data?.refresh_token
+  let rotationFailed = false
   if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken && rotatedRefreshToken !== storedRefreshToken) {
     const error = await saveRefreshToken(admin, userId, rotatedRefreshToken)
-    if (error) console.error('Falha ao rotacionar o refresh token:', error.message)
+    if (error) {
+      rotationFailed = true
+      console.error('Falha ao persistir o refresh token rotacionado:', error.message)
+    }
   }
 
-  return json({ access_token: accessToken, expires_in: data?.expires_in ?? null })
+  // Nunca falhar em silêncio: se a rotação não pôde ser salva, avisa o cliente
+  // em vez de deixar uma credencial obsoleta no banco.
+  return json({
+    access_token: accessToken,
+    expires_in: data?.expires_in ?? null,
+    ...(rotationFailed ? { warning: 'refresh_token_rotation_failed' } : {})
+  })
 }
 
-Deno.serve(async (req) => {
+async function handleRequest(req) {
   if (req.method === 'OPTIONS') return json({ ok: true })
   if (req.method !== 'POST') return json({ error: 'Método não permitido' }, 405)
 
@@ -174,4 +189,14 @@ Deno.serve(async (req) => {
   }
 
   return json({ error: 'Ação inválida' }, 400)
+}
+
+Deno.serve(async (req) => {
+  try {
+    return await handleRequest(req)
+  } catch (err) {
+    // Qualquer falha inesperada (rede, DB, etc.) vira 500 com log — nunca silêncio.
+    console.error('Erro inesperado na spotify-token:', err)
+    return json({ error: 'Erro interno' }, 500)
+  }
 })
