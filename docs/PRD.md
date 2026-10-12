@@ -1,10 +1,15 @@
 # PRD — MR Playlist
 
-**Versão do documento:** 1.1
-**Última atualização:** 11/10/2026
+**Versão do documento:** 1.2
+**Última atualização:** 12/10/2026
 **Versão do produto (as-is):** 3.25.17
 **Autor / Owner:** Curador proprietário (uso pessoal)
-**Status:** Aprovado (decisões de escopo resolvidas — ver Seção 6)
+**Status:** Aprovado — Fase 0 (Fundação & Segurança) concluída (ver §5.1 e §6)
+
+> Este PRD passa a ser o **destino durável** do contexto da Fase 0: decisões
+> travadas (§6), arquitetura-alvo do fluxo de auth (§6), telemetria (§4.7) e
+> itens adiados / débito conhecido (§7). O `PLANO-FASE-0.md` permanece apenas
+> como registro histórico da fase.
 
 ---
 
@@ -25,17 +30,22 @@ Um **painel web (PWA)** que integra as playlists do próprio curador via Spotify
 
 ### 1.3 Critérios de sucesso (KPIs)
 
-| KPI | Métrica | Baseline | Meta |
+| KPI | Métrica | Baseline (12/10/2026) | Meta |
 |---|---|---|---|
-| Receita controlada | % de slots pagos registrados no `earnings_ledger` sobre o total de slots ocupados | TBD (instrumentar) | ≥ 98% |
-| Tempo economizado | Tempo médio para renovar um anúncio expirado (do alerta à conclusão) | TBD (medir) | < 60 s |
-| Retenção de anunciantes | % de anunciantes com ≥ 2 compras/renovações no trimestre | TBD (instrumentar) | ≥ 60% |
-| Ocupação de slots | % médio de posições ocupadas nas playlists gerenciadas | TBD (calcular) | ≥ 85% |
-| Confiabilidade | Erros não tratados por sessão de uso | — | 0 erros críticos/semana |
-| Performance | Tempo de entrada em página de playlist com 500 faixas | TBD (baseline pós-`markRaw`) | < 1,5 s |
-| Expiração perdida | Anúncios expirados sem ação de renovação há > 7 dias | — | 0 |
+| Receita controlada | % de slots pagos registrados no `earnings_ledger` sobre o total de slots pagos | **100,00 %** (33/33) | ≥ 98% |
+| Tempo economizado | Tempo médio para renovar um anúncio expirado (do alerta à conclusão) | TBD (telemetria ativa; série ainda curta) | < 60 s |
+| Retenção de anunciantes | % de anunciantes com ≥ 2 compras/renovações no trimestre | **23,68 %** (18/76) | ≥ 60% |
+| Ocupação de slots | % médio de posições ocupadas nas playlists gerenciadas | **1,89 %** | ≥ 85% |
+| Confiabilidade | Erros não tratados por sessão de uso | — (telemetria ativa) | 0 erros críticos/semana |
+| Performance | Tempo de entrada em página de playlist com 500 faixas | TBD (medição via `playlist_load.ms`) | < 1,5 s |
+| Expiração perdida | Anúncios expirados sem ação de renovação há > 7 dias | **0** | 0 |
 
-> **Ação de instrumentação:** hoje não há telemetria de produto. Fase 0 do roadmap inclui medir os baselines acima antes de tratá-los como metas.
+> **Baseline da Fase 0:** os 4 KPIs deriváveis por SQL foram calculados e
+> registrados em [`docs/baselines-fase-0.md`](baselines-fase-0.md), com as
+> consultas canônicas para recalculá-los. Os 3 KPIs que dependem de telemetria de
+> produto (tempo economizado, confiabilidade e performance) derivam de
+> `product_events` — contrato em §4.7; a partir do snapshot há dados fluindo, mas
+> ainda sem série suficiente para fixar o valor de partida.
 
 ---
 
@@ -48,12 +58,12 @@ Um **painel web (PWA)** que integra as playlists do próprio curador via Spotify
 | **Curador (primário)** | O proprietário do app e das playlists no Spotify | Vender posições, cobrar, renovar e controlar receita com o mínimo de trabalho manual |
 | **Anunciante / Requester** (secundário, fora do app) | Artista, selo ou divulgador que compra posições | Ser adicionado à playlist e ser lembrado/renovado sem atrito |
 
-> **Escopo definitivo:** a ferramenta é de **uso pessoal de um único curador**. O modelo de dados usa o ID do Spotify e chave anon do Supabase. Autenticação permanece **somente Spotify OAuth** e **abrir para novos curadores / modelo multi-tenant está fora de escopo** (decisão do owner — ver Seção 6).
+> **Escopo definitivo:** a ferramenta é de **uso pessoal de um único curador (dono único e estrito)**. O modelo de dados usa o ID do Spotify e a chave anon do Supabase. A autenticação passou a ser **Supabase Auth com o provider Spotify** (o antigo OAuth Authorization Code com segredo no frontend foi removido) e o banco tem **RLS de dono**; **abrir para novos curadores / modelo multi-tenant permanece fora de escopo** (decisão 1; decisão 4 revogada — ver §6).
 
 ### 2.2 Jornada principal (fluxo do curador)
 
 ```
-Login Spotify (OAuth)
+Login (Supabase Auth · provider Spotify)
       │
       ▼
 Dashboard ──► KPIs (receita do mês, ocupação, expirados, seguidores)
@@ -87,17 +97,19 @@ Dashboard ──► KPIs (receita do mês, ocupação, expirados, seguidores)
 | `/login` | Login | `views/Login.vue` | Público |
 | `/callback` | Callback | `views/Callback.vue` | Público |
 
-Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar + FloatPlayer + modal de slot) e passam pelo guard `isLogged` (presença de `spotify_access_token` no localStorage).
+Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar + FloatPlayer + modal de slot) e passam pelo guard `isLogged`, que verifica a **sessão do Supabase** (`supabase.auth.getSession()`) — não há mais token do Spotify no `localStorage`.
 
 ### 2.4 Histórias de usuário e critérios de aceite
 
 #### Épico A — Autenticação e sessão
 - **História:** Como curador, quero entrar com minha conta Spotify para que o app acesse minhas playlists.
 - **Critérios de aceite:**
-  - [ ] Fluxo Authorization Code: `/login` → authorize → `/callback` → troca de `code` por tokens.
-  - [ ] Tokens (`access`, `refresh`, `expire_time`) persistidos no localStorage.
-  - [ ] Refresh proativo (interceptor de request) e reativo (401 → refresh + retry com fila) funcionando.
+  - [ ] Login via **Supabase Auth** com o provider Spotify (`supabase.auth.signInWithOAuth`, mesmos escopos): `/login` → Spotify → `/callback`.
+  - [ ] No callback, o `provider_refresh_token` é enviado à Edge Function `spotify-token` (`action: store`) e **nunca** fica no navegador.
+  - [ ] Access token do Spotify é cacheado em memória e renovado **server-side** pela `spotify-token` (`action: refresh`) antes de expirar, deduplicando renovações concorrentes.
+  - [ ] 401 do Spotify força uma renovação e repete a requisição uma vez; falha de credencial (`no_credentials`/`invalid_grant`) → `signOut` + `/login`.
   - [ ] Sessão expirada redireciona para `/login` sem tela branca.
+  - [ ] Dono único marcado por `app_metadata.role = 'owner'`; `anon` não acessa dados de negócio (RLS de dono).
 
 #### Épico B — Dashboard
 - **História:** Como curador, quero ver o resumo do meu negócio em uma tela para tomar decisões rápido.
@@ -166,7 +178,7 @@ Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar 
 
 - **Descoberta/scouting de anunciantes** ou marketplace público de compra de slots (não é uma plataforma de compra self-service).
 - **Processamento de pagamento nativo no app** — a cobrança é feita por **lembrete/link + conciliação manual** (decisão do owner, ver Seção 6). Nenhuma integração de gateway na versão as-is nem no roadmap próximo.
-- **Multi-tenant / autenticação própria de usuários** — decisão do owner: **não abrir para novos curadores**. A auth permanece somente Spotify OAuth.
+- **Multi-tenant / contas para novos curadores** — decisão do owner: **não abrir para novos curadores**. O app usa **Supabase Auth** (provider Spotify), mas com **um único dono estrito**; não há cadastro, convite nem isolamento por curador.
 - **Onboarding de novos curadores** (convites, isolamento por curador, produto multi-usuário).
 - **App nativo iOS/Android** — a entrega é PWA.
 - **Moderação/verificação de conteúdo** das faixas anunciadas.
@@ -189,8 +201,8 @@ Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar 
 
 ### 3.2 Estratégia de avaliação
 
-- **Determinismo:** heurísticas devem ser testáveis com entradas fixas (sem dependência de rede) — hoje inexistente (sem testes).
-- **Observabilidade:** registrar (log/telemetria) sugestões mostradas vs. aceitas para calibrar pesos de gênero/curador.
+- **Determinismo:** heurísticas testáveis com entradas fixas (sem dependência de rede) — coberto desde a Fase 0 por testes unitários (Vitest) de `playlistCompatibility`, `occupancyCache`, `helpers.hexToRgba` e do helper de telemetria.
+- **Observabilidade:** registrar (log/telemetria) sugestões mostradas vs. aceitas para calibrar pesos de gênero/curador. A captura genérica de eventos de produto existe desde a Fase 0 (§4.7), mas a instrumentação específica de sugestões mostradas × aceitas ainda não foi feita.
 - **Automação de expiração:** medir taxa de entrega de push e taxa de renovação pós-alerta.
 
 ---
@@ -200,15 +212,17 @@ Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar 
 ### 4.1 Arquitetura (as-is)
 
 - **Frontend SPA:** Vue 3 (`<script setup>`) + Vite 6, Pinia, Vue Router, Tailwind CSS v4 (`@theme` custom em `src/assets/main.css`), SCSS.
-- **PWA:** `vite-plugin-pwa` com `injectManifest` (`src/sw.ts`), `registerType: 'autoUpdate'`. Precache + `NavigationRoute` (denylist para `api.spotify.com`, CDNs do Spotify e `*.supabase.co`) + `CacheFirst` para imagens do Spotify (50 entradas / 30 dias). Handlers de `push` e `notificationclick`. Manifest: "MR Playlist / MRP", tema `#62faf5`. `ReloadPWA.vue` avisa atualizações.
-- **Backend/BaaS:** Supabase (Postgres + client JS `supabase-js`) e uma **Edge Function Deno** (`supabase/functions/notify-expiration/index.ts`) para push. Há também `scripts/notify-expiration.js` (mesma lógica, `--dry-run`) acionável pelo workflow manual `.github/workflows/notify-expiration.yml`.
-- **APIs externas:** Spotify Web API (chamadas diretas do browser via axios).
+- **PWA:** `vite-plugin-pwa` com `injectManifest` (`src/sw.ts`), `registerType: 'autoUpdate'`. Precache + `NavigationRoute` (denylist para `api.spotify.com`, CDNs do Spotify e `*.supabase.co`) + `CacheFirst` para imagens do Spotify (50 entradas / 30 dias). Handlers de `push` e `notificationclick`. Manifest: "MR Playlist / MRP", descrição "Painel de curadoria de playlists do Spotify", tema `#62faf5`. `ReloadPWA.vue` avisa atualizações.
+- **Backend/BaaS:** Supabase — **Auth** (provider Spotify), Postgres + client JS `supabase-js` (com RLS de dono) e **duas Edge Functions Deno**: `spotify-token` (`supabase/functions/spotify-token/index.ts`, renovação server-side do token do Spotify) e `notify-expiration` (`supabase/functions/notify-expiration/index.ts`, Web Push). Há também `scripts/notify-expiration.js` (mesma lógica, `--dry-run`) acionável pelo workflow manual `.github/workflows/notify-expiration.yml`.
+- **APIs externas:** Spotify Web API (chamadas diretas do browser via axios, com access token curto renovado server-side).
 
 ```
 Browser (Vue/PWA)
-   ├── axios ──► Spotify Web API        (OAuth, playlists, player, upload de capa)
-   ├── supabase-js ──► Supabase (Postgres)  (playlists, track_requests, ledger...)
-   └── supabase.functions.invoke ──► Edge Function notify-expiration ──► Web Push
+   ├── supabase-js ──► Supabase Auth (provider Spotify) ──► Spotify (Authorization Code + client secret no servidor)
+   ├── supabase-js ──► Supabase (Postgres)  (playlists, track_requests, ledger...; RLS de dono via JWT)
+   ├── supabase.functions.invoke ──► Edge Function spotify-token ──► Spotify (refresh; guarda o refresh token)
+   ├── supabase.functions.invoke ──► Edge Function notify-expiration ──► Web Push
+   └── axios ──► Spotify Web API        (playlists, player, upload de capa; access token curto)
 ```
 
 ### 4.2 Estado e performance
@@ -229,33 +243,54 @@ Browser (Vue/PWA)
 | `price_positions` | Faixas de preço por posição | `playlist_id`, `min_position`, `max_position`, `value`, `color` |
 | `earnings_ledger` | Receita | `track_request_id`, `playlist_id`, `playlist_name`, `track_id`, `track_name`, `requester_name`, `curator`, `amount`, `type` (`new`/`renewal`), `created_at` |
 | `push_subscriptions` | Inscrições Web Push | `endpoint`, `p256dh`, `auth`, `user_agent` |
+| `spotify_credentials` | Credencial de longa duração do Spotify (só no servidor) | `user_id` (FK `auth.users`, on delete cascade), `provider_refresh_token`, `updated_at`; RLS ligado **sem policy de cliente** (exclusiva da Edge Function `spotify-token` via `service_role`) |
+| `product_events` | Telemetria mínima de produto (Fase 0) | `id` (uuid), `user_id`, `session_id` (uuid), `event`, `props` (jsonb), `created_at`; RLS de dono (`owner_full_access`), retenção de 180 dias |
 
-> **Débito de nomenclatura:** `PlaylistService.js` usa a tabela literal `playlists`, enquanto `usePlaylistData.js` usa `VITE_SUPABASE_PLAYLISTS_TABLE` (= `playlists_statistics`) para likes. O nome da env é enganoso. Padronizar (ver roadmap / débito técnico).
+> **RLS de dono (Fase 0.3):** as 8 tabelas de negócio de §4.3 **e** `product_events` usam a policy `owner_full_access` (`to authenticated using (public.is_owner()) with check (public.is_owner())`), com `is_owner()` = `app_metadata.role = 'owner'`. O papel `anon` não lê nem escreve dados de negócio.
+
+> **Débito de nomenclatura:** `PlaylistService.js` usa a tabela literal `playlists`, enquanto `usePlaylistData.js` usa `VITE_SUPABASE_PLAYLISTS_TABLE` (= `playlists_statistics`) para likes. O nome da env é enganoso. Padronizar na Fase 2 (ver §7).
 
 ### 4.4 Integrações e fluxos de token
 
-- **OAuth:** Authorization Code. URL de autorização em `views/Login.vue` (com `state` hardcoded); troca de `code` em `composables/requestToken.js`; redirect `window.location.origin + '/callback'`.
+- **Login:** Supabase Auth com o provider Spotify (`supabase.auth.signInWithOAuth({ provider: 'spotify' })` em `views/Login.vue`), redirect para `window.location.origin + '/callback'`. O Redirect URI cadastrado no Spotify Developer Dashboard é `https://<projeto>.supabase.co/auth/v1/callback`.
+- **Token do Spotify:** o Supabase entrega, na sessão, um `provider_token` curto (~1 h) e um `provider_refresh_token`. O refresh token é enviado por `src/support/spotifyToken.js` → Edge Function `spotify-token` (`action: store`) e guardado em `spotify_credentials`; o access token curto vive apenas em memória no navegador.
+- **Renovação:** `getSpotifyToken()` renova server-side (`action: refresh`) um pouco antes de expirar, deduplicando chamadas concorrentes; o interceptor do axios injeta o token e repete a requisição uma vez em caso de 401.
 - **Scopes solicitados:** `user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read`.
-- **Endpoints usados (direto do browser):** `/me`, `/me/top/tracks`, `/recommendations`, `/me/playlists`, `/me/player*`, `/playlists/{id}` (+ `/tracks`, `/images`), `/users/{id}/playlists`, `/tracks/{id}`, `/albums/{id}`, `/artists`.
-- **Armazenamento:** `spotify_access_token`, `spotify_refresh_token`, `spotify_token_expire_time` (`now + (expires_in − 400) * 1000`) em localStorage/helpers.
+- **Endpoints usados (direto do browser, com access token curto):** `/me`, `/me/top/tracks`, `/me/playlists`, `/me/player*`, `/playlists/{id}` (+ `/tracks`, `/images`), `/users/{id}/playlists`, `/tracks/{id}`, `/albums/{id}`, `/artists`.
+- **Armazenamento:** preferências e cache de perfil em `localStorage` (`spotify_filter_library`, `user`, `spotify_settings`); a sessão do Supabase é gerida pelo `supabase-js`. **Nenhum token do Spotify nem segredo fica no navegador.**
 
 ### 4.5 Segurança e privacidade
 
-**Riscos identificados (as-is) — priorizados no roadmap:**
+**Postura atual (após a Fase 0) — riscos tratados e remanescentes:**
 
-- **🔴 Segredo de cliente exposto:** `VITE_SPOTIFY_CLIENT_SECRET` é empacotado no frontend e usado para Basic Auth em `requestToken.js` e `axios-plugin.js`. O segredo do app fica visível a qualquer usuário. Correção: **PKCE** (não exige segredo no cliente) para app pessoal, ou **proxy backend** que guarda o segredo.
-- **🟠 Sem auth/RLS no Supabase:** o client usa a chave anon e as tabelas guardam dados de negócio (valores, contratantes, receita). Sem RLS/Auth próprios, a chave anon exposta permite leitura/escrita indevida conforme as políticas do projeto. Correção: habilitar RLS com política de dono, ou mover escritas para Edge Function com service role.
-- **🟠 Dados pessoais:** nomes de anunciantes/curadores e valores financeiros armazenados; requerem proteção (LGPD — finalidade, minimização, retenção).
-- **🟡 Segredos em arquivos/DX:** `.env` versionado/exposto; envs órfãs (`VITE_NOTION_API_KEY`, `VITE_NOTION_DATABASE_ID` sem uso).
+- **✅ Segredo de cliente do Spotify:** resolvido. O segredo saiu do bundle e vive só no servidor (provider Spotify do Supabase Auth + Edge Function `spotify-token`); o CI falha se `SPOTIFY_CLIENT_SECRET` reaparecer em `src/`. Em vez de PKCE, a decisão foi **Supabase Auth** (D1).
+- **✅ Auth/RLS no Supabase:** resolvido — e a premissa anterior estava incorreta: **já existia RLS, mas era ineficaz**, com 22 policies permissivas (`using(true)`/`with check(true)` para `public`), incluindo `DELETE` de `anon` em `push_subscriptions` (backup em `supabase/backups/2026-10-12-policies-public-before-owner-rls.sql`). A Fase 0.3 trocou tudo por `owner_full_access` (`is_owner()` = `app_metadata.role = 'owner'`), revogou `TRUNCATE`/`TRIGGER`/`REFERENCES` e isolou `spotify_credentials` sem policy de cliente.
+- **🟠 Dados pessoais:** nomes de anunciantes/curadores e valores financeiros armazenados; requerem proteção (LGPD — finalidade, minimização, retenção). `product_events` guarda `user_id`/`session_id`; retenção de 180 dias.
+- **🟡 Chave anon exposta (por design):** a chave anon continua no bundle; o que protege os dados é o RLS de dono, não o sigilo da chave.
+- **✅ Segredos em arquivos/DX:** resolvido. `.env` fora do versionamento; envs órfãs (`VITE_NOTION_*`, `VITE_SUPABASE_DATABASE_PASS`, `VITE_APP_TITLE`, `NODE_ENV`) e o segredo do Spotify removidos; `.env.example` reflete só o que o frontend usa.
 
-### 4.6 Qualidade e testes (as-is)
+### 4.6 Qualidade e testes (pós-Fase 0)
 
-- **Sem testes, sem linter, sem CI de build** (há apenas o workflow manual de push).
-- ~30 `console.log`/`warn` no código commitado.
-- Bug: guard do router (`src/router/index.js`) chama `next({name:'Login'})` e depois `next()` sem `return`.
-- Código morto/duplicado: `spotifyApi.getRecommendations`, `PlaylistDetailsService.getAudience`, `FinanceService.sumLedger*`, `PushService.listSubscriptions/getSubscription`, `TrackRequestService.getPricePositionsWithMetadata`.
-- Artefatos indevidos: `dist/`, `dev-dist/`, `db.json`, arquivos `*.Zone.Identifier`, `.kilo/`.
-- Drift de env: `.env` `VITE_APP_URL=:5173` vs `.env.example` `:3000`; `vite.config.js` define `publicPath` (opção inválida; deveria ser `base`) com valor divergente do base documentado.
+- **Lint + CI + testes:** ESLint flat config (`eslint.config.mjs`, com `no-console` no nível `warn` e `allow: ['error']`) com blocos para `src`/`scripts`/`supabase/functions`; Vitest com testes das heurísticas (`playlistCompatibility`, `occupancyCache`, `helpers.hexToRgba`) e da telemetria; workflow `.github/workflows/ci.yml` roda `lint` → `build` → `test` em push/PR, além da **checagem anti-regressão** que falha se `SPOTIFY_CLIENT_SECRET` aparecer em `src/`.
+- **Logs de debug:** removidos (~142 ocorrências em ~27 arquivos); `grep` por `console.log/warn/info/debug` em `src/` = 0. `console.error` em blocos `catch` foi mantido.
+- **Bug do guard do router:** corrigido (Fase 0.2) — `isLogged` usa `supabase.auth.getSession()` e retorna após `next()`.
+- **Código morto/duplicado:** removido (Fase 0.4) — `spotifyApi.getRecommendations`, `PlaylistDetailsService.getAudience`, `FinanceService.sumLedger*`, `PushService.listSubscriptions/getSubscription`, `TrackRequestService.getPricePositionsWithMetadata`.
+- **Artefatos indevidos:** `dist/`, `dev-dist/`, `db.json`, arquivos `*.Zone.Identifier` e `.kilo/` fora do versionamento; `.gitignore` reforçado.
+- **Env/config:** `vite.config.js` usa `base: '/'` (o antigo `publicPath` era opção inválida e silenciosamente ignorada); `.env` e `.env.example` alinhados (`VITE_APP_URL=http://localhost:5173`).
+
+### 4.7 Telemetria de produto (`product_events`)
+
+Helper `track(event, props)` em `src/support/telemetry.js` — best-effort (nunca quebra o app), grava na tabela `product_events` com `session_id` (uuid por carregamento de página, em `sessionStorage`) anexado a todo evento.
+
+| Evento | Propriedades | Quando dispara |
+|---|---|---|
+| `playlist_load` | `{ playlist_id, tracks, ms }` | ao terminar a montagem da página de playlist |
+| `error` | `{ scope, message }` | em captura global de erro (`App.vue` / interceptor) |
+| `renewal_started` | `{ track_request_id, playlist_id }` | ao abrir a ação de renovação a partir do alerta |
+| `renewal_completed` | `{ track_request_id, type }` | ao marcar o slot como pago |
+
+- **Métricas derivadas:** tempo de renovação (mediana `renewal_completed − renewal_started`); erros por sessão (`count(error) ÷ distinct session_id`); tempo de entrada em playlist (percentil de `playlist_load.ms` com `tracks ≥ 500`).
+- **Retenção:** 180 dias, com expurgo diário via `pg_cron` (`delete from public.product_events where created_at < now() - interval '180 days'`).
 
 ---
 
@@ -265,12 +300,12 @@ Browser (Vue/PWA)
 
 > Baseline = versão atual (3.25.17) em produção. As fases abaixo são incrementais.
 
-**Fase 0 — Fundação & Segurança (pré-requisito)**
-- Migrar OAuth para **PKCE** e remover o client secret do bundle.
-- Habilitar **RLS** no Supabase (políticas de dono) e revisar exposição de tabelas/dados de negócio.
-- Instrumentar **métricas de produto** (baselines da seção 1.3).
-- Corrigir bug do guard do router; limpar código morto, envs órfãs, `console.log`, artefatos.
-- Adicionar **linter + CI de build** (mínimo) e primeiros testes unitários das heurísticas.
+**Fase 0 — Fundação & Segurança (pré-requisito) — ✅ concluída (12/10/2026)**
+- Auth migrada para **Supabase Auth + provider Spotify** (não PKCE), com renovação de token **server-side** pela Edge Function `spotify-token`; client secret fora do bundle (ver §6, D1–D6).
+- **RLS de dono** aplicado nas 9 tabelas de negócio/telemetria; `spotify_credentials` isolada no servidor (ver §4.5).
+- **Métricas de produto** instrumentadas (`product_events` + `track()`); baselines dos 4 KPIs deriváveis por SQL em [`docs/baselines-fase-0.md`](baselines-fase-0.md).
+- Bug do guard do router corrigido; código morto, envs órfãs, logs de debug e artefatos removidos.
+- **Linter + CI** (lint/build/test + guarda anti-segredo) e primeiros testes unitários das heurísticas.
 
 **Fase 1 — Cobrança e renovação (lembrete/link + conciliação manual)**
 - Lembretes automáticos de vencimento (push + e-mail/WhatsApp) com cadência configurável.
@@ -287,15 +322,15 @@ Browser (Vue/PWA)
 
 ### 5.2 Riscos técnicos
 
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| Segredo do Spotify exposto | Alto (abuso/banimento do app) | PKCE/proxy na Fase 0 |
-| Ausência de RLS/Auth no Supabase | Alto (vazamento de dados de negócio/PII) | RLS + políticas de dono na Fase 0 |
-| Rate limits / mudanças da Spotify Web API | Médio | Cache, backoff, monitorar depreciações |
-| Confiança no push para receita | Médio | Fallback in-app/e-mail; medir entrega |
-| Débito técnico (sem testes) travando evolução | Médio | Linter + CI + testes das heurísticas |
-| Drift de env/config (`publicPath`, `.env`) | Médio (falhas de deploy) | Padronizar `base` e envs |
-| Performance de páginas grandes | Médio | Manter padrão `markRaw` + revisão; orçamento < 1,5 s |
+| Risco | Impacto | Status | Mitigação |
+|---|---|---|---|
+| Segredo do Spotify exposto | Alto (abuso/banimento do app) | ✅ Resolvido (Fase 0) | Segredo só no servidor (Supabase Auth + `spotify-token`); guarda anti-regressão no CI |
+| Auth/RLS ineficaz no Supabase | Alto (vazamento de dados de negócio/PII) | ✅ Resolvido (Fase 0) | RLS de dono (`is_owner()`); `anon` bloqueado; grants perigosos revogados |
+| Rate limits / mudanças da Spotify Web API | Médio | Monitorado | Cache, backoff, monitorar depreciações |
+| Confiança no push para receita | Médio | Aberto | Fallback in-app/e-mail; medir entrega |
+| Débito técnico travando evolução | Médio | Reduzido | Linter + CI + testes das heurísticas (cobertura parcial — ver §7) |
+| Drift de env/config (`base`, `.env`) | Médio (falhas de deploy) | ✅ Resolvido (Fase 0) | `base: '/'` e envs alinhadas/documentadas |
+| Performance de páginas grandes | Médio | Mitigado | Padrão `markRaw` + revisão; KPI < 1,5 s via telemetria |
 
 ### 5.3 Dependências externas
 
@@ -311,10 +346,68 @@ Browser (Vue/PWA)
 |---|---|---|---|
 | 1 | Abrir para novos curadores / multi-tenant? | **Não.** Produto permanece de uso exclusivo do proprietário | Multi-tenant e onboarding de curadores movidos para Non-Goals; Fase 2 reescopada para Analytics |
 | 2 | Como cobrar? | **Lembrete/link + conciliação manual** (sem gateway) | Fase 1 ajustada; "processamento de pagamento nativo" virou Non-Goal |
-| 3 | Instrumentar baselines dos KPIs? | **Sim** | Mantida a ação de instrumentação na Fase 0 |
-| 4 | Auth própria (Supabase Auth)? | **Não por enquanto** — mantém somente **Spotify OAuth** | Non-Goal de auth própria; RLS ainda recomendada como política de dono |
+| 3 | Instrumentar baselines dos KPIs? | **Sim** — executado na Fase 0 | Baselines dos 4 KPIs em [`docs/baselines-fase-0.md`](baselines-fase-0.md); telemetria em §4.7 |
+| 4 | Auth própria (Supabase Auth)? | **REVOGADA.** ~~Não por enquanto~~ — a Fase 0 adotou **Supabase Auth + provider Spotify** (ver D1) | Non-Goal de auth própria removido; §2.1, §4.1, §4.4 e §6 reescritos |
+
+> **Revisão da decisão 4 (Fase 0):** o problema real não era "ter auth própria", mas o **segredo do Spotify no bundle**. A solução escolhida não foi PKCE, e sim **mover a autenticação para o Supabase Auth** (provider Spotify), com renovação de token server-side. A ferramenta **continua single-user**: a decisão 1 permanece intacta.
+
+### 6.1 Decisões travadas na Fase 0 (D1–D6)
+
+| # | Decisão | Escolha |
+|---|---|---|
+| D1 | Auth | **Supabase Auth** com o **provider Spotify** (já configurado no projeto). Substitui o OAuth Authorization Code com segredo no frontend. |
+| D2 | Token do Spotify pós-login | Renovação **server-side** via **Edge Function** `spotify-token` (o Supabase **não** renova o `provider_token`; o Spotify exige o client secret para o refresh). |
+| D3 | Armazenamento do `provider_refresh_token` | Tabela **`spotify_credentials`** com RLS de dono e **sem acesso pelo navegador** (só a Edge Function com `service_role`). |
+| D4 | Multi-dispositivo | **Suportado.** A credencial do Spotify é compartilhada no servidor; cada aparelho faz login uma vez (sessão Supabase própria). |
+| D5 | Proteção de dados | RLS de dono em todas as tabelas de negócio, com autorização por `app_metadata.role = 'owner'` (não editável pelo usuário). **Dono único e estrito.** |
+| D6 | Métricas | Baselines deriváveis por **SQL** (registrados em [`docs/baselines-fase-0.md`](baselines-fase-0.md)) + tabela **`product_events`** mínima com helper `track()` para os 3 KPIs que exigem telemetria. |
+
+### 6.2 Arquitetura-alvo do fluxo de autenticação
+
+```
+Browser                         Supabase                     Spotify
+  │                                │                            │
+  │─ signInWithOAuth('spotify') ─► │                            │
+  │                                │── OAuth (Authorization ──► │
+  │                                │   Code + client secret)    │
+  │                                │◄─ code ─────────────────── │
+  │◄─ sessão Supabase (JWT) ────── │   (troca por tokens no     │
+  │   + provider_token (1h)        │    servidor do Supabase)   │
+  │   + provider_refresh_token     │                            │
+  │                                │                            │
+  │─ invoke('spotify-token',       │                            │
+  │   { action:'store',            │                            │
+  │     provider_refresh_token })─►│ grava em spotify_credentials│
+  │                                │                            │
+  │─ invoke('spotify-token',       │                            │
+  │   { action:'refresh' }) ──────►│── refresh (client secret)─►│
+  │◄─ access_token (curto) ─────── │◄─ novo access_token ────── │
+  │                                │   (upsert se rotacionar)   │
+  │─ axios ──► Spotify Web API (usa access_token) ──────────────►│
+  │─ supabase-js ──► Postgres (RLS de dono, via JWT)             │
+```
+
+**Regra de ouro:** o navegador só toca em tokens descartáveis (JWT do Supabase e access token curto do Spotify). O segredo do Spotify e o refresh token de longa duração vivem apenas no servidor.
+
+**Ordem de aplicação do RLS (evita lockout):** o dono foi marcado (**Fase 0.2**) **antes** de as políticas restritivas entrarem em vigor (**Fase 0.3**). Todo o banco é aplicado via MCP, sem arquivos de migration (`AGENTS.md`); as políticas anteriores foram exportadas em `supabase/backups/2026-10-12-policies-public-before-owner-rls.sql` para rollback.
 
 > **Nota:** a prioridade "onboarding de novos curadores" levantada inicialmente foi **cancelada** pela decisão 1 e não compõe o roadmap.
+
+---
+
+## 7. Itens adiados / débito conhecido (fora da Fase 0)
+
+Registrados ao fim da Fase 0 e absorvidos por este PRD. A maioria tem origem no antigo `PLANO-FASE-0.md`; os itens de banco vêm dos advisors do Supabase. Não bloqueiam a Fase 1.
+
+| Item | Descrição | Quando |
+|---|---|---|
+| FKs sem índice | 4 foreign keys sem índice de cobertura (advisor de performance): `playlists_statistics.playlist_id`, `track_popularity.playlist_id`, `track_requests.playlist_id`, `track_requests.requester_id`. Impacto baixo no volume atual. | Fase 2 |
+| Nomes enganosos de env | `VITE_SUPABASE_PLAYLISTS_TABLE` aponta para `playlists_statistics` (não para `playlists`) — ver §4.3. Padronizar quando conveniente. | Fase 2 |
+| Agregação de receita | `FinanceService.sumLedger*` foi removido como código morto; a agregação de receita volta junto com os relatórios. | Fase 2 |
+| Cobertura de testes | Além das heurísticas puras e da telemetria, faltam testes de componentes/views. | Fase 2+ |
+| Índice ocioso | `product_events_created_at_idx` criado e ainda não usado (advisor de performance); remover se continuar sem uso. | Fase 2 |
+| Default privileges do `supabase_admin` | Tabelas futuras criadas por `supabase_admin` ainda recebem `TRUNCATE/TRIGGER/REFERENCES` (grantor diferente de `postgres`). Revisar quando surgirem. | Monitorar |
+| Sugestões mostradas × aceitas | Instrumentação específica das heurísticas de curador/compatibilidade para calibrar pesos (ver §3.2). | Fase 2 |
 
 ---
 
@@ -324,6 +417,7 @@ Browser (Vue/PWA)
 - **Components:** `src/components/{Layout,Sidebar,TopBar,FloatPlayer,AddToPlaylistModal,SellSlotModal,SlotManagementModal,OrphanRequestModal,EditPlaylistModal,ConfirmRemovePlaylistModal,SortConfirmModal,SortingProgressModal,ReloadPWA}.vue`
 - **Stores:** `src/stores/{user,playlist,settings,notifications}.js`
 - **Services:** `src/services/{PlaylistService,DashboardService,TrackRequestService,FinanceService,PlaylistDetailsService,PushService}.js`
-- **Composables:** `src/composables/{requestToken,usePlaylistData,usePushNotifications,useCuratorSuggestions}.js`
-- **Support:** `src/support/{spotifyApi,supabaseClient,helpers,occupancyCache,requesterCuratorCache,playlistCompatibility}.js` (+ `src/axios-plugin.js`)
-- **PWA/Backend:** `src/sw.ts`, `supabase/functions/notify-expiration/index.ts`, `scripts/notify-expiration.js`, `.github/workflows/notify-expiration.yml`, `vite.config.js`
+- **Composables:** `src/composables/{usePlaylistData,usePushNotifications,useCuratorSuggestions}.js`
+- **Support:** `src/support/{spotifyApi,spotifyToken,supabaseClient,helpers,telemetry,occupancyCache,requesterCuratorCache,playlistCompatibility}.js` (+ `src/axios-plugin.js`)
+- **PWA/Backend:** `src/sw.ts`, `supabase/functions/spotify-token/index.ts`, `supabase/functions/notify-expiration/index.ts`, `scripts/notify-expiration.js`, `supabase/backups/*.sql`, `.github/workflows/{ci,notify-expiration}.yml`, `eslint.config.mjs`, `vitest.config.js`, `vite.config.js`
+- **Testes:** `tests/{helpers,occupancyCache,playlistCompatibility,telemetry}.test.js`
