@@ -8,6 +8,7 @@
   import { hexToRgba } from '@/support/helpers.js';
   import { usePushNotifications } from '@/composables/usePushNotifications'
   import { signInWithSpotify } from '@/support/spotifyAuth'
+  import { shouldOfferConsent } from '@/support/playbackAvailability'
   import { useWebPlayback } from '@/composables/useWebPlayback'
 
   const settingsStore = useSettingsStore()
@@ -16,7 +17,12 @@
   const { getAllPricePositions, createPricePosition, updatePricePosition, deletePricePosition } = TrackRequestService()
 
   const push = usePushNotifications()
-  const { deviceId: playbackDeviceId, isReady: playbackReady, supported: playbackSupported, requiresConsent } = useWebPlayback()
+  const {
+    deviceId: playbackDeviceId,
+    isReady: playbackReady,
+    requiresConsent,
+    degradation: playbackDegradation
+  } = useWebPlayback()
 
   // Reconexão que força a tela de consentimento: concede o escopo `streaming`
   // uma única vez em sessões autorizadas antes dele existir (#66).
@@ -27,11 +33,27 @@
     }
   }
 
+  // O consentimento só é oferecido quando conceder o escopo resolve. Se o
+  // navegador não suporta (DRM/EME) ou a conta é inelegível, o aviso de
+  // degradação (#72) é a mensagem certa.
+  const offerConsent = computed(() =>
+    shouldOfferConsent({ requiresConsent: requiresConsent.value, degradation: playbackDegradation.value })
+  )
+
+  // Fonte única do cartão de reprodução: rótulo curto + detalhe. O
+  // consentimento tem precedência sobre a falha genérica — a conexão pode ter
+  // falhado justamente por falta do escopo `streaming`.
   const playbackStatus = computed(() => {
-    if (requiresConsent.value) return 'Permissão de reprodução pendente'
-    if (!playbackSupported.value) return 'Reprodução no app indisponível neste navegador'
-    if (playbackDeviceId.value && playbackReady.value) return 'Conectado — dispositivo "MR Playlist" disponível'
-    return 'Aguardando conexão do dispositivo'
+    if (offerConsent.value) {
+      return { label: 'Permissão pendente', detail: 'Permissão de reprodução pendente' }
+    }
+    if (playbackDegradation.value) {
+      return { label: 'Indisponível', detail: playbackDegradation.value.message }
+    }
+    if (playbackDeviceId.value && playbackReady.value) {
+      return { label: 'Ativo', detail: 'Conectado — dispositivo "MR Playlist" disponível' }
+    }
+    return { label: 'Inativo', detail: 'Aguardando conexão do dispositivo' }
   })
 
   const activeTab = ref('settings')
@@ -405,19 +427,19 @@ const SETTINGS_FIELDS = [
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div class="flex flex-col min-w-0">
                 <span class="text-body-md font-bold text-on-surface">
-                  {{ playbackDeviceId && playbackReady ? 'Ativo' : (requiresConsent ? 'Permissão pendente' : 'Inativo') }}
+                  {{ playbackStatus.label }}
                 </span>
-                <span class="text-label-sm text-on-surface-variant">{{ playbackStatus }}</span>
+                <span class="text-label-sm text-on-surface-variant">{{ playbackStatus.detail }}</span>
               </div>
               <button
                 class="px-4 py-2.5 rounded-xl text-label-md font-bold transition-all flex items-center gap-2 shrink-0"
-                :class="requiresConsent
+                :class="offerConsent
                   ? 'bg-secondary text-on-secondary hover:brightness-110'
                   : 'bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-container'"
                 @click="reconnectSpotify()"
               >
                 <span class="material-symbols-outlined text-[18px]">login</span>
-                {{ requiresConsent ? 'Conceder permissão' : 'Reconectar Spotify' }}
+                {{ offerConsent ? 'Conceder permissão' : 'Reconectar Spotify' }}
               </button>
             </div>
           </div>
