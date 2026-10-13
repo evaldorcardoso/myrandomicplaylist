@@ -132,6 +132,16 @@ const pickMetadata = (source) => {
   return picked
 }
 
+// Extrai, de uma faixa crua do Spotify (endpoint `/tracks/{id}`), apenas os
+// metadados que o SDK não fornece — já no formato do cache interno. A
+// popularidade é um campo da faixa; a data de lançamento vem do álbum. Campos
+// ausentes são omitidos para não sobrescrever o que já existe.
+export const extractTrackMetadata = (rawTrack) =>
+  pickMetadata({
+    popularity: rawTrack?.popularity,
+    release_date: rawTrack?.album?.release_date,
+  })
+
 // Combina metadados na faixa sem mutar a entrada e sem sobrescrever o que já
 // existe (o que veio do REST é mais autoritativo que uma busca avulsa).
 const applyTrackMetadata = (track, metadata) => {
