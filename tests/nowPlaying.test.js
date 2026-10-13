@@ -5,6 +5,8 @@ import {
   normalizeRestState,
   resolveNowPlayingSource,
   resolveNowPlaying,
+  resolveRawTrack,
+  projectPosition,
   shouldFetchTrackMetadata,
   resolveTrackMetadata,
   createTrackMetadataCache
@@ -215,6 +217,53 @@ describe('nowPlaying · resolveNowPlaying', () => {
 
     expect(result.source).toBe('rest')
     expect(result.track.id).toBe('track-1')
+  })
+})
+
+describe('nowPlaying · resolveRawTrack', () => {
+  it('devolve a faixa crua do SDK quando o app é o dispositivo ativo', () => {
+    const track = resolveRawTrack({ sdkState, restState, appDeviceId: 'app-1' })
+    expect(track).toBe(sdkState.track_window.current_track)
+    // Campos que a normalização descarta e os modais usam:
+    expect(track.album.images[0].url).toBe('https://img.example/cover.jpg')
+    expect(track.artists[0].name).toBe('Artista A')
+  })
+
+  it('devolve a faixa crua do REST quando outro dispositivo está ativo', () => {
+    const track = resolveRawTrack({
+      sdkState,
+      restState: { ...restState, device: { id: 'phone-1', is_active: true } },
+      appDeviceId: 'app-1'
+    })
+    expect(track).toBe(restState.item)
+  })
+
+  it('devolve null quando não há fonte de verdade', () => {
+    expect(resolveRawTrack({ sdkState: null, restState: null, appDeviceId: 'app-1' })).toBeNull()
+  })
+})
+
+describe('nowPlaying · projectPosition', () => {
+  it('não avança quando a faixa está pausada', () => {
+    expect(projectPosition({ position: 42000, duration: 210000, playing: false }, 5000)).toBe(42000)
+  })
+
+  it('soma o tempo decorrido desde o último evento quando está tocando', () => {
+    expect(projectPosition({ position: 42000, duration: 210000, playing: true }, 3000)).toBe(45000)
+  })
+
+  it('nunca passa da duração da faixa', () => {
+    expect(projectPosition({ position: 200000, duration: 210000, playing: true }, 60000)).toBe(210000)
+  })
+
+  it('trata posição/tempo ausentes ou inválidos como zero', () => {
+    expect(projectPosition({ position: -100, duration: 10000, playing: true }, -50)).toBe(0)
+    expect(projectPosition()).toBe(0)
+  })
+
+  it('segura na âncora quando a duração é desconhecida', () => {
+    expect(projectPosition({ playing: true }, 1500)).toBe(0)
+    expect(projectPosition({ position: 5000, playing: true }, 1500)).toBe(5000)
   })
 })
 

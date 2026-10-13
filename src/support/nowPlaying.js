@@ -89,6 +89,35 @@ export const resolveNowPlaying = (input) => {
   return { source, ...NORMALIZE_BY_SOURCE[source](input) }
 }
 
+// Faixa crua (formato do Spotify) da fonte de verdade. Componentes que precisam
+// de campos que a normalização não carrega — os modais de playlist usam
+// `album.images`, `artists` como objetos e `duration_ms` — consomem esta versão
+// em vez da normalizada. A escolha da fonte segue `resolveNowPlayingSource`.
+const RAW_BY_SOURCE = {
+  sdk: (input) => input.sdkState?.track_window?.current_track ?? null,
+  rest: (input) => input.restState?.item ?? null,
+}
+
+export const resolveRawTrack = (input) => {
+  const source = resolveNowPlayingSource(input)
+  return source ? RAW_BY_SOURCE[source](input) : null
+}
+
+// Posição projetada no instante atual a partir do último evento ancorado.
+//
+// O SDK só emite `player_state_changed` de forma esporádica (e o REST é
+// atualizado em intervalos), então a barra precisa avançar entre eventos. A
+// projeção parte sempre da posição **real** do último evento e soma apenas o
+// tempo decorrido desde então — nunca reinicia do zero nem passa da duração.
+export const projectPosition = ({ position, duration, playing } = {}, elapsedMs = 0) => {
+  const base = Number.isFinite(position) && position > 0 ? position : 0
+  // Sem duração conhecida não há barra para projetar: segura na âncora real.
+  if (!Number.isFinite(duration) || duration <= 0) return base
+  if (!playing) return Math.min(base, duration)
+  const elapsed = Number.isFinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 0
+  return Math.min(base + elapsed, duration)
+}
+
 // Só os metadados que a faixa ainda não traz (popularidade/data de lançamento).
 const missingMetadataFields = (track) =>
   track ? METADATA_FIELDS.filter((field) => track[field] == null) : []

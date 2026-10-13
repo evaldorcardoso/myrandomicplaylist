@@ -418,9 +418,11 @@ export function usePlaylistData(callbacks = {}) {
     }
   }
 
-  const executeUserPlaylist = async(currentPlaying) => {
+  // `nowPlaying` é o estado normalizado da fonte compartilhada (#68): o campo de
+  // reprodução é `playing` (antes era `is_playing` do payload REST).
+  const executeUserPlaylist = async(nowPlaying) => {
     try {
-      if (currentPlaying?.is_playing) {
+      if (nowPlaying?.playing) {
         const { status } = await pausePlayback()
         if (status != 204) {
           openPlaylistApp(state.playlist.id)

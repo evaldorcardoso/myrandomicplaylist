@@ -3,6 +3,7 @@
   import { useRouter } from 'vue-router'
   import { Line } from 'vue-chartjs'
   import { usePlaylistData } from '@/composables/usePlaylistData'
+  import { useNowPlaying } from '@/composables/useNowPlaying'
 
   const router = useRouter()
   const progress = inject('progress')
@@ -23,7 +24,7 @@
     saveLikesStatistics
   } = pd
 
-  const props = defineProps({
+  defineProps({
     stepData: {
       type: Number,
       default: 0
@@ -31,14 +32,10 @@
     removeTrack: {
       type: String,
       default: ''
-    },
-    currentData: {
-      type: Object,
-      default: () => { }
     }
   })
 
-  const currentPlaying = computed(() => props.currentData)
+  const { nowPlaying } = useNowPlaying()
   const likesRange = ref('15D')
 
   const formatNumber = (value) => {
@@ -156,9 +153,9 @@
           />
           <button
             class="absolute -bottom-6 -right-6 w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform active:scale-95"
-            @click="executeUserPlaylist(currentPlaying)"
+            @click="executeUserPlaylist(nowPlaying)"
           >
-            <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" class="text-on-primary text-[24px]" />
+            <font-awesome-icon :icon="nowPlaying?.playing ? 'pause' : 'play'" class="text-on-primary text-[24px]" />
           </button>
         </div>
 
