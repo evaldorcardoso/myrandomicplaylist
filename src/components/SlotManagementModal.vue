@@ -3,7 +3,8 @@
   import { notify } from "@kyvg/vue3-notification";
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { useCuratorSuggestions } from '@/composables/useCuratorSuggestions'
-  import { useGeneral, useProfile } from '@/support/spotifyApi'
+  import { useGeneral } from '@/support/spotifyApi'
+  import { usePlaybackLauncher } from '@/composables/usePlaybackLauncher'
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '@/services/PlaylistService'
   import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
@@ -45,7 +46,7 @@
   const { updateTrackRequest, deleteTrackRequest, getOrCreateRequester, getPricePosition, recordEarning, hasEarnings } = TrackRequestService()
   const { suggestions, loadSuggestions, trackCurator } = useCuratorSuggestions()
   const { getTracks } = useGeneral()
-  const { executePlaylist } = useProfile()
+  const { playOnAnyDevice } = usePlaybackLauncher()
   const playlistStore = usePlaylistStore()
   const { getGenres } = PlaylistService()
 
@@ -572,10 +573,15 @@
     const uri = trackData.value?.uri
     if (!uri) return
     try {
-      const { status } = await executePlaylist({ uris: [uri] })
-      if (status !== 204) {
+      // Sem dispositivo ativo, o lançador direciona a reprodução para o app.
+      const { ok, noActiveDevice, error } = await playOnAnyDevice({ uris: [uri] })
+      if (ok) return
+      if (noActiveDevice) {
         notify({ title: 'Ops', text: 'Nenhum dispositivo Spotify ativo!', type: 'error' })
+        return
       }
+      console.error(error)
+      notify({ title: 'Ops', text: 'Não foi possível tocar a música!', type: 'error' })
     } catch (error) {
       console.error(error)
       notify({ title: 'Ops', text: 'Não foi possível tocar a música!', type: 'error' })

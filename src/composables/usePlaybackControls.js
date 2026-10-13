@@ -13,6 +13,7 @@ import { computed } from 'vue'
 import { useProfile } from '@/support/spotifyApi'
 import { useWebPlayback } from '@/composables/useWebPlayback'
 import { useNowPlaying } from '@/composables/useNowPlaying'
+import { usePlaybackLauncher } from '@/composables/usePlaybackLauncher'
 import {
   canControlLocalVolume,
   resolveControlTarget,
@@ -40,7 +41,8 @@ export const usePlaybackControls = () => {
   } = useWebPlayback()
 
   const { nowPlaying, appDeviceActive, refresh } = useNowPlaying()
-  const { skipToNext, skipToPrevious, pausePlayback, startResumePlayback } = useProfile()
+  const { skipToNext, skipToPrevious, pausePlayback } = useProfile()
+  const { resumeOnAnyDevice } = usePlaybackLauncher()
 
   // O app só manda localmente quando é o dispositivo ativo E o SDK está pronto.
   const isLocal = computed(
@@ -59,13 +61,17 @@ export const usePlaybackControls = () => {
     }
   }
 
-  const togglePlay = () =>
-    isLocal.value
-      ? toggleLocal()
-      : runRemote(
-          () => (nowPlaying.value?.playing ? pausePlayback() : startResumePlayback()),
-          'Falha ao alternar a reprodução:'
-        )
+  const togglePlay = () => {
+    if (isLocal.value) return toggleLocal()
+    if (nowPlaying.value?.playing) {
+      return runRemote(pausePlayback, 'Falha ao alternar a reprodução:')
+    }
+    // Retomar: sem dispositivo ativo, o lançador retoma no próprio app.
+    return resumeOnAnyDevice().then(async ({ ok, error }) => {
+      if (!ok) console.error('Falha ao retomar a reprodução:', error)
+      await refresh()
+    })
+  }
 
   const next = () =>
     isLocal.value ? nextLocal() : runRemote(skipToNext, 'Falha ao avançar a faixa:')

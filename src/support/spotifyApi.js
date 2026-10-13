@@ -32,9 +32,18 @@ export function useProfile() {
         return playlists
     }
 
-    const executePlaylist = async(formData) => {
+    // `deviceId` direciona a reprodução para um dispositivo específico (o do app,
+    // via Web Playback SDK); sem ele, o alvo é o dispositivo ativo da conta.
+    const deviceTarget = (deviceId) =>
+        deviceId ? { params: { device_id: deviceId } } : undefined
+
+    const executePlaylist = async(formData, deviceId) => {
         return $axios
-            .put(`${import.meta.env.VITE_API_URL}/me/player/play`, JSON.stringify(formData))
+            .put(
+                `${import.meta.env.VITE_API_URL}/me/player/play`,
+                JSON.stringify(formData),
+                deviceTarget(deviceId)
+            )
     }
 
     const getPlaybackState = async() => {
@@ -62,9 +71,15 @@ export function useProfile() {
             .post(`${import.meta.env.VITE_API_URL}/me/player/previous`, {})
     }
 
-    const startResumePlayback = async() => {
+    // `deviceId` opcional: permite retomar no dispositivo do app quando não há
+    // nenhum ativo na conta.
+    const startResumePlayback = async(deviceId) => {
         return $axios
-            .put(`${import.meta.env.VITE_API_URL}/me/player/play`, {})
+            .put(
+                `${import.meta.env.VITE_API_URL}/me/player/play`,
+                {},
+                deviceTarget(deviceId)
+            )
     }
 
     const pausePlayback = async() => {
