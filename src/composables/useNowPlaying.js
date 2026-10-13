@@ -15,12 +15,26 @@
 //   evento (a barra avança entre eventos, mas nunca é simulada do zero).
 // - `rawTrack`: faixa crua do Spotify da fonte de verdade (para os modais).
 // - `refresh()`: força uma leitura REST (ex.: depois de um play/pause manual).
+//
+// Metadados que o SDK não fornece (#70): a faixa do SDK não traz popularidade
+// nem data de lançamento. Ao trocar de faixa, o app busca esses campos uma única
+// vez pelo endpoint de faixa e os combina em `nowPlaying` a partir de um cache
+// por identificador — sem polling e reaproveitado em repetição/seek.
 
 import { computed, ref, shallowRef, watch } from 'vue'
-import { useProfile } from '@/support/spotifyApi'
+import { useGeneral, useProfile } from '@/support/spotifyApi'
 import { useWebPlayback } from '@/composables/useWebPlayback'
 import { isAppDevice } from '@/support/webPlayback'
-import { projectPosition, resolveNowPlaying, resolveRawTrack } from '@/support/nowPlaying'
+import {
+  cacheTrackMetadata,
+  createTrackMetadataCache,
+  extractTrackMetadata,
+  projectPosition,
+  resolveNowPlaying,
+  resolveRawTrack,
+  resolveTrackMetadata,
+  shouldFetchTrackMetadata,
+} from '@/support/nowPlaying'
 
 // O fallback REST do layout rodava a cada 10s. Mantemos o mesmo passo enquanto o
 // app não é o player; quando o SDK assume, ele para.
@@ -33,24 +47,42 @@ const { playbackState, deviceId, isReady } = useWebPlayback()
 // Último estado REST conhecido (`/me/player`).
 const restState = shallowRef(null)
 
-// O `useProfile()` injeta o axios da aplicação e toca a store de settings; não
-// pode rodar no topo do módulo (antes de o app/plugin existirem), então é criado
-// sob demanda na primeira leitura REST.
+// Os utilitários de API (`useProfile`/`useGeneral`) injetam o axios da aplicação
+// e tocam a store de settings; não podem rodar no topo do módulo (antes de o
+// app/plugin existirem), então são criados sob demanda na primeira leitura.
 let profileApi = null
 const getProfileApi = () => (profileApi ??= useProfile())
+
+let generalApi = null
+const getGeneralApi = () => (generalApi ??= useGeneral())
 
 // O app é o dispositivo ativo? O REST informa o `device.id` ativo da conta.
 const appDeviceActive = computed(() =>
   isAppDevice(restState.value?.device, deviceId.value)
 )
 
-const nowPlaying = computed(() =>
+// Estado normalizado da fonte de verdade, antes do enriquecimento de metadados.
+const baseNowPlaying = computed(() =>
   resolveNowPlaying({
     sdkState: playbackState.value,
     restState: restState.value,
     appDeviceId: deviceId.value,
   })
 )
+
+// Metadados que o SDK não fornece (#70): popularidade e data de lançamento são
+// buscados uma vez por faixa e guardados em cache. Como o cache é um `Map` não
+// reativo, o contador força `nowPlaying` a recomputar quando ele é preenchido.
+const metadataCache = createTrackMetadataCache()
+const metadataVersion = ref(0)
+
+const nowPlaying = computed(() => {
+  metadataVersion.value // dependência explícita: o cache é um Map não-reativo
+  const base = baseNowPlaying.value
+  if (!base) return null
+  const track = resolveTrackMetadata(base.track, { cache: metadataCache })
+  return track === base.track ? base : { ...base, track }
+})
 
 const rawTrack = computed(() =>
   resolveRawTrack({
@@ -123,6 +155,48 @@ const refresh = () => {
     })
   return inFlight
 }
+
+// Busca única por faixa (#70): o SDK não traz popularidade nem data de
+// lançamento. A busca é dirigida pela troca de faixa — nunca por timer — e
+// deduplicada enquanto está em andamento. Em caso de falha, só loga: a tela
+// segue funcional com os campos vazios.
+const metadataInFlight = new Map()
+const fetchTrackMetadata = (trackId) => {
+  if (metadataInFlight.has(trackId)) return metadataInFlight.get(trackId)
+  const request = getGeneralApi()
+    .getTrack(trackId)
+    .then(({ data }) => {
+      const metadata = extractTrackMetadata(data)
+      if (Object.keys(metadata).length > 0) {
+        cacheTrackMetadata(metadataCache, trackId, metadata)
+        metadataVersion.value++
+      }
+      return metadata
+    })
+    .catch((error) => {
+      console.error('Agora tocando: falha ao buscar metadados da faixa', error)
+      return null
+    })
+    .finally(() => metadataInFlight.delete(trackId))
+  metadataInFlight.set(trackId, request)
+  return request
+}
+
+// Dispara só quando muda a faixa (ou a fonte de verdade). Repetição/seek da
+// mesma faixa — e faixas já cobertas pelo cache — não geram nova busca.
+watch(
+  () => {
+    const state = baseNowPlaying.value
+    return state?.track?.id ? `${state.source}:${state.track.id}` : null
+  },
+  () => {
+    const track = baseNowPlaying.value?.track
+    if (track?.id && shouldFetchTrackMetadata(track, metadataCache)) {
+      fetchTrackMetadata(track.id)
+    }
+  },
+  { immediate: true }
+)
 
 const isVisible = () =>
   typeof document === 'undefined' || document.visibilityState !== 'hidden'

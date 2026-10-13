@@ -7,6 +7,8 @@ import {
   resolveNowPlaying,
   resolveRawTrack,
   projectPosition,
+  extractTrackMetadata,
+  cacheTrackMetadata,
   shouldFetchTrackMetadata,
   resolveTrackMetadata,
   createTrackMetadataCache
@@ -264,6 +266,59 @@ describe('nowPlaying · projectPosition', () => {
   it('segura na âncora quando a duração é desconhecida', () => {
     expect(projectPosition({ playing: true }, 1500)).toBe(0)
     expect(projectPosition({ position: 5000, playing: true }, 1500)).toBe(5000)
+  })
+})
+
+describe('nowPlaying · extractTrackMetadata', () => {
+  it('extrai popularidade e data de lançamento de uma faixa crua do endpoint de faixa', () => {
+    expect(extractTrackMetadata(restState.item)).toEqual({
+      popularity: 55,
+      release_date: '2024-05-01'
+    })
+  })
+
+  it('preserva popularidade zero (falsy, mas válida)', () => {
+    expect(extractTrackMetadata({ popularity: 0, album: { release_date: '1999' } })).toEqual({
+      popularity: 0,
+      release_date: '1999'
+    })
+  })
+
+  it('omite os campos ausentes em vez de gravar null', () => {
+    expect(extractTrackMetadata({ id: 'track-1' })).toEqual({})
+    expect(extractTrackMetadata({ popularity: 55 })).toEqual({ popularity: 55 })
+  })
+
+  it('devolve um objeto vazio para entrada ausente', () => {
+    expect(extractTrackMetadata(null)).toEqual({})
+    expect(extractTrackMetadata(undefined)).toEqual({})
+  })
+})
+
+describe('nowPlaying · cacheTrackMetadata', () => {
+  it('grava apenas os campos presentes para o identificador', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(cache, 'track-1', { popularity: 55, release_date: '2024-05-01' })
+
+    expect(cache.get('track-1')).toEqual({ popularity: 55, release_date: '2024-05-01' })
+  })
+
+  it('preserva o que já estava no cache quando a nova busca vem parcial', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(cache, 'track-1', { popularity: 55 })
+    cacheTrackMetadata(cache, 'track-1', { release_date: '2024-05-01' })
+
+    expect(cache.get('track-1')).toEqual({ popularity: 55, release_date: '2024-05-01' })
+  })
+
+  it('ignora gravações sem cache, sem identificador ou sem metadados', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(null, 'track-1', { popularity: 55 })
+    cacheTrackMetadata(cache, null, { popularity: 55 })
+    cacheTrackMetadata(cache, 'track-1', null)
+    cacheTrackMetadata(cache, 'track-1', {})
+
+    expect(cache.size).toBe(0)
   })
 })
 

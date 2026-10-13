@@ -132,6 +132,16 @@ const pickMetadata = (source) => {
   return picked
 }
 
+// Extrai, de uma faixa crua do Spotify (endpoint `/tracks/{id}`), apenas os
+// metadados que o SDK não fornece — já no formato do cache interno. A
+// popularidade é um campo da faixa; a data de lançamento vem do álbum. Campos
+// ausentes são omitidos para não sobrescrever o que já existe.
+export const extractTrackMetadata = (rawTrack) =>
+  pickMetadata({
+    popularity: rawTrack?.popularity,
+    release_date: rawTrack?.album?.release_date,
+  })
+
 // Combina metadados na faixa sem mutar a entrada e sem sobrescrever o que já
 // existe (o que veio do REST é mais autoritativo que uma busca avulsa).
 const applyTrackMetadata = (track, metadata) => {
@@ -158,6 +168,14 @@ export const shouldFetchTrackMetadata = (track, cache) => {
   return missingMetadataFields(track).some((field) => cached?.[field] == null)
 }
 
+// Grava metadados no cache, combinando com o que já existe (sem sobrescrever
+// campos ausentes). Não toca em nenhuma faixa — só no cache por identificador.
+export const cacheTrackMetadata = (cache, trackId, metadata) => {
+  if (!cache || !trackId || !metadata) return
+  const merged = { ...pickMetadata(cache.get(trackId)), ...pickMetadata(metadata) }
+  if (Object.keys(merged).length > 0) cache.set(trackId, merged)
+}
+
 // Regra de merge/cache: reaproveita o que já está no cache, combina os
 // metadados recém-buscados e guarda o resultado para as próximas aparições da
 // mesma faixa — buscando cada faixa uma única vez por sessão.
@@ -165,10 +183,7 @@ export const resolveTrackMetadata = (track, { cache, metadata } = {}) => {
   if (!track?.id) return track
   const cached = cache?.get(track.id) ?? null
   const resolved = applyTrackMetadata(applyTrackMetadata(track, cached), metadata)
-  if (cache && metadata) {
-    const merged = { ...pickMetadata(cached), ...pickMetadata(metadata) }
-    if (Object.keys(merged).length > 0) cache.set(track.id, merged)
-  }
+  cacheTrackMetadata(cache, track.id, metadata)
   return resolved
 }
 
