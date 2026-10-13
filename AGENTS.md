@@ -215,6 +215,19 @@ notify({ type: 'success', title: 'Message' })
 - ⚠️ The PWA manifest `description` in `vite.config.js` still reads "Gerador de playlist aleatória do Spotify" (stale — see `docs/PRD.md`).
 - Lint with `yarn lint` (ESLint flat config) e rode `yarn test` (Vitest) antes de commitar; ambos rodam no CI.
 
+## Versioning & Releases
+
+O campo `version` do `package.json` é a fonte da versão do app; mantenha também a linha "Versão do produto (as-is)" em `docs/PRD.md` alinhada.
+
+- **Sempre** que gerar uma versão nova — major, minor ou patch (SemVer) — crie **tag e release no GitHub**. Não existe versão sem tag/release.
+- Incremente a versão, commite como `chore: incrementar versão para X.Y.Z` e faça o merge na `main`.
+- Crie a release com prefixo `v` no nome (lightweight, como as anteriores), apontando para o commit da `main`:
+  ```bash
+  gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
+  ```
+- As notes são as automáticas do GitHub (`--generate-notes`, "What's Changed" + Full Changelog). Em marcos maiores (ex.: `v4.0.0`), acrescente um destaque curto no topo do corpo.
+- SemVer: **major** = mudanças incompatíveis; **minor** = funcionalidades compatíveis; **patch** = correções compatíveis.
+
 ## Performance Rules
 
 These rules exist because the app froze for ~30s on playlist entry. Cause: writing properties into deeply-reactive objects stored in Pinia (e.g. Spotify track objects) is extremely slow (up to ~180ms per write in some browsers). Always follow the pattern below.
