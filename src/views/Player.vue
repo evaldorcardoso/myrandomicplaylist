@@ -1,19 +1,19 @@
 <script setup>
-  import { onMounted, onBeforeMount, onBeforeUnmount, ref, reactive, computed, watch } from 'vue'
+  import { onMounted, onBeforeMount, ref, computed, watch } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
   import { markAppDevice } from '@/support/webPlayback'
   import { signInWithSpotify } from '@/support/spotifyAuth'
   import { useWebPlayback } from '@/composables/useWebPlayback'
+  import { useNowPlaying } from '@/composables/useNowPlaying'
+  import { formatDuration, formatReleaseDate, progressPercent } from '@/support/playbackFormat'
   import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import { useUserStore } from '@/stores/user'
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '../services/PlaylistService'
 
-  var intervalProgress;
-  const { 
-    getDevices, 
-    getPlaybackState,
+  const {
+    getDevices,
     skipToNext,
     skipToPrevious,
     pausePlayback,
@@ -23,6 +23,11 @@
 
   // Dispositivo Spotify Connect do próprio app (Web Playback SDK).
   const { deviceId, requiresConsent, activateElement } = useWebPlayback()
+
+  // Fonte compartilhada de "agora tocando" (#68/#69). A tela não mantém mais
+  // polling de estado nem progresso simulado: posição/faixa/estado vêm do mesmo
+  // estado que alimenta o player flutuante, então os dois nunca divergem.
+  const { nowPlaying, rawTrack, position, refresh } = useNowPlaying()
 
   const { loadAllFromDatabase } = PlaylistService()
 
@@ -41,67 +46,51 @@
     }
   });
 
-  const state = reactive({
-    progPerc: 0,
-    prog: 0,
-    progOrig: 0,
-    devices: [],
-    isPlaying: false,
-    databaseTracks: [],
-    message: '',
-    progressMs: 0,
-    item: null,
-    track: {
-      name: '',
-      time: "",
-      time_total: "",
-      display_time_total: '',
-      progress: 0,
-      release: ""
-    },
-  })
-
   const addToPlaylistOpen = ref(false)
   const sellSlotOpened = ref(false)
   const sellSlotData = ref(null)
+  const message = ref('')
+  const devicesList = ref([])
   const userStore = useUserStore()
   const playlistStore = usePlaylistStore()
 
   // Lista de dispositivos com o item do app destacado (#66). O `deviceId` vem
   // do evento `ready` do SDK e pode chegar depois do primeiro carregamento.
-  const devices = computed(() => markAppDevice(state.devices, deviceId.value))
+  const devices = computed(() => markAppDevice(devicesList.value, deviceId.value))
+
+  const track = computed(() => nowPlaying.value?.track ?? null)
+  const isPlaying = computed(() => Boolean(nowPlaying.value?.playing))
+  const isTracked = computed(() => Boolean(userStore.getTrack(track.value?.id)))
+
+  const progressPerc = computed(() => progressPercent(position.value, nowPlaying.value?.duration))
+  const elapsedLabel = computed(() => formatDuration(position.value))
+  const totalLabel = computed(() => formatDuration(nowPlaying.value?.duration))
+  const releaseLabel = computed(() => formatReleaseDate(track.value?.release_date))
+  const popularityLabel = computed(() =>
+    track.value?.popularity != null ? `${track.value.popularity}%` : '—'
+  )
 
   const requestConsent = async () => {
     const { error } = await signInWithSpotify({ forceConsent: true })
     if (error) {
-      state.message = error.message
+      message.value = error.message
       console.error('Falha ao pedir o consentimento de reprodução:', error)
     }
   }
 
-  const getTrackStatistics = async() => {
-    if (! state.item) return
-    if (state.databaseTracks.length == 0) {
-      state.databaseTracks = await userStore.getTracks()
-    }
-    state.item.popularity_old = userStore.getTrack(state.item?.id)?.popularity ?? state.item?.popularity
-    state.track.tracked = userStore.getTrack(state.item?.id)
-  }
-
   const copyTrackName = async () => {
-    if (state.item?.name) {
-      await navigator.clipboard.writeText(state.item.name)
-      state.message = 'Nome da faixa copiado!'
-      setTimeout(() => { state.message = '' }, 2000)
-    }
+    if (!track.value?.name) return
+    await navigator.clipboard.writeText(track.value.name)
+    message.value = 'Nome da faixa copiado!'
+    setTimeout(() => { message.value = '' }, 2000)
   }
 
   const copyTrackArtist = async () => {
-    if (state.item?.artists?.[0]?.name) {
-      await navigator.clipboard.writeText(state.item.artists[0].name)
-      state.message = 'Nome do artista copiado!'
-      setTimeout(() => { state.message = '' }, 2000)
-    }
+    const artist = track.value?.artists?.[0]
+    if (!artist) return
+    await navigator.clipboard.writeText(artist)
+    message.value = 'Nome do artista copiado!'
+    setTimeout(() => { message.value = '' }, 2000)
   }
 
   const openAddToPlaylist = () => {
@@ -123,9 +112,9 @@
     sellSlotData.value = null
   }
 
-  const getUserDevices = async() => {
+  const getUserDevices = async () => {
     const { data } = await getDevices()
-    state.devices = data.devices
+    devicesList.value = data?.devices ?? []
   }
 
   // O dispositivo do app só entra na lista depois que o SDK fica `ready`;
@@ -135,51 +124,29 @@
     getUserDevices().catch((error) => console.error('Falha ao recarregar dispositivos:', error))
   })
 
-  const getPlaybackUserState = async() => {
-    const { data } = await getPlaybackState()
-    if (! data) {
-      stopProgress()
-      return
-    }
-    state.isPlaying = data.is_playing
-    if (! data.is_playing) {
-      stopProgress()
-      return
-    }
-    let date = new Date(data.progress_ms)
-    state.item = data.item
-    state.track.time = date.getUTCMinutes() + ':' + date.getUTCSeconds()
-    date = new Date(data.item.duration_ms)
-    state.track.time_total = data.item.duration_ms
-    state.track.display_time_total = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
-    state.track.progress = (data.progress_ms / state.track.duration_ms) * 100
-    state.progressMs = data.progress_ms
-    date = new Date(data.item?.album.release_date)
-    state.track.release = ((date.getDate() )) + "/" + ((date.getMonth() + 1)) + "/" + date.getFullYear()
-    progress()
-  }
-
-  const resumeUserPlayback = async() => {
+  // Os comandos seguem via REST (os controles locais do SDK ficam para #71);
+  // depois de cada comando a fonte compartilhada é revalidada uma vez.
+  const resumeUserPlayback = async () => {
     await startResumePlayback()
-    await getPlaybackUserState()
+    await refresh()
   }
 
-  const pauseUserPlayback = async() => {
-      await pausePlayback()
-      await getPlaybackUserState()
+  const pauseUserPlayback = async () => {
+    await pausePlayback()
+    await refresh()
   }
 
-  const skipToUserNext = async() => {
-      await skipToNext()
-      await getPlaybackUserState()
+  const skipToUserNext = async () => {
+    await skipToNext()
+    await refresh()
   }
 
-  const skipToUserPrevious = async() => {
-      await skipToPrevious()
-      await getPlaybackUserState()
+  const skipToUserPrevious = async () => {
+    await skipToPrevious()
+    await refresh()
   }
 
-  const transferUserPlayback = async(targetDeviceId) => {
+  const transferUserPlayback = async (targetDeviceId) => {
     const device = devices.value.find(device => device.id === targetDeviceId)
     if (device?.is_app_device) {
       // Chamado dentro do gesto do usuário para liberar o autoplay (iOS/Safari).
@@ -189,78 +156,33 @@
       "device_ids": [targetDeviceId]
     }
     await transferPlayback(formData)
-    if((device?.is_active)&&(!state.isPlaying)){
+    if((device?.is_active)&&(!isPlaying.value)){
       await startResumePlayback()
     }
     await getUserDevices()
-    await getPlaybackUserState()
+    await refresh()
   }
-
-  const stopProgress = () => {
-    clearInterval(intervalProgress)
-    intervalProgress = null
-  }
-
-  const progress = async() => {
-    const interval = 500
-    if (intervalProgress) {
-      return //interval already started
-    }
-    intervalProgress = setInterval(function() {
-        if (! state.isPlaying){
-            state.prog = 0
-            stopProgress()
-            return
-        }
-        state.prog = state.prog + interval
-        if (state.prog >= state.track.time_total) {
-            state.prog = 0
-            getPlaybackUserState()
-            return
-        }
-        if (state.progOrig != state.progressMs) {
-            state.progOrig = state.progressMs
-            state.prog = state.progressMs
-        }
-        state.progPerc = (state.prog / state.item.duration_ms) * 100
-        let date = new Date(state.prog)
-        state.track.time = date.getUTCMinutes() + ':' + ('0' + date.getUTCSeconds()).slice(-2)
-    }, interval)
-  };
-
-  setInterval(async () => {
-    try{
-      await getPlaybackUserState()
-      getTrackStatistics()
-    } catch(error) {
-      console.error(error)
-    }
-  }, 10000)
 
   onMounted(async () => {
-    progress()
     if (! playlistStore.isLoaded) {
       const playlists = await loadAllFromDatabase()
       playlistStore.loadAll(playlists)
     }
-    getTrackStatistics()
-  })
-  
-  onBeforeMount(async () => {
-    await getUserDevices()
-    await getPlaybackUserState()
+    // Uma leitura única para começar fresco; daqui em diante a fonte
+    // compartilhada se atualiza sozinha (eventos do SDK ou fallback REST).
+    await refresh()
   })
 
-  onBeforeUnmount(() => {
-    stopProgress()
-  })
+  onBeforeMount(async () => {
+    await getUserDevices()
+  });
 
 </script>
 
 <template>
   <AddToPlaylistModal
     :open="addToPlaylistOpen"
-    :track="state.item"
+    :track="rawTrack"
     @close="onCloseAddToPlaylist"
     @sell-slot="onSellSlot"
   />
@@ -275,7 +197,7 @@
     @confirm="onCloseSellSlot"
   />
   <div class="page py-md space-y-lg"> 
-    <p v-if="state.message" class="text-center text-label-sm text-primary">{{ state.message }}</p>     
+    <p v-if="message" class="text-center text-label-sm text-primary">{{ message }}</p>     
 
     <!-- Caminho para conceder o escopo de reprodução uma vez (#66). -->
     <div
@@ -313,9 +235,9 @@
         <div class="relative group shrink-0">
           <div class="absolute inset-0 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"></div>
           <img
-            v-if="state.item?.album?.images?.[0]?.url"
+            v-if="track?.image"
             class="relative w-52 h-52 md:w-72 md:h-72 object-cover rounded-xl shadow-2xl border border-outline-variant/20"
-            :src="state.item.album.images[0].url"
+            :src="track.image"
           />
           <div v-else class="relative w-52 h-52 md:w-72 md:h-72 rounded-xl bg-surface-container-high flex items-center justify-center">
             <font-awesome-icon icon="music" class="text-on-surface-variant text-[48px]" />
@@ -324,18 +246,18 @@
 
         <div class="flex-1 flex flex-col gap-4 py-2 w-full min-w-0">
           <div class="flex items-center gap-3">
-            <font-awesome-icon v-if="state.track?.tracked" icon="heart" class="text-primary text-[22px] shrink-0" />
-            <h1 class="text-headline-lg md:text-display-lg text-on-surface truncate">{{ state.item?.name }}</h1>
+            <font-awesome-icon v-if="isTracked" icon="heart" class="text-primary text-[22px] shrink-0" />
+            <h1 class="text-headline-lg md:text-display-lg text-on-surface truncate">{{ track?.name }}</h1>
           </div>
-          <h4 class="text-body-md text-on-surface-variant">{{ state.item?.artists?.map(artist => artist.name).join(', ') }}</h4>
+          <h4 class="text-body-md text-on-surface-variant">{{ track?.artists?.join(', ') }}</h4>
 
           <div class="flex flex-col gap-1 w-full">
             <div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
-              <div class="h-full bg-primary transition-[width] duration-100" :style="{ width: state.progPerc + '%' }"></div>
+              <div class="h-full bg-primary transition-[width] duration-100" :style="{ width: progressPerc + '%' }"></div>
             </div>
             <div class="flex justify-between text-[10px] text-on-surface-variant tabular-nums">
-              <span>{{ state.track?.time }}</span>
-              <span>{{ state.track?.display_time_total }}</span>
+              <span>{{ elapsedLabel }}</span>
+              <span>{{ totalLabel }}</span>
             </div>
           </div>
 
@@ -344,7 +266,7 @@
               <font-awesome-icon icon="step-backward" />
             </button>
             <button
-              v-if="!state.isPlaying"
+              v-if="!isPlaying"
               class="w-16 h-16 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
               @click="resumeUserPlayback()"
             >
@@ -367,12 +289,12 @@
               <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Popularidade</span>
               <div class="flex items-center gap-1 text-headline-md text-on-surface">
                 <font-awesome-icon icon="chart-line" class="text-primary text-[16px]" />
-                {{ state.item?.popularity }}%
+                {{ popularityLabel }}
               </div>
             </div>
             <div class="flex flex-col">
               <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Lançamento</span>
-              <span class="text-headline-md text-on-surface">{{ state.track?.release }}</span>
+              <span class="text-headline-md text-on-surface">{{ releaseLabel }}</span>
             </div>
           </div>
         </div>
