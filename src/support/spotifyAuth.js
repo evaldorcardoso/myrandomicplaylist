@@ -22,6 +22,14 @@ export const SPOTIFY_SCOPES = [
 
 export const SPOTIFY_SCOPE_STRING = SPOTIFY_SCOPES.join(' ')
 
+// A resposta do Spotify traz `scope` como string separada por espaços. Estes
+// helpers puros decidem se o escopo de reprodução (`streaming`) foi de fato
+// concedido — o token antigo (concedido antes do escopo existir) não o carrega.
+export const parseScopes = (scope) =>
+  typeof scope === 'string' ? scope.split(/\s+/).filter(Boolean) : []
+
+export const hasStreamingScope = (scope) => parseScopes(scope).includes('streaming')
+
 const defaultRedirectTo = () =>
   typeof window !== 'undefined' ? `${window.location.origin}/callback` : '/callback'
 

@@ -9,7 +9,9 @@ import { supabase } from '@/support/supabaseClient'
 import {
   SPOTIFY_SCOPES,
   SPOTIFY_SCOPE_STRING,
-  signInWithSpotify
+  signInWithSpotify,
+  parseScopes,
+  hasStreamingScope
 } from '@/support/spotifyAuth'
 
 describe('spotifyAuth · escopos', () => {
@@ -59,5 +61,24 @@ describe('spotifyAuth · signInWithSpotify', () => {
   it('força a tela de consentimento quando pedido (conceder o escopo novo uma vez)', async () => {
     await signInWithSpotify({ forceConsent: true })
     expect(supabase.auth.signInWithOAuth.mock.calls[0][0].options.queryParams).toEqual({ show_dialog: 'true' })
+  })
+})
+
+describe('spotifyAuth · escopos concedidos', () => {
+  it('quebra a string de escopos em lista', () => {
+    expect(parseScopes('user-read-email streaming')).toEqual(['user-read-email', 'streaming'])
+  })
+
+  it('normaliza espaços e tolera valores ausentes', () => {
+    expect(parseScopes('  user-read-private   streaming ')).toEqual(['user-read-private', 'streaming'])
+    expect(parseScopes('')).toEqual([])
+    expect(parseScopes(undefined)).toEqual([])
+    expect(parseScopes(null)).toEqual([])
+  })
+
+  it('detecta se o escopo de reprodução foi concedido', () => {
+    expect(hasStreamingScope('user-read-private streaming')).toBe(true)
+    expect(hasStreamingScope('user-read-private user-read-email')).toBe(false)
+    expect(hasStreamingScope(null)).toBe(false)
   })
 })

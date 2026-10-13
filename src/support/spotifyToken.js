@@ -17,6 +17,9 @@ const DEFAULT_EXPIRES_IN_S = 3600
 let accessToken = null
 let expiresAt = 0
 let inFlightRefresh = null
+// Escopos concedidos pelo Spotify para o access token atual (response `scope`).
+// Permite saber, sem tentativa e erro, se o escopo de reprodução foi concedido.
+let grantedScope = null
 
 export class SpotifyTokenError extends Error {
     constructor(message, { code, status } = {}) {
@@ -78,6 +81,9 @@ async function refreshAccessToken() {
         console.error('spotify-token:', data.warning)
     }
     accessToken = data.access_token
+    if (typeof data.scope === 'string' && data.scope) {
+        grantedScope = data.scope
+    }
     const expiresInSeconds = Number(data.expires_in) || DEFAULT_EXPIRES_IN_S
     const ttl = Math.max(expiresInSeconds * 1000 - EXPIRY_SAFETY_WINDOW_MS, MIN_TTL_MS)
     expiresAt = Date.now() + ttl
@@ -101,6 +107,13 @@ export function clearSpotifyToken() {
     accessToken = null
     expiresAt = 0
     inFlightRefresh = null
+    grantedScope = null
+}
+
+// Escopos concedidos conhecidos (string do Spotify), ou null se ainda não
+// houve renovação nesta sessão.
+export function getGrantedSpotifyScope() {
+    return grantedScope
 }
 
 // Guarda o provider_refresh_token recém-obtido no login (callback do OAuth).

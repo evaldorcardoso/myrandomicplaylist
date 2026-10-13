@@ -112,6 +112,9 @@ async function refreshAccessToken(admin, userId, storedRefreshToken) {
   return json({
     access_token: accessToken,
     expires_in: data?.expires_in ?? null,
+    // Escopos concedidos: o cliente usa para detectar, sem tentativa e erro, se
+    // o escopo de reprodução (`streaming`) já foi concedido (#66).
+    scope: typeof data?.scope === 'string' ? data.scope : null,
     ...(rotationFailed ? { warning: 'refresh_token_rotation_failed' } : {})
   })
 }
