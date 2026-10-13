@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useProfile } from '@/support/spotifyApi'
 import { useUserStore } from '@/stores/user'
 import { useNowPlaying } from '@/composables/useNowPlaying'
+import { formatDuration, formatReleaseDate, progressPercent } from '@/support/playbackFormat'
 import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
 import SellSlotModal from '@/components/SellSlotModal.vue'
 
@@ -21,32 +22,11 @@ const isTracked = computed(() => {
     return !!userStore.getTrack(nowPlaying.value?.track?.id)
 })
 
-const releaseDate = computed(() => {
-    const date = nowPlaying.value?.track?.release_date
-    if (!date) return '—'
-    const [year, month, day] = date.split('-')
-    const parts = []
-    if (day) parts.push(day)
-    if (month) parts.push(month)
-    parts.push(year)
-    return parts.join('/')
-})
+const releaseDate = computed(() => formatReleaseDate(nowPlaying.value?.track?.release_date))
 
-const formatTime = (ms) => {
-    if (!ms || ms < 0) return '0:00'
-    const totalSeconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return minutes + ':' + String(seconds).padStart(2, '0')
-}
-
-const elapsedTime = computed(() => formatTime(position.value))
-const totalTime = computed(() => formatTime(nowPlaying.value?.duration))
-const progressPerc = computed(() => {
-    const duration = nowPlaying.value?.duration
-    if (!duration) return 0
-    return Math.min(100, (position.value / duration) * 100)
-})
+const elapsedTime = computed(() => formatDuration(position.value))
+const totalTime = computed(() => formatDuration(nowPlaying.value?.duration))
+const progressPerc = computed(() => progressPercent(position.value, nowPlaying.value?.duration))
 
 // Play/pause seguem via REST (os controles locais do SDK ficam para #71); a
 // fonte compartilhada se atualiza sozinha pelo evento do SDK ou pela releitura.
