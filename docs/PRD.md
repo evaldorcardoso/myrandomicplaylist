@@ -214,7 +214,7 @@ Todas as rotas autenticadas ficam sob `components/Layout.vue` (Sidebar + TopBar 
 - **Frontend SPA:** Vue 3 (`<script setup>`) + Vite 6, Pinia, Vue Router, Tailwind CSS v4 (`@theme` custom em `src/assets/main.css`), SCSS.
 - **PWA:** `vite-plugin-pwa` com `injectManifest` (`src/sw.ts`), `registerType: 'autoUpdate'`. Precache + `NavigationRoute` (denylist para `api.spotify.com`, CDNs do Spotify e `*.supabase.co`) + `CacheFirst` para imagens do Spotify (50 entradas / 30 dias). Handlers de `push` e `notificationclick`. Manifest: "MR Playlist / MRP", descrição "Painel de curadoria de playlists do Spotify", tema `#62faf5`. `ReloadPWA.vue` avisa atualizações.
 - **Backend/BaaS:** Supabase — **Auth** (provider Spotify), Postgres + client JS `supabase-js` (com RLS de dono) e **duas Edge Functions Deno**: `spotify-token` (`supabase/functions/spotify-token/index.ts`, renovação server-side do token do Spotify) e `notify-expiration` (`supabase/functions/notify-expiration/index.ts`, Web Push). Há também `scripts/notify-expiration.js` (mesma lógica, `--dry-run`) acionável pelo workflow manual `.github/workflows/notify-expiration.yml`.
-- **APIs externas:** Spotify Web API (chamadas diretas do browser via axios, com access token curto renovado server-side).
+- **APIs externas:** Spotify Web API (chamadas diretas do browser via axios, com access token curto renovado server-side) e **Web Playback SDK** (`sdk.scdn.co`, script via CDN) que registra o app como dispositivo Connect "MR Playlist".
 
 ```
 Browser (Vue/PWA)
@@ -255,7 +255,7 @@ Browser (Vue/PWA)
 - **Login:** Supabase Auth com o provider Spotify (`supabase.auth.signInWithOAuth({ provider: 'spotify' })` em `views/Login.vue`), redirect para `window.location.origin + '/callback'`. O Redirect URI cadastrado no Spotify Developer Dashboard é `https://<projeto>.supabase.co/auth/v1/callback`.
 - **Token do Spotify:** o Supabase entrega, na sessão, um `provider_token` curto (~1 h) e um `provider_refresh_token`. O refresh token é enviado por `src/support/spotifyToken.js` → Edge Function `spotify-token` (`action: store`) e guardado em `spotify_credentials`; o access token curto vive apenas em memória no navegador.
 - **Renovação:** `getSpotifyToken()` renova server-side (`action: refresh`) um pouco antes de expirar, deduplicando chamadas concorrentes; o interceptor do axios injeta o token e repete a requisição uma vez em caso de 401.
-- **Scopes solicitados:** `user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read`.
+- **Scopes solicitados:** `user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-top-read streaming`. O `streaming` habilita o Web Playback SDK; centralizados em `src/support/spotifyAuth.js`.
 - **Endpoints usados (direto do browser, com access token curto):** `/me`, `/me/top/tracks`, `/me/playlists`, `/me/player*`, `/playlists/{id}` (+ `/tracks`, `/images`), `/users/{id}/playlists`, `/tracks/{id}`, `/albums/{id}`, `/artists`.
 - **Armazenamento:** preferências e cache de perfil em `localStorage` (`spotify_filter_library`, `user`, `spotify_settings`); a sessão do Supabase é gerida pelo `supabase-js`. **Nenhum token do Spotify nem segredo fica no navegador.**
 

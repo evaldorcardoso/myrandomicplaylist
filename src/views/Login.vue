@@ -1,6 +1,6 @@
 <script setup>
   import { onMounted, reactive, ref } from 'vue'
-  import { supabase } from '@/support/supabaseClient'
+  import { signInWithSpotify } from '@/support/spotifyAuth'
 
   const msg = ref('Gerador de playlist aleatória do Spotify')
 
@@ -10,26 +10,9 @@
     version: '',
   })
 
-  // Mesmos escopos do OAuth anterior (Authorization Code no frontend).
-  const SPOTIFY_SCOPES = [
-    'user-read-private',
-    'user-read-email',
-    'playlist-read-private',
-    'playlist-modify-public',
-    'playlist-modify-private',
-    'user-read-playback-state',
-    'user-modify-playback-state',
-    'user-top-read',
-  ].join(' ')
-
+  // Escopos centralizados em `support/spotifyAuth.js` (inclui `streaming`).
   const authorize = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'spotify',
-      options: {
-        scopes: SPOTIFY_SCOPES,
-        redirectTo: `${window.location.origin}/callback`,
-      },
-    })
+    const { error } = await signInWithSpotify()
     if (error) {
       state.message = error.message
       console.error('Falha ao iniciar o login com o Spotify:', error)

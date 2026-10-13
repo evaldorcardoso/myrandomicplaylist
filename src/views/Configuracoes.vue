@@ -7,6 +7,8 @@
   import { notify } from "@kyvg/vue3-notification";
   import { hexToRgba } from '@/support/helpers.js';
   import { usePushNotifications } from '@/composables/usePushNotifications'
+  import { signInWithSpotify } from '@/support/spotifyAuth'
+  import { useWebPlayback } from '@/composables/useWebPlayback'
 
   const settingsStore = useSettingsStore()
   const playlistStore = usePlaylistStore()
@@ -14,6 +16,23 @@
   const { getAllPricePositions, createPricePosition, updatePricePosition, deletePricePosition } = TrackRequestService()
 
   const push = usePushNotifications()
+  const { deviceId: playbackDeviceId, isReady: playbackReady, supported: playbackSupported, requiresConsent } = useWebPlayback()
+
+  // Reconexão que força a tela de consentimento: concede o escopo `streaming`
+  // uma única vez em sessões autorizadas antes dele existir (#66).
+  const reconnectSpotify = async () => {
+    const { error } = await signInWithSpotify({ forceConsent: true })
+    if (error) {
+      notify({ title: 'Ops', text: 'Não foi possível abrir o consentimento do Spotify.', type: 'error' })
+    }
+  }
+
+  const playbackStatus = computed(() => {
+    if (requiresConsent.value) return 'Permissão de reprodução pendente'
+    if (!playbackSupported.value) return 'Reprodução no app indisponível neste navegador'
+    if (playbackDeviceId.value && playbackReady.value) return 'Conectado — dispositivo "MR Playlist" disponível'
+    return 'Aguardando conexão do dispositivo'
+  })
 
   const activeTab = ref('settings')
 
@@ -370,6 +389,37 @@ const SETTINGS_FIELDS = [
             <p v-if="push.errorMessage" class="mt-2 text-caption text-error">
               {{ push.errorMessage }}
             </p>
+          </div>
+
+          <!-- Reprodução no app -->
+          <div class="pt-md border-t border-outline-variant/10">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="material-symbols-outlined text-secondary">speaker</span>
+              <h3 class="text-headline-sm font-display text-on-surface">Reprodução no app</h3>
+            </div>
+            <p class="text-label-sm text-on-surface-variant mb-4">
+              O app aparece como o dispositivo "MR Playlist" na sua conta Spotify. Ele nunca assume a
+              reprodução sozinho: transfira para ele na tela do Player para ouvir aqui. A permissão de
+              reprodução é concedida uma única vez.
+            </p>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex flex-col min-w-0">
+                <span class="text-body-md font-bold text-on-surface">
+                  {{ playbackDeviceId && playbackReady ? 'Ativo' : (requiresConsent ? 'Permissão pendente' : 'Inativo') }}
+                </span>
+                <span class="text-label-sm text-on-surface-variant">{{ playbackStatus }}</span>
+              </div>
+              <button
+                class="px-4 py-2.5 rounded-xl text-label-md font-bold transition-all flex items-center gap-2 shrink-0"
+                :class="requiresConsent
+                  ? 'bg-secondary text-on-secondary hover:brightness-110'
+                  : 'bg-surface-container-high text-on-surface border border-outline-variant/20 hover:bg-surface-container'"
+                @click="reconnectSpotify()"
+              >
+                <span class="material-symbols-outlined text-[18px]">login</span>
+                {{ requiresConsent ? 'Conceder permissão' : 'Reconectar Spotify' }}
+              </button>
+            </div>
           </div>
         </section>
 

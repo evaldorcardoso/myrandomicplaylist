@@ -1,6 +1,9 @@
 <script setup>
-  import { onMounted, onBeforeMount, onBeforeUnmount, ref, reactive } from 'vue'
+  import { onMounted, onBeforeMount, onBeforeUnmount, ref, reactive, computed, watch } from 'vue'
   import { useProfile } from '@/support/spotifyApi'
+  import { markAppDevice } from '@/support/webPlayback'
+  import { signInWithSpotify } from '@/support/spotifyAuth'
+  import { useWebPlayback } from '@/composables/useWebPlayback'
   import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
   import { useUserStore } from '@/stores/user'
@@ -17,6 +20,9 @@
     startResumePlayback,
     transferPlayback
   } = useProfile()
+
+  // Dispositivo Spotify Connect do próprio app (Web Playback SDK).
+  const { deviceId, requiresConsent, activateElement } = useWebPlayback()
 
   const { loadAllFromDatabase } = PlaylistService()
 
@@ -60,6 +66,18 @@
   const sellSlotData = ref(null)
   const userStore = useUserStore()
   const playlistStore = usePlaylistStore()
+
+  // Lista de dispositivos com o item do app destacado (#66). O `deviceId` vem
+  // do evento `ready` do SDK e pode chegar depois do primeiro carregamento.
+  const devices = computed(() => markAppDevice(state.devices, deviceId.value))
+
+  const requestConsent = async () => {
+    const { error } = await signInWithSpotify({ forceConsent: true })
+    if (error) {
+      state.message = error.message
+      console.error('Falha ao pedir o consentimento de reprodução:', error)
+    }
+  }
 
   const getTrackStatistics = async() => {
     if (! state.item) return
@@ -110,6 +128,13 @@
     state.devices = data.devices
   }
 
+  // O dispositivo do app só entra na lista depois que o SDK fica `ready`;
+  // recarrega os dispositivos quando o id chega.
+  watch(deviceId, (id) => {
+    if (!id) return
+    getUserDevices().catch((error) => console.error('Falha ao recarregar dispositivos:', error))
+  })
+
   const getPlaybackUserState = async() => {
     const { data } = await getPlaybackState()
     if (! data) {
@@ -154,16 +179,21 @@
       await getPlaybackUserState()
   }
 
-  const transferUserPlayback = async(deviceId) => {
+  const transferUserPlayback = async(targetDeviceId) => {
+    const device = devices.value.find(device => device.id === targetDeviceId)
+    if (device?.is_app_device) {
+      // Chamado dentro do gesto do usuário para liberar o autoplay (iOS/Safari).
+      await activateElement()
+    }
     const formData = {
-      "device_ids": [deviceId]
+      "device_ids": [targetDeviceId]
     }
     await transferPlayback(formData)
-    const device = state.devices.find(device => device.id === deviceId)
-    if((device.is_active)&&(!state.isPlaying)){
+    if((device?.is_active)&&(!state.isPlaying)){
       await startResumePlayback()
     }
     await getUserDevices()
+    await getPlaybackUserState()
   }
 
   const stopProgress = () => {
@@ -247,7 +277,27 @@
   <div class="page py-md space-y-lg"> 
     <p v-if="state.message" class="text-center text-label-sm text-primary">{{ state.message }}</p>     
 
-    <div v-if="state.devices.length === 0" class="flex flex-col items-center justify-center gap-4 py-20 text-center">
+    <!-- Caminho para conceder o escopo de reprodução uma vez (#66). -->
+    <div
+      v-if="requiresConsent"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-secondary-container/20 border border-secondary/30 rounded-xl p-4"
+    >
+      <div class="flex items-center gap-3 min-w-0">
+        <font-awesome-icon icon="desktop" class="text-secondary text-[20px] shrink-0" />
+        <p class="text-body-sm text-on-surface">
+          Para ouvir dentro do app, conceda a permissão de reprodução do Spotify.
+        </p>
+      </div>
+      <button
+        class="px-4 py-2.5 rounded-xl bg-secondary text-on-secondary text-label-md font-bold hover:brightness-110 transition-all flex items-center gap-2 shrink-0"
+        @click="requestConsent()"
+      >
+        <span class="material-symbols-outlined text-[18px]">login</span>
+        Conceder permissão
+      </button>
+    </div>
+
+    <div v-if="devices.length === 0" class="flex flex-col items-center justify-center gap-4 py-20 text-center">
       <div class="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center">
         <font-awesome-icon icon="mobile-alt" class="text-primary text-[32px]" />
       </div>
@@ -257,7 +307,7 @@
     </div>
 
     <!-- Player Hero -->
-    <div v-if="state.devices.length > 0" class="relative overflow-hidden rounded-2xl bg-surface-container-lowest p-xl border border-outline-variant/10 shadow-xl">
+    <div v-if="devices.length > 0" class="relative overflow-hidden rounded-2xl bg-surface-container-lowest p-xl border border-outline-variant/10 shadow-xl">
       <div class="absolute top-0 right-0 -mt-16 -mr-16 w-96 h-96 bg-primary/10 blur-[120px] rounded-full"></div>
       <div class="relative flex flex-col md:flex-row gap-xl items-center md:items-start">
         <div class="relative group shrink-0">
@@ -345,31 +395,45 @@
     </div>         
 
     <!-- Devices -->
-    <section v-if="state.devices.length > 0" class="flex flex-col gap-md">
+    <section v-if="devices.length > 0" class="flex flex-col gap-md">
       <div class="flex items-center justify-between">
         <h3 class="text-headline-sm text-on-surface">Dispositivos disponíveis</h3>
         <span class="px-2 py-0.5 bg-surface-container-high rounded text-label-sm text-on-surface-variant">
-          {{ state.devices.length }} {{ state.devices.length === 1 ? 'dispositivo' : 'dispositivos' }}
+          {{ devices.length }} {{ devices.length === 1 ? 'dispositivo' : 'dispositivos' }}
         </span>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-gutter md:gap-md">
         <button
-          v-for="device in state.devices"
+          v-for="device in devices"
           :key="device.id"
-          class="flex items-center gap-4 bg-surface-container-low rounded-xl p-4 border border-outline-variant/10 hover:bg-surface-container transition-colors text-left"
-          :class="{ 'border-primary/40': device.is_active }"
+          class="flex items-center gap-4 bg-surface-container-low rounded-xl p-4 border transition-colors text-left"
+          :class="device.is_app_device
+            ? 'border-secondary/50 bg-secondary-container/10 hover:bg-secondary-container/20'
+            : 'border-outline-variant/10 hover:bg-surface-container'"
           @click="transferUserPlayback(device.id)"
         >
-          <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" :class="device.is_active ? 'bg-primary/20 text-primary' : 'bg-surface-container-high text-on-surface-variant'">
-            <font-awesome-icon :icon="device.is_active ? 'check' : 'mobile-alt'" />
+          <div
+            class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+            :class="device.is_app_device
+              ? 'bg-secondary/20 text-secondary'
+              : (device.is_active ? 'bg-primary/20 text-primary' : 'bg-surface-container-high text-on-surface-variant')"
+          >
+            <font-awesome-icon :icon="device.is_app_device ? 'desktop' : (device.is_active ? 'check' : 'mobile-alt')" />
           </div>
           <div class="flex flex-col min-w-0 flex-1">
             <span class="text-body-md font-semibold text-on-surface truncate">{{ device.name }}</span>
-            <span class="text-label-sm" :class="device.is_active ? 'text-primary' : 'text-on-surface-variant'">{{ device.type }}</span>
+            <span class="text-label-sm" :class="device.is_active ? 'text-primary' : 'text-on-surface-variant'">
+              {{ device.is_app_device ? 'Neste app' : device.type }}
+            </span>
           </div>
-          <span v-if="device.is_active" class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest shrink-0">
-            Ativo
-          </span>
+          <div class="flex flex-col items-end gap-1 shrink-0">
+            <span v-if="device.is_active" class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest">
+              Ativo
+            </span>
+            <span v-if="device.is_app_device" class="px-2 py-0.5 rounded-full bg-secondary/15 text-secondary text-[10px] font-bold uppercase tracking-widest">
+              Este app
+            </span>
+          </div>
         </button>
       </div>
     </section>

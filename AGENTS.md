@@ -142,6 +142,8 @@ src/
 ├── support/             # Utilities
 │   ├── helpers.js               # localStorage keys, logout, hexToRgba
 │   ├── spotifyApi.js            # Spotify endpoint wrappers
+│   ├── spotifyAuth.js           # OAuth scopes + login (forced consent)
+│   ├── webPlayback.js           # pure helpers: app Connect device ("MR Playlist")
 │   ├── supabaseClient.js        # Supabase client
 │   ├── occupancyCache.js        # TTL caches (occupancy/earnings/expirations)
 │   ├── requesterCuratorCache.js
@@ -168,6 +170,7 @@ src/
     ├── requestToken.js
     ├── usePlaylistData.js
     ├── usePushNotifications.js
+    ├── useWebPlayback.js         # singleton Web Playback SDK device ("MR Playlist")
     └── useCuratorSuggestions.js
 
 supabase/functions/notify-expiration/index.ts   # Deno edge function (web-push)

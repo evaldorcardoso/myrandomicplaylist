@@ -7,8 +7,10 @@
     import { useProfile } from '@/support/spotifyApi'
     import { useUserStore } from '@/stores/user'
     import { useNotificationsStore } from '@/stores/notifications'
+    import { useWebPlayback } from '@/composables/useWebPlayback'
 
     const { getPlaybackState, getProfile } = useProfile()
+    const { boot: bootWebPlayback } = useWebPlayback()
     const floatPlayerData = ref(null)
     
     const step = ref(0)
@@ -72,6 +74,9 @@
         const { data } = await getPlaybackState()
         floatPlayerData.value = data
         await getUserProfile()
+        // Registra o app como dispositivo Spotify Connect ("MR Playlist") em
+        // qualquer rota autenticada. Nunca transfere a reprodução sozinho.
+        bootWebPlayback()
     })
 </script>
 
