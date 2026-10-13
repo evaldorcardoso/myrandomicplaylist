@@ -2,6 +2,7 @@ import { computed, inject, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
 import { useGeneral, useProfile } from '@/support/spotifyApi'
+import { usePlaybackLauncher } from '@/composables/usePlaybackLauncher'
 import { supabase } from '@/support/supabaseClient'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useUserStore } from '@/stores/user'
@@ -23,7 +24,8 @@ export function usePlaylistData(callbacks = {}) {
   const userStore = useUserStore()
   const progress = inject('progress')
   const { getPlaylist, getTracks, getArtists } = useGeneral()
-  const { executePlaylist, pausePlayback } = useProfile()
+  const { pausePlayback } = useProfile()
+  const { playOnAnyDevice } = usePlaybackLauncher()
   const {
     hasChangedFromDatabase,
     hasSilentChangesFromDatabase,
@@ -437,11 +439,16 @@ export function usePlaylistData(callbacks = {}) {
         },
         "position_ms": 0,
       }
-      const { status } = await executePlaylist(formData)
-      if (status != 204) {
+      // Sem dispositivo ativo, o lançador toca no próprio app; o player web
+      // só abre quando nem o app consegue assumir a reprodução.
+      const { ok, noActiveDevice, error } = await playOnAnyDevice(formData)
+      if (ok) return
+      if (noActiveDevice) {
         openPlaylistApp(state.playlist.id)
         return
       }
+      console.error(error)
+      showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error?.response?.data?.error?.message ?? 'Não foi possível executar a playlist')
     } catch (error) {
       console.error(error.response)
       showNotification(NOTIFICATIONS_TYPE.danger, 'Ops', error.response?.data?.error?.message ?? 'Não foi possível executar a playlist')

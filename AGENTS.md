@@ -145,6 +145,8 @@ src/
 │   ├── spotifyApi.js            # Spotify endpoint wrappers
 │   ├── spotifyAuth.js           # OAuth scopes + login (forced consent)
 │   ├── webPlayback.js           # pure helpers: app Connect device ("MR Playlist")
+│   ├── playbackAvailability.js  # degradação da reprodução no app
+│   ├── playbackRouting.js       # fallback do play para o dispositivo do app
 │   ├── supabaseClient.js        # Supabase client
 │   ├── occupancyCache.js        # TTL caches (occupancy/earnings/expirations)
 │   ├── requesterCuratorCache.js
@@ -173,6 +175,8 @@ src/
     ├── usePushNotifications.js
     ├── useWebPlayback.js         # singleton Web Playback SDK device ("MR Playlist")
     ├── useNowPlaying.js          # fonte compartilhada de "agora tocando" (SDK + fallback REST)
+    ├── usePlaybackControls.js    # controles locais (SDK) vs REST
+    ├── usePlaybackLauncher.js    # play com fallback para o dispositivo do app
     └── useCuratorSuggestions.js
 
 supabase/functions/notify-expiration/index.ts   # Deno edge function (web-push)
