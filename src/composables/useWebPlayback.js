@@ -11,12 +11,19 @@
 // Também expõe os controles locais do player (#71): quando o app é o
 // dispositivo ativo, play/pause/próxima/anterior/seek/volume falam direto com o
 // SDK — sem ida e volta à API do Spotify.
+//
+// Degradação graciosa (#72): se o SDK não puder tocar no app — navegador sem
+// DRM/EME, conta sem o requisito de reprodução ou falha ao carregar/conectar —
+// o app continua funcionando como controle remoto e expõe um aviso discreto
+// (`degradation`). Nenhum erro do SDK derruba a interface: todos são capturados
+// e registrados.
 
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { getSpotifyToken, getGrantedSpotifyScope } from '@/support/spotifyToken'
 import { hasStreamingScope } from '@/support/spotifyAuth'
 import { APP_DEVICE_NAME, SDK_SCRIPT_URL } from '@/support/webPlayback'
 import { clampVolume } from '@/support/playbackControls'
+import { resolvePlaybackDegradation } from '@/support/playbackAvailability'
 
 const DEFAULT_VOLUME = 0.8
 
@@ -26,11 +33,18 @@ let player = null
 // `activateElement()` só vale dentro de um gesto do usuário. Guardamos se já
 // houve um gesto para replicar a ativação quando o player ficar pronto.
 let userGestureSeen = false
+// O elemento de áudio só é ativado uma vez; até conseguir, seguimos tentando a
+// cada gesto para não prender a reprodução em pausa no iOS/Safari (#72).
+let elementActivated = false
 
 const deviceId = ref(null)
 const isReady = ref(false)
 const supported = ref(true)
 const requiresConsent = ref(false)
+// Causas de degradação (#72): conta sem o requisito de reprodução e falha ao
+// carregar/conectar o SDK. `supported` (DRM/EME) já existe desde #66.
+const accountError = ref(false)
+const unavailable = ref(false)
 const lastError = ref(null)
 // Estado bruto do SDK. `shallowRef` porque o objeto é reescrito a cada evento e
 // não deve virar profundamente reativo.
@@ -38,6 +52,17 @@ const playbackState = shallowRef(null)
 // Volume local do SDK (0..1). O SDK não emite evento de volume, então a UI lê
 // daqui: sincronizado no `ready` e atualizado de forma otimista nos controles.
 const volume = ref(DEFAULT_VOLUME)
+
+// Aviso discreto quando a reprodução no app não está disponível (#72). É nulo
+// no caso normal; a UI usa este estado para continuar no controle remoto sem
+// quebrar.
+const degradation = computed(() =>
+  resolvePlaybackDegradation({
+    supported: supported.value,
+    accountError: accountError.value,
+    unavailable: unavailable.value,
+  })
+)
 
 // Injeta o script do SDK uma única vez. Resolve quando `window.Spotify` está
 // pronto; em recargas/duplicidade reaproveita o que já está na página.
@@ -97,6 +122,8 @@ const createPlayer = (Spotify) => {
   instance.addListener('ready', ({ device_id }) => {
     deviceId.value = device_id
     isReady.value = true
+    // Conectou: limpa a falha genérica de inicialização, caso tenha havido.
+    unavailable.value = false
     // O volume inicial vem do SDK. No iOS a leitura sempre devolve 1 (o volume
     // é físico); a UI não oferece o controle nessa plataforma.
     Promise.resolve(instance.getVolume())
@@ -123,11 +150,17 @@ const createPlayer = (Spotify) => {
 
   instance.addListener('initialization_error', ({ message }) => {
     // Ambiente sem proteção de conteúdo (DRM/EME): reprodução no app indisponível.
+    // Derruba o modo local para os controles caírem no REST (controle remoto).
     supported.value = false
+    isReady.value = false
     registerError('initialization_error', message)
   })
 
   instance.addListener('account_error', ({ message }) => {
+    // Conta sem o requisito de reprodução (ex.: sem Premium): segue no controle
+    // remoto com aviso discreto, sem quebrar a interface.
+    accountError.value = true
+    isReady.value = false
     registerError('account_error', message)
   })
 
@@ -178,23 +211,40 @@ export const setLocalVolume = (value) => {
   })
 }
 
-// Deve ser chamado dentro de um gesto do usuário (ex.: clique de transferência)
-// para liberar o autoplay — sobretudo no iOS/Safari.
-export const activateWebPlaybackElement = async () => {
-  userGestureSeen = true
-  detachGestureActivation()
-  if (!player) return
+// Tenta ativar o elemento de áudio do SDK. Fora de um gesto (retry do boot) é
+// só best-effort: **não** marca a ativação como concluída, pois no iOS ela só
+// vale dentro do gesto — assim os listeners seguem armados para o próximo toque.
+const tryActivateElement = async ({ fromGesture = false } = {}) => {
+  // Sem reprodução possível no app (degradação), não há o que ativar: solta o
+  // listener para não repetir tentativas a cada toque.
+  if (degradation.value) {
+    detachGestureActivation()
+    return
+  }
+  if (!player || elementActivated) return
   try {
     await player.activateElement()
+    if (fromGesture) {
+      elementActivated = true
+      detachGestureActivation()
+    }
   } catch (error) {
     console.error('Web Playback: falha ao ativar o elemento de áudio', error)
   }
 }
 
+// Deve ser chamado dentro de um gesto do usuário (clique de transferência ou o
+// primeiro toque, pelo listener global) para liberar o autoplay — sobretudo no
+// iOS/Safari, onde a reprodução ficaria presa em pausa.
+export const activateWebPlaybackElement = () => {
+  userGestureSeen = true
+  return tryActivateElement({ fromGesture: true })
+}
+
 // O SDK não inicia a reprodução sozinho após a transferência: é preciso um
-// gesto do usuário. Armamos um listener único de primeiro gesto (toque/clique/
-// tecla) para ativar o elemento — mesmo quando a transferência vem de outro
-// aparelho, sem clique no app.
+// gesto do usuário. Armamos um listener de primeiro gesto (toque/clique/tecla)
+// para ativar o elemento — mesmo quando a transferência vem de outro aparelho,
+// sem clique no app. O listener só é solto depois de uma ativação de verdade.
 const onFirstGesture = () => {
   activateWebPlaybackElement()
 }
@@ -221,15 +271,18 @@ export const bootWebPlayback = async () => {
     player = createPlayer(Spotify)
     const connected = await player.connect()
     if (!connected) {
+      unavailable.value = true
       lastError.value = 'Não foi possível conectar o player'
     }
-    // O gesto pode ter acontecido antes de o player existir: reaplica.
+    // O gesto pode ter acontecido antes de o player existir: tenta reaplicar
+    // (best-effort, fora do gesto; a ativação válida vem no próximo toque).
     if (userGestureSeen) {
-      await activateWebPlaybackElement()
+      await tryActivateElement()
     }
   } catch (error) {
     booted = false
     detachGestureActivation()
+    unavailable.value = true
     lastError.value = error?.message ?? String(error)
     console.error('Web Playback: falha ao inicializar', error)
   }
@@ -240,6 +293,7 @@ export const useWebPlayback = () => ({
   isReady,
   supported,
   requiresConsent,
+  degradation,
   lastError,
   playbackState,
   volume,

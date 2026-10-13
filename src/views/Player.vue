@@ -3,6 +3,7 @@
   import { useProfile } from '@/support/spotifyApi'
   import { markAppDevice } from '@/support/webPlayback'
   import { signInWithSpotify } from '@/support/spotifyAuth'
+  import { shouldOfferConsent } from '@/support/playbackAvailability'
   import { useWebPlayback } from '@/composables/useWebPlayback'
   import { useNowPlaying } from '@/composables/useNowPlaying'
   import { usePlaybackControls } from '@/composables/usePlaybackControls'
@@ -16,7 +17,14 @@
   const { getDevices, transferPlayback } = useProfile()
 
   // Dispositivo Spotify Connect do próprio app (Web Playback SDK).
-  const { deviceId, requiresConsent, activateElement } = useWebPlayback()
+  const { deviceId, requiresConsent, degradation, activateElement } = useWebPlayback()
+
+  // O consentimento só é oferecido quando conceder o escopo resolve. Se o
+  // navegador não suporta (DRM/EME) ou a conta é inelegível, mostramos o aviso
+  // de degradação em vez do botão (#72).
+  const offerConsent = computed(() =>
+    shouldOfferConsent({ requiresConsent: requiresConsent.value, degradation: degradation.value })
+  )
 
   // Fonte compartilhada de "agora tocando" (#68/#69). A tela não mantém mais
   // polling de estado nem progresso simulado: posição/faixa/estado vêm do mesmo
@@ -200,9 +208,20 @@
   <div class="page py-md space-y-lg"> 
     <p v-if="message" class="text-center text-label-sm text-primary">{{ message }}</p>     
 
+    <!-- Aviso discreto de degradação (#72): o SDK não pode tocar no app (sem
+         DRM/EME, conta inelegível ou falha ao conectar). O app segue como
+         controle remoto. -->
+    <div
+      v-if="degradation && !offerConsent"
+      class="flex items-start gap-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl px-4 py-3"
+    >
+      <span class="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0">info</span>
+      <p class="text-body-sm text-on-surface-variant">{{ degradation.message }}</p>
+    </div>
+
     <!-- Caminho para conceder o escopo de reprodução uma vez (#66). -->
     <div
-      v-if="requiresConsent"
+      v-if="offerConsent"
       class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-secondary-container/20 border border-secondary/30 rounded-xl p-4"
     >
       <div class="flex items-center gap-3 min-w-0">
