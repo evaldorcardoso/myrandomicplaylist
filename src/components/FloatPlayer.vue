@@ -1,15 +1,17 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useRoute } from 'vue-router'
-import { useProfile } from '@/support/spotifyApi'
 import { useUserStore } from '@/stores/user'
 import { useNowPlaying } from '@/composables/useNowPlaying'
+import { usePlaybackControls } from '@/composables/usePlaybackControls'
 import { formatDuration, formatReleaseDate, progressPercent } from '@/support/playbackFormat'
 import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
 import SellSlotModal from '@/components/SellSlotModal.vue'
 
-const { startResumePlayback, pausePlayback } = useProfile()
-const { nowPlaying, rawTrack, position, refresh } = useNowPlaying()
+// Controles unificados (#71): play/pause local no dispositivo do app, REST caso
+// contrário. O ícone segue o estado real da fonte compartilhada.
+const { togglePlay } = usePlaybackControls()
+const { nowPlaying, rawTrack, position } = useNowPlaying()
 const userStore = useUserStore()
 
 const route = useRoute()
@@ -27,22 +29,6 @@ const releaseDate = computed(() => formatReleaseDate(nowPlaying.value?.track?.re
 const elapsedTime = computed(() => formatDuration(position.value))
 const totalTime = computed(() => formatDuration(nowPlaying.value?.duration))
 const progressPerc = computed(() => progressPercent(position.value, nowPlaying.value?.duration))
-
-// Play/pause seguem via REST (os controles locais do SDK ficam para #71); a
-// fonte compartilhada se atualiza sozinha pelo evento do SDK ou pela releitura.
-const toggleUserPlayback = async () => {
-    try {
-        if (nowPlaying.value?.playing) {
-            await pausePlayback()
-        } else {
-            await startResumePlayback()
-        }
-    } catch (error) {
-        console.error('Falha ao alternar a reprodução:', error)
-    } finally {
-        await refresh()
-    }
-}
 
 const openAddToPlaylist = () => {
     addToPlaylistOpen.value = true
@@ -86,7 +72,7 @@ const onCloseSellSlot = () => {
                     <button
                         class="w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0 hover:scale-105 active:scale-95 transition-all"
                         :class="nowPlaying.playing ? 'opacity-90' : 'opacity-100'"
-                        @click="toggleUserPlayback()"
+                        @click="togglePlay()"
                     >
                         <span class="material-symbols-outlined">{{ nowPlaying.playing ? 'pause' : 'play_arrow' }}</span>
                     </button>

@@ -8,13 +8,15 @@
 // O dispositivo **nunca** assume o controle sozinho: ele apenas aparece na lista
 // de dispositivos da conta e o usuário transfere a reprodução quando quiser.
 //
-// O estado exposto aqui é a base para as issues seguintes (fonte de "agora
-// tocando" #67/#68, controles locais #71, degradação graciosa #72).
+// Também expõe os controles locais do player (#71): quando o app é o
+// dispositivo ativo, play/pause/próxima/anterior/seek/volume falam direto com o
+// SDK — sem ida e volta à API do Spotify.
 
 import { ref, shallowRef } from 'vue'
 import { getSpotifyToken, getGrantedSpotifyScope } from '@/support/spotifyToken'
 import { hasStreamingScope } from '@/support/spotifyAuth'
 import { APP_DEVICE_NAME, SDK_SCRIPT_URL } from '@/support/webPlayback'
+import { clampVolume } from '@/support/playbackControls'
 
 const DEFAULT_VOLUME = 0.8
 
@@ -33,6 +35,9 @@ const lastError = ref(null)
 // Estado bruto do SDK. `shallowRef` porque o objeto é reescrito a cada evento e
 // não deve virar profundamente reativo.
 const playbackState = shallowRef(null)
+// Volume local do SDK (0..1). O SDK não emite evento de volume, então a UI lê
+// daqui: sincronizado no `ready` e atualizado de forma otimista nos controles.
+const volume = ref(DEFAULT_VOLUME)
 
 // Injeta o script do SDK uma única vez. Resolve quando `window.Spotify` está
 // pronto; em recargas/duplicidade reaproveita o que já está na página.
@@ -92,6 +97,13 @@ const createPlayer = (Spotify) => {
   instance.addListener('ready', ({ device_id }) => {
     deviceId.value = device_id
     isReady.value = true
+    // O volume inicial vem do SDK. No iOS a leitura sempre devolve 1 (o volume
+    // é físico); a UI não oferece o controle nessa plataforma.
+    Promise.resolve(instance.getVolume())
+      .then((value) => {
+        if (Number.isFinite(value)) volume.value = clampVolume(value)
+      })
+      .catch((error) => console.error('Web Playback: falha ao ler o volume', error))
   })
 
   instance.addListener('not_ready', ({ device_id }) => {
@@ -128,6 +140,42 @@ const createPlayer = (Spotify) => {
   })
 
   return instance
+}
+
+// Executa um comando no player local. O SDK devolve promises que podem rejeitar
+// (e, no iOS, alguns métodos não são sequer setáveis) — nunca deixamos o erro
+// vazar para a UI: apenas loga e informa `false`.
+const runLocalCommand = (action) => {
+  if (!player) return Promise.resolve(false)
+  try {
+    return Promise.resolve(action(player))
+      .then(() => true)
+      .catch((error) => {
+        console.error('Web Playback: falha no controle local', error)
+        return false
+      })
+  } catch (error) {
+    console.error('Web Playback: falha no controle local', error)
+    return Promise.resolve(false)
+  }
+}
+
+export const toggleLocalPlay = () => runLocalCommand((instance) => instance.togglePlay())
+export const nextLocalTrack = () => runLocalCommand((instance) => instance.nextTrack())
+export const previousLocalTrack = () => runLocalCommand((instance) => instance.previousTrack())
+export const seekLocalPlayback = (positionMs) =>
+  runLocalCommand((instance) => instance.seek(positionMs))
+
+// O volume é otimista: a UI responde na hora. Se o SDK recusar (no iOS o volume
+// é físico), o valor volta ao anterior sem quebrar a tela.
+export const setLocalVolume = (value) => {
+  const next = clampVolume(value)
+  const previous = volume.value
+  volume.value = next
+  return runLocalCommand((instance) => instance.setVolume(next)).then((ok) => {
+    if (!ok) volume.value = previous
+    return ok
+  })
 }
 
 // Deve ser chamado dentro de um gesto do usuário (ex.: clique de transferência)
@@ -194,6 +242,13 @@ export const useWebPlayback = () => ({
   requiresConsent,
   lastError,
   playbackState,
+  volume,
   boot: bootWebPlayback,
   activateElement: activateWebPlaybackElement,
+  // Controles locais (#71): só valem quando o app é o dispositivo ativo.
+  togglePlay: toggleLocalPlay,
+  next: nextLocalTrack,
+  previous: previousLocalTrack,
+  seek: seekLocalPlayback,
+  setVolume: setLocalVolume,
 })

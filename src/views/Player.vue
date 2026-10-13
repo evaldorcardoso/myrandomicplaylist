@@ -5,6 +5,7 @@
   import { signInWithSpotify } from '@/support/spotifyAuth'
   import { useWebPlayback } from '@/composables/useWebPlayback'
   import { useNowPlaying } from '@/composables/useNowPlaying'
+  import { usePlaybackControls } from '@/composables/usePlaybackControls'
   import { formatDuration, formatReleaseDate, progressPercent } from '@/support/playbackFormat'
   import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
   import SellSlotModal from '@/components/SellSlotModal.vue'
@@ -12,14 +13,7 @@
   import { usePlaylistStore } from '@/stores/playlist'
   import { PlaylistService } from '../services/PlaylistService'
 
-  const {
-    getDevices,
-    skipToNext,
-    skipToPrevious,
-    pausePlayback,
-    startResumePlayback,
-    transferPlayback
-  } = useProfile()
+  const { getDevices, transferPlayback } = useProfile()
 
   // Dispositivo Spotify Connect do próprio app (Web Playback SDK).
   const { deviceId, requiresConsent, activateElement } = useWebPlayback()
@@ -28,6 +22,21 @@
   // polling de estado nem progresso simulado: posição/faixa/estado vêm do mesmo
   // estado que alimenta o player flutuante, então os dois nunca divergem.
   const { nowPlaying, rawTrack, position, refresh } = useNowPlaying()
+
+  // Controles unificados (#71): quando o app é o dispositivo ativo, play/pause,
+  // próxima, anterior, seek e volume usam os métodos locais do SDK; com outro
+  // aparelho ativo, os comandos seguem pela API REST. Seek e volume só aparecem
+  // no player do app — e o volume some no iOS, onde não é setável.
+  const {
+    togglePlay,
+    next,
+    previous,
+    canSeek,
+    seekFromPercent,
+    canSetVolume,
+    volumePercent,
+    changeVolume
+  } = usePlaybackControls()
 
   const { loadAllFromDatabase } = PlaylistService()
 
@@ -124,26 +133,16 @@
     getUserDevices().catch((error) => console.error('Falha ao recarregar dispositivos:', error))
   })
 
-  // Os comandos seguem via REST (os controles locais do SDK ficam para #71);
-  // depois de cada comando a fonte compartilhada é revalidada uma vez.
-  const resumeUserPlayback = async () => {
-    await startResumePlayback()
-    await refresh()
+  // Seek pelo clique na barra de progresso (só quando o app é o player).
+  const onSeekClick = (event) => {
+    if (!canSeek.value) return
+    const rect = event.currentTarget?.getBoundingClientRect?.()
+    if (!rect?.width) return
+    seekFromPercent(((event.clientX - rect.left) / rect.width) * 100)
   }
 
-  const pauseUserPlayback = async () => {
-    await pausePlayback()
-    await refresh()
-  }
-
-  const skipToUserNext = async () => {
-    await skipToNext()
-    await refresh()
-  }
-
-  const skipToUserPrevious = async () => {
-    await skipToPrevious()
-    await refresh()
+  const onVolumeInput = (event) => {
+    changeVolume(Number(event.target.value))
   }
 
   const transferUserPlayback = async (targetDeviceId) => {
@@ -156,8 +155,10 @@
       "device_ids": [targetDeviceId]
     }
     await transferPlayback(formData)
+    // Clicar no dispositivo já ativo (e parado) retoma a reprodução — local se
+    // for o app, REST se for outro aparelho.
     if((device?.is_active)&&(!isPlaying.value)){
-      await startResumePlayback()
+      await togglePlay()
     }
     await getUserDevices()
     await refresh()
@@ -252,9 +253,18 @@
           <h4 class="text-body-md text-on-surface-variant">{{ track?.artists?.join(', ') }}</h4>
 
           <div class="flex flex-col gap-1 w-full">
-            <div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
-              <div class="h-full bg-primary transition-[width] duration-100" :style="{ width: progressPerc + '%' }"></div>
-            </div>
+            <button
+              type="button"
+              class="w-full py-2 -my-2 group/seek disabled:cursor-default"
+              :disabled="!canSeek"
+              :title="canSeek ? 'Avançar/retroceder na faixa' : undefined"
+              aria-label="Barra de progresso"
+              @click="onSeekClick"
+            >
+              <span class="block w-full h-1 bg-surface-container-highest rounded-full overflow-hidden transition-all group-hover/seek:h-1.5">
+                <span class="block h-full bg-primary transition-[width] duration-100" :style="{ width: progressPerc + '%' }"></span>
+              </span>
+            </button>
             <div class="flex justify-between text-[10px] text-on-surface-variant tabular-nums">
               <span>{{ elapsedLabel }}</span>
               <span>{{ totalLabel }}</span>
@@ -262,26 +272,43 @@
           </div>
 
           <div class="flex items-center gap-4">
-            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="skipToUserPrevious()">
+            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="previous()">
               <font-awesome-icon icon="step-backward" />
             </button>
             <button
               v-if="!isPlaying"
               class="w-16 h-16 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-              @click="resumeUserPlayback()"
+              @click="togglePlay()"
             >
               <font-awesome-icon icon="play" class="text-[24px] ml-1" />
             </button>
             <button
               v-else
               class="w-16 h-16 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-              @click="pauseUserPlayback()"
+              @click="togglePlay()"
             >
               <font-awesome-icon icon="pause" class="text-[24px]" />
             </button>
-            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="skipToUserNext()">
+            <button class="w-12 h-12 bg-surface-container-high text-on-surface rounded-full flex items-center justify-center hover:text-primary hover:scale-105 transition-all" @click="next()">
               <font-awesome-icon icon="step-forward" />
             </button>
+          </div>
+
+          <!-- Controle de volume local: só no dispositivo do app e onde o
+               navegador permite (o iOS não deixa ajustar o volume). -->
+          <div v-if="canSetVolume" class="flex items-center gap-3 max-w-[320px]">
+            <span class="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0">volume_up</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              class="flex-1 accent-primary cursor-pointer"
+              :value="volumePercent"
+              aria-label="Volume"
+              @input="onVolumeInput"
+            />
+            <span class="text-label-sm text-on-surface-variant tabular-nums w-10 text-right">{{ volumePercent }}%</span>
           </div>
 
           <div class="flex flex-wrap gap-8 py-4 border-t border-outline-variant/10">
