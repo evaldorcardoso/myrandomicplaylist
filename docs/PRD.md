@@ -1,8 +1,8 @@
 # PRD — MR Playlist
 
 **Versão do documento:** 1.2
-**Última atualização:** 12/10/2026
-**Versão do produto (as-is):** 3.25.18
+**Última atualização:** 13/10/2026
+**Versão do produto (as-is):** 4.0.0
 **Autor / Owner:** Curador proprietário (uso pessoal)
 **Status:** Aprovado — Fase 0 (Fundação & Segurança) concluída (ver §5.1 e §6)
 
