@@ -112,6 +112,7 @@ Copy `.env.example` to `.env` and configure:
 - Axios for HTTP requests
 - Environment variables prefixed with `VITE_` for client-side config
 - Use `import.meta.env.VITE_*` for accessing env vars
+- **Spotify Web API**: use the official **OpenAPI 3.0 specification** as the source of truth for endpoints, parameters, request/response schemas and scopes. Available at: <https://developer.spotify.com/reference/web-api/open-api-schema.yaml>. Consult it before adding or changing anything in `src/support/spotifyApi.js` (and anywhere else that calls the Spotify Web API) instead of relying on assumptions or deprecated docs.
 
 ### Database Changes
 - **NEVER create migration files** (do not add files under `supabase/migrations/`)
