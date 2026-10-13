@@ -282,6 +282,9 @@ export const useNowPlaying = () => ({
   nowPlaying,
   rawTrack,
   position,
+  // O app é o dispositivo ativo na conta? É a informação que os controles usam
+  // para decidir entre os métodos locais do SDK e a API REST (#71).
+  appDeviceActive,
   refresh,
   start: startNowPlaying,
   stop: stopNowPlaying,
