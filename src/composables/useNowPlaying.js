@@ -26,6 +26,7 @@ import { useGeneral, useProfile } from '@/support/spotifyApi'
 import { useWebPlayback } from '@/composables/useWebPlayback'
 import { isAppDevice } from '@/support/webPlayback'
 import {
+  cacheTrackMetadata,
   createTrackMetadataCache,
   extractTrackMetadata,
   projectPosition,
@@ -167,7 +168,7 @@ const fetchTrackMetadata = (trackId) => {
     .then(({ data }) => {
       const metadata = extractTrackMetadata(data)
       if (Object.keys(metadata).length > 0) {
-        resolveTrackMetadata({ id: trackId }, { cache: metadataCache, metadata })
+        cacheTrackMetadata(metadataCache, trackId, metadata)
         metadataVersion.value++
       }
       return metadata

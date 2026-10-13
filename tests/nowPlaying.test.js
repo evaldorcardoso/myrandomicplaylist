@@ -8,6 +8,7 @@ import {
   resolveRawTrack,
   projectPosition,
   extractTrackMetadata,
+  cacheTrackMetadata,
   shouldFetchTrackMetadata,
   resolveTrackMetadata,
   createTrackMetadataCache
@@ -291,6 +292,33 @@ describe('nowPlaying · extractTrackMetadata', () => {
   it('devolve um objeto vazio para entrada ausente', () => {
     expect(extractTrackMetadata(null)).toEqual({})
     expect(extractTrackMetadata(undefined)).toEqual({})
+  })
+})
+
+describe('nowPlaying · cacheTrackMetadata', () => {
+  it('grava apenas os campos presentes para o identificador', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(cache, 'track-1', { popularity: 55, release_date: '2024-05-01' })
+
+    expect(cache.get('track-1')).toEqual({ popularity: 55, release_date: '2024-05-01' })
+  })
+
+  it('preserva o que já estava no cache quando a nova busca vem parcial', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(cache, 'track-1', { popularity: 55 })
+    cacheTrackMetadata(cache, 'track-1', { release_date: '2024-05-01' })
+
+    expect(cache.get('track-1')).toEqual({ popularity: 55, release_date: '2024-05-01' })
+  })
+
+  it('ignora gravações sem cache, sem identificador ou sem metadados', () => {
+    const cache = createTrackMetadataCache()
+    cacheTrackMetadata(null, 'track-1', { popularity: 55 })
+    cacheTrackMetadata(cache, null, { popularity: 55 })
+    cacheTrackMetadata(cache, 'track-1', null)
+    cacheTrackMetadata(cache, 'track-1', {})
+
+    expect(cache.size).toBe(0)
   })
 })
 
