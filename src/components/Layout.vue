@@ -1,5 +1,5 @@
 <script setup>
-    import { ref, computed, onMounted } from 'vue'
+    import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
     import Sidebar from '@/components/Sidebar.vue'
     import TopBar from '@/components/TopBar.vue'
     import FloatPlayer from '@/components/FloatPlayer.vue'
@@ -8,11 +8,15 @@
     import { useUserStore } from '@/stores/user'
     import { useNotificationsStore } from '@/stores/notifications'
     import { useWebPlayback } from '@/composables/useWebPlayback'
+    import { useNowPlaying } from '@/composables/useNowPlaying'
 
-    const { getPlaybackState, getProfile } = useProfile()
+    const { getProfile } = useProfile()
     const { boot: bootWebPlayback } = useWebPlayback()
-    const floatPlayerData = ref(null)
-    
+    // Fonte compartilhada de "agora tocando". O polling de 10s que vivia aqui
+    // passou para dentro dela: só roda no fallback REST, com a aba visível, e
+    // para quando o dispositivo do app é o ativo.
+    const { nowPlaying, start: startNowPlaying, stop: stopNowPlaying } = useNowPlaying()
+
     const step = ref(0)
     const menuOpen = ref(false)
     
@@ -20,19 +24,10 @@
     const userStore = useUserStore()
     const notificationsStore = useNotificationsStore()
 
-    const currentData = computed(() => {
-        const data = floatPlayerData.value
-        return (data && typeof data === 'object') ? data : {}
-    })
+    const hasNowPlaying = computed(() => Boolean(nowPlaying.value))
     const removeTrack = computed(() => {
         return removeTrackRef.value;
     })
-
-    const togglePlayback = () => {
-        if (floatPlayerData.value) {
-            floatPlayerData.value.is_playing = !floatPlayerData.value.is_playing
-        }
-    }
 
     const getUserProfile = async() => {
         const { data } = await getProfile()
@@ -60,23 +55,16 @@
         menuOpen.value = value
     }
 
-    setInterval(async () => {
-        try{
-            const { data } = await getPlaybackState()
-            floatPlayerData.value = data
-        } catch(error) {
-            console.error('error on get playback state', error)
-        }
-    }, 10000)
-
-    
     onMounted(async () => {
-        const { data } = await getPlaybackState()
-        floatPlayerData.value = data
         await getUserProfile()
         // Registra o app como dispositivo Spotify Connect ("MR Playlist") em
         // qualquer rota autenticada. Nunca transfere a reprodução sozinho.
         bootWebPlayback()
+        startNowPlaying()
+    })
+
+    onBeforeUnmount(() => {
+        stopNowPlaying()
     })
 </script>
 
@@ -91,20 +79,16 @@
         @open-menu="menuOpen = true"
     />
     <div class="pl-0 lg:pl-56">
-        <main class="pt-20 bg-surface h-screen overflow-y-auto" :class="floatPlayerData ? 'pb-20' : 'pb-lg'">
+        <main class="pt-20 bg-surface h-screen overflow-y-auto" :class="hasNowPlaying ? 'pb-20' : 'pb-lg'">
             <router-view 
                 :step-data="step" 
                 :remove-track="removeTrack"
-                :current-data="currentData"
                 @update-step-data="onUpdateStepData" 
                 @update-menu-data="onUpdateMenuData"
             />
         </main>
     </div>
-    <FloatPlayer v-if="floatPlayerData" 
-        :current-data="currentData"
-        @toggle-playback="togglePlayback"
-    />
+    <FloatPlayer v-if="hasNowPlaying" />
     <SlotManagementModal
         :open="notificationsStore.slotOpened"
         :track="notificationsStore.slotTrack"

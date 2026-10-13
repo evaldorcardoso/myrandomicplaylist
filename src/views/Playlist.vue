@@ -16,6 +16,7 @@
   import { notify } from "@kyvg/vue3-notification";
   import { PlaylistService } from '@/services/PlaylistService'
   import { usePlaylistData, NOTIFICATION_ACTIONS } from '@/composables/usePlaylistData'
+  import { useNowPlaying } from '@/composables/useNowPlaying'
   import { PlaylistDetailsService } from '@/services/PlaylistDetailsService'
   import { TrackRequestService } from '@/services/TrackRequestService'
   import { track, EVENTS } from '@/support/telemetry'
@@ -32,7 +33,7 @@
 
   const PAGE_SIZE = computed(() => settingsStore.settings.playlistUiPageSize)
 
-  const props = defineProps({
+  defineProps({
     forceRefresh: {
         type: Boolean,
         default: false,
@@ -44,10 +45,6 @@
     stepData: {
       type: Number,
       default: 1
-    },
-    currentData: {
-        type: Object,
-        default: () => { },
     }
   });
 
@@ -136,7 +133,7 @@
   )
 
   const currentUser = computed(() => userStore.getUser)
-  const currentPlaying = computed(() => props.currentData)
+  const { nowPlaying } = useNowPlaying()
   const playlistSaved = computed(() => state.playlist?.tracked ?? false)
 
   const availableTabs = computed(() => {
@@ -1302,9 +1299,9 @@
              <!-- Left: Play/Pause button -->
              <button
                class="w-12 h-12 bg-primary rounded-full text-on-primary hover:bg-primary-fixed hover:scale-105 transition-all flex items-center justify-center shadow-lg hover:shadow-primary/20"
-               @click="executeUserPlaylist(currentPlaying)"
+               @click="executeUserPlaylist(nowPlaying)"
              >
-               <font-awesome-icon :icon="currentPlaying?.is_playing ? 'pause' : 'play'" />
+               <font-awesome-icon :icon="nowPlaying?.playing ? 'pause' : 'play'" />
              </button>
 
              <!-- Right: Other buttons -->
@@ -1528,7 +1525,7 @@
                 <div class="flex items-center gap-4">
                   <img class="w-10 h-10 rounded-lg object-cover" :src="track.track?.album?.images?.[0]?.url" />
                   <div class="flex flex-col min-w-0">
-                    <span class="block truncate text-on-surface text-body-md" :class="{ 'text-primary': track.track?.uri === currentPlaying?.item?.uri }">
+                    <span class="block truncate text-on-surface text-body-md" :class="{ 'text-primary': track.track?.uri === nowPlaying?.track?.uri }">
                       <font-awesome-icon v-if="track.track?.tracked" icon="heart" class="text-primary mr-1" />
                       {{ track.track?.name }}
                     </span>

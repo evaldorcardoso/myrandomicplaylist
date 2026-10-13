@@ -172,6 +172,7 @@ src/
     ├── usePlaylistData.js
     ├── usePushNotifications.js
     ├── useWebPlayback.js         # singleton Web Playback SDK device ("MR Playlist")
+    ├── useNowPlaying.js          # fonte compartilhada de "agora tocando" (SDK + fallback REST)
     └── useCuratorSuggestions.js
 
 supabase/functions/notify-expiration/index.ts   # Deno edge function (web-push)
