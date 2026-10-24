@@ -1465,19 +1465,19 @@
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[900px]">
+        <table class="w-full table-fixed text-left border-collapse min-w-[900px]">
           <thead>
             <tr class="bg-surface-container-low/50">
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">
-                <span v-if="differentSort"># Original → Nova</span>
-                <span v-else># Pos</span>
+              <th class="w-[38px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">
+                <span v-if="differentSort">Original → Nova</span>
+                <span v-else>Pos</span>
               </th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
-              <th class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
-              <th v-if="hasSoldSlots" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
-              <th v-if="playlistSaved" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
-              <th v-if="hasSoldSlots || hasPriceValues" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
-              <th v-if="activeTab !== 'Pendentes'" class="px-6 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
+              <th v-if="activeTab !== 'Pendentes'" class="w-[58px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Popularity</th>
+              <th class="px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Música / Artista</th>
+              <th class="w-[88px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Entrada</th>
+              <th v-if="hasSoldSlots" class="w-[88px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider text-center">Expiração</th>
+              <th v-if="playlistSaved" class="w-[118px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+              <th v-if="hasSoldSlots || hasPriceValues" class="w-[88px] px-2 py-4 text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/10">
@@ -1488,8 +1488,8 @@
               :class="{ 'opacity-40': track.track?.available_markets && !track.track.available_markets.includes('BR') }"
               @click="openTrackSlotModal(track)"
             >
-              <td class="px-2 py-2 xl:px-6 xl:py-4">
-                <div class="flex items-center gap-2">
+              <td class="px-2 py-2 xl:px-2 xl:py-2">
+                <div class="flex items-center">
                   <div class="flex flex-col items-center gap-0.5">
                     <div
                       class="min-w-8 h-8 rounded flex items-center justify-center text-label-md font-bold px-2 whitespace-nowrap"
@@ -1521,7 +1521,15 @@
                   />
                 </div>
               </td>
-              <td class="px-2 py-2 xl:px-6 xl:py-4">
+              <td v-if="activeTab !== 'Pendentes'" class="px-2 py-2 xl:px-2 xl:py-2">
+                <div class="flex flex-col items-center leading-tight text-label-md" :class="popularityIcon(track.track?.popularity)">
+                  <span>{{ track.track?.popularity }}%</span>
+                  <span v-if="popularityDiff(track) !== 0" class="flex items-center gap-0" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
+                    (<font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff(track) }})
+                  </span>
+                </div>
+              </td>
+              <td class="px-2 py-2 xl:px-2 xl:py-2">
                 <div class="flex items-center gap-4">
                   <img class="w-10 h-10 rounded-lg object-cover" :src="track.track?.album?.images?.[0]?.url" />
                   <div class="flex flex-col min-w-0">
@@ -1533,8 +1541,8 @@
                   </div>
                 </div>
               </td>
-              <td class="px-2 py-2 xl:px-6 xl:py-4 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
-              <td v-if="hasSoldSlots" class="px-2 py-2 xl:px-6 xl:py-4 text-center">
+              <td class="px-2 py-2 xl:px-2 xl:py-2 text-center text-body-sm text-on-surface-variant">{{ formatDate(track.added_at) }}</td>
+              <td v-if="hasSoldSlots" class="px-2 py-2 xl:px-2 xl:py-2 text-center">
                 <div v-if="!track._slot" class="flex flex-col items-center gap-1">
                   <div class="animate-pulse h-3 w-16 rounded bg-surface-container-high"></div>
                   <div class="animate-pulse h-2 w-10 rounded bg-surface-container-high"></div>
@@ -1548,7 +1556,7 @@
                   </span>
                 </div>
               </td>
-              <td v-if="playlistSaved" class="px-2 py-2 xl:px-6 xl:py-4">
+              <td v-if="playlistSaved" class="px-2 py-2 xl:px-2 xl:py-2">
                 <div v-if="!track._slot" class="animate-pulse h-5 w-16 rounded-full bg-surface-container-high"></div>
                 <button
                   v-else-if="track._slot.status === 'free'"
@@ -1569,19 +1577,10 @@
                   {{ statusPill(track._slot).label }}
                 </span>
               </td>
-              <td v-if="hasSoldSlots || hasPriceValues" class="px-2 py-2 xl:px-6 xl:py-4">
+              <td v-if="hasSoldSlots || hasPriceValues" class="px-2 py-2 xl:px-2 xl:py-2">
                 <div v-if="!track._slot" class="animate-pulse h-4 w-14 rounded bg-surface-container-high"></div>
                 <span v-else class="text-label-md text-on-surface">{{ slotValueLabel(track).value }}</span>
-              </td>
-              <td v-if="activeTab !== 'Pendentes'" class="px-2 py-2 xl:px-6 xl:py-4">
-                <div class="flex items-center gap-1 text-label-md text-on-surface">
-                  <font-awesome-icon icon="chart-line" :class="popularityIcon(track.track?.popularity)" />
-                  {{ track.track?.popularity }}%
-                  <span v-if="popularityDiff(track) !== 0" class="flex items-center gap-0" :class="popularityDiff(track) < 0 ? 'text-[#ff1717]' : 'text-[#75ff18]'">
-                    (<font-awesome-icon :icon="popularityDiff(track) < 0 ? 'arrow-down' : 'arrow-up'" />{{ popularityDiff(track) }})
-                  </span>
-                </div>
-              </td>
+              </td>              
             </tr>
             <template v-if="isLoading && state.tracks.length === 0">
               <tr v-for="n in 10" :key="'skeleton-' + n" class="hover:bg-surface-container-high/30">
