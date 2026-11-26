@@ -32,8 +32,7 @@
 <template>
   <h2 class="center" style="margin-top: 50px;color:#fff;text-align:center;">{{ msg }}</h2>
   <div>
-    <div class="login">      
-      <img alt="Vue logo" src="../assets/Spotify_Logo_RGB_White.png" />
+    <div class="login">
       <p class="span-login">Para começar, você precisa se autenticar com o Spotify</p>
       <a href="#" @click.prevent="authorize()">
         <button class="but-login">Entrar com Spotify</button>        
@@ -41,6 +40,7 @@
     </div>
     <div class="footer">
       <img class="center" alt="evaldorc" src="../assets/logo_semfundo.png" @click="openLink('https://evaldorc.super.site/')" style="width: 50px;"/>
+      <p class="conter span-login">Aplicativo independente, não afiliado, associado ou patrocinado pelo Spotify</p>
       <p class="center span-login">{{ state.version }}</p>
     </div>
   </div>
